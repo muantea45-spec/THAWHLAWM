@@ -283,7 +283,7 @@ export default function OfficialReportModal({
       const reportData = {
         title: 'Pathian Ram Report',
         denomination: 'Presbyterian Church of India',
-        churchName: 'N. Vanlaiphai Damdawi Veng Kohhran',
+        churchName: 'Bethlehem Kohhran',
         periodText,
         scopeName,
         issueDate,
@@ -390,7 +390,7 @@ export default function OfficialReportModal({
       exportOfficialCertificateExcel({
         title: 'PATHIAN RAM REPORT',
         denomination: 'Presbyterian Church of India',
-        churchName: 'N. Vanlaiphai Damdawi Veng Kohhran',
+        churchName: 'Bethlehem Kohhran',
         periodText,
         reportType: reportType === 'annual' ? 'Annual' : 'Monthly',
         year: selectedYear,
@@ -480,7 +480,7 @@ export default function OfficialReportModal({
                 Report Form & Certificate Generator
               </h2>
               <p className="text-xs text-slate-500 font-medium">
-                Presbyterian Church of India • N. Vanlaiphai Damdawi Veng Kohhran • <span className="font-bold text-indigo-700">{pageSize.toUpperCase()} ({orientation.toUpperCase()})</span>
+                Presbyterian Church of India • Bethlehem Kohhran • <span className="font-bold text-indigo-700">{pageSize.toUpperCase()} ({orientation.toUpperCase()})</span>
               </p>
             </div>
           </div>
@@ -1011,7 +1011,7 @@ export default function OfficialReportModal({
                     Presbyterian Church of India
                   </h3>
                   <h4 className="font-heading font-extrabold text-xs sm:text-xs text-indigo-700 leading-tight">
-                    N. Vanlaiphai Damdawi Veng Kohhran
+                    Bethlehem Kohhran
                   </h4>
 
                   {/* Centered Church Logo (50% larger) */}

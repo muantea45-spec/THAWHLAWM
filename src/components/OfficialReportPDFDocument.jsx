@@ -205,7 +205,7 @@ const styles = StyleSheet.create({
 export default function OfficialReportPDFDocument({
   title = 'PATHIAN RAM REPORT',
   denomination = 'Presbyterian Church of India',
-  churchName = 'N. Vanlaiphai Damdawi Veng Kohhran',
+  churchName = 'Bethlehem Kohhran',
   periodText = 'Annual Financial Report',
   scopeName = 'All Bials Combined',
   issueDate = new Date().toLocaleDateString('en-GB'),

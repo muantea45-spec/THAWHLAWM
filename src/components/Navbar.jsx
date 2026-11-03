@@ -53,7 +53,7 @@ export default function Navbar({ user, onLogout, showToast, onOpenMobileMenu }) 
         {/* Center: Title & Centered Pathian Ram Khawnna */}
         <div className="min-w-0 flex-1 text-center px-1">
           <h1 className="font-heading font-black text-sm sm:text-xl md:text-2xl lg:text-3xl leading-tight text-slate-900 tracking-tight text-center">
-            N. Vanlaiphai Damdawi Veng Kohhran
+            Bethlehem Kohhran
           </h1>
           <p className="text-[11px] sm:text-sm text-indigo-700 font-extrabold tracking-wider uppercase text-center mt-0.5">
             Pathian Ram Khawnna

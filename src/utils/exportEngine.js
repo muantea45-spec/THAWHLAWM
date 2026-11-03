@@ -617,7 +617,7 @@ export function exportBialYearlySummaryPDF({ bialName, year, monthlyBreakdown, m
  */
 export function exportOverallMemberExcel({ year, bialsData, churchGrandTotal }) {
   const sheetData = [
-    ['N.VANLAIPHAI DAMDAWI VENG KOHHRAN - PATHIAN RAM'],
+    ['BETHLEHEM KOHHRAN - PATHIAN RAM'],
     [`OVERALL ANNUAL MEMBER TITHE CONTRIBUTIONS (FY ${year} - ${year + 1})`],
     ['Generated On: ' + new Date().toLocaleString()],
     [],
@@ -693,7 +693,7 @@ export function exportOverallMemberPDF({ year, bialsData, churchGrandTotal }) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(30, 41, 59);
-  doc.text('N.VANLAIPHAI DAMDAWI VENG KOHHRAN', 105, 14, { align: 'center' });
+  doc.text('BETHLEHEM KOHHRAN', 105, 14, { align: 'center' });
 
   doc.setFontSize(10.5);
   doc.setTextColor(67, 56, 202);
@@ -1393,7 +1393,7 @@ export function printCertificateDirectly(element, title = 'Pathian_Ram_Report', 
 export function exportOfficialCertificatePDF({
   title = 'PATHIAN RAM REPORT',
   denomination = 'Presbyterian Church of India',
-  churchName = 'N. Vanlaiphai Damdawi Veng Kohhran',
+  churchName = 'Bethlehem Kohhran',
   periodText = 'Annual Financial Report',
   reportType = 'Annual',
   year = new Date().getFullYear(),
@@ -1735,7 +1735,7 @@ export function exportOfficialCertificatePDF({
 export function exportOfficialCertificateExcel({
   title = 'PATHIAN RAM REPORT',
   denomination = 'Presbyterian Church of India',
-  churchName = 'N. Vanlaiphai Damdawi Veng Kohhran',
+  churchName = 'Bethlehem Kohhran',
   periodText = 'Annual Financial Report',
   reportType = 'Annual',
   year = new Date().getFullYear(),
@@ -1869,7 +1869,7 @@ export function exportConsolidatedBookletPDF({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10.5);
     doc.setTextColor(15, 23, 42); // slate-900
-    doc.text('N. VANLAIPHAI DAMDAWI VENG KOHHRAN', pageWidth / 2, 7.5, { align: 'center' });
+    doc.text('BETHLEHEM KOHHRAN', pageWidth / 2, 7.5, { align: 'center' });
 
     doc.setFontSize(8.5);
     doc.setTextColor(67, 56, 202); // indigo-700
@@ -2058,7 +2058,7 @@ export function exportConsolidatedBookletExcel({
   churchTotals = {}
 }) {
   const sheetData = [
-    ['N. VANLAIPHAI DAMDAWI VENG KOHHRAN'],
+    ['BETHLEHEM KOHHRAN'],
     ['PATHIAN RAM — CONSOLIDATED ANNUAL MEMBER CONTRIBUTION BOOKLET'],
     [`Period: Financial Year ${year} - ${year + 1} (12 Months Aggregated)`],
     [`Generated On: ${new Date().toLocaleString()}`],

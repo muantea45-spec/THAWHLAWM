@@ -47,7 +47,7 @@ export default function Login({ onLoginSuccess, showToast }) {
             className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-white border-2 border-amber-600/30 object-contain shadow-xl mx-auto mb-4 p-1 transform hover:scale-105 transition-transform duration-300"
           />
           <h1 className="font-heading font-black text-2xl sm:text-3xl text-slate-900 tracking-tight leading-tight">
-            N. Vanlaiphai Damdawi Veng Kohhran
+            Bethlehem Kohhran
           </h1>
           <p className="text-base sm:text-lg text-indigo-700 font-extrabold tracking-wider uppercase mt-1">
             Pathian Ram Khawnna

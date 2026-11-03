@@ -23,7 +23,7 @@ export default function DigitalReceiptModal({ isOpen, onClose, member, month, ye
   });
 
   const handleWhatsAppShare = () => {
-    const text = `*N. VANLAIPHAI DAMDAWI VENG KOHHRAN*\n*Pathian Ram Khawnna Receipt*\n----------------------------------------\n*Bial:* ${bialName || 'Bial'}\n*Name:* ${member.name} (Sl No. ${member.sl_no || ''})\n*Month:* ${monthName} ${year}\n----------------------------------------\n• Pathian Ram: ₹${pr.toLocaleString('en-IN')}\n• Ramthar: ₹${rt.toLocaleString('en-IN')}\n• Tualchhung: ₹${tch.toLocaleString('en-IN')}\n• Building: ₹${bldg.toLocaleString('en-IN')}\n----------------------------------------\n*TOTAL COLLECTED: ₹${grandTotal.toLocaleString('en-IN')}*\n----------------------------------------\n_Date: ${receiptDate}_\n\nLalpan malsawm che rawh se.`;
+    const text = `*BETHLEHEM KOHHRAN*\n*Pathian Ram Khawnna Receipt*\n----------------------------------------\n*Bial:* ${bialName || 'Bial'}\n*Name:* ${member.name} (Sl No. ${member.sl_no || ''})\n*Month:* ${monthName} ${year}\n----------------------------------------\n• Pathian Ram: ₹${pr.toLocaleString('en-IN')}\n• Ramthar: ₹${rt.toLocaleString('en-IN')}\n• Tualchhung: ₹${tch.toLocaleString('en-IN')}\n• Building: ₹${bldg.toLocaleString('en-IN')}\n----------------------------------------\n*TOTAL COLLECTED: ₹${grandTotal.toLocaleString('en-IN')}*\n----------------------------------------\n_Date: ${receiptDate}_\n\nLalpan malsawm che rawh se.`;
 
     const encodedText = encodeURIComponent(text);
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
@@ -53,7 +53,7 @@ export default function DigitalReceiptModal({ isOpen, onClose, member, month, ye
             />
             <div className="min-w-0 flex-1 text-center">
               <h2 className="font-heading font-black text-xs sm:text-sm uppercase tracking-tight text-slate-900 leading-tight">
-                N. Vanlaiphai Damdawi Veng Kohhran
+                Bethlehem Kohhran
               </h2>
               <p className="text-[10px] font-extrabold text-indigo-700 uppercase tracking-wider mt-0.5">
                 Pathian Ram Khawnna Receipt

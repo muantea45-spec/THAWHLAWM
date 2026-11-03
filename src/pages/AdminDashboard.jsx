@@ -23,6 +23,7 @@ import AdminMemberEditModal from '../components/AdminMemberEditModal';
 import MemberTransferModal from '../components/MemberTransferModal';
 import MemberRolloverModal from '../components/MemberRolloverModal';
 import OfficialReportModal from '../components/OfficialReportModal';
+import ManageColumnsModal from '../components/ManageColumnsModal';
 import churchLogo from '../assets/church_logo.jpg';
 import {
   exportAdminConsolidatedPDF,
@@ -32,7 +33,7 @@ import {
   exportOverallMemberExcel,
   exportOverallMemberPDF
 } from '../utils/exportEngine';
-import { FINANCIAL_MONTHS } from '../utils/constants';
+import { FINANCIAL_MONTHS, DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 
 const CATEGORY_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#a855f7'];
 
@@ -66,6 +67,8 @@ export default function AdminDashboard({ user, showToast }) {
   const [selectedMemberToEdit, setSelectedMemberToEdit] = useState(null);
   const [showMemberEditModal, setShowMemberEditModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showColumnsModal, setShowColumnsModal] = useState(false);
+  const [titheColumns, setTitheColumns] = useState(DEFAULT_TITHE_COLUMNS);
   const [transferPreselectedMember, setTransferPreselectedMember] = useState(null);
   const [transferPreselectedBialId, setTransferPreselectedBialId] = useState(null);
 
@@ -100,9 +103,9 @@ export default function AdminDashboard({ user, showToast }) {
     try {
       showToast(`Generating Overall Ledger ${format.toUpperCase()} export...`, 'info');
       if (format === 'excel') {
-        await exportOverallMemberExcel({ year, bialsData: stats?.bialsData || [], churchGrandTotal: stats?.grandTotals || {} });
+        await exportOverallMemberExcel({ year, bialsData: stats?.bialsData || [], churchGrandTotal: stats?.grandTotals || {}, columns: titheColumns });
       } else {
-        await exportOverallMemberPDF({ year, bialsData: stats?.bialsData || [], churchGrandTotal: stats?.grandTotals || {} });
+        await exportOverallMemberPDF({ year, bialsData: stats?.bialsData || [], churchGrandTotal: stats?.grandTotals || {}, columns: titheColumns });
       }
       showToast(`Overall Ledger exported successfully!`, 'success');
     } catch (err) {
@@ -141,6 +144,10 @@ export default function AdminDashboard({ user, showToast }) {
       setBials(bialsRes || []);
       setBackups(backupsRes || []);
 
+      if (dashRes?.columns && Array.isArray(dashRes.columns) && dashRes.columns.length > 0) {
+        setTitheColumns(dashRes.columns);
+      }
+
       if (bialsRes && bialsRes.length > 0 && !inspectorBialId) {
         setInspectorBialId(bialsRes[0].id);
       }
@@ -168,6 +175,9 @@ export default function AdminDashboard({ user, showToast }) {
           const res = await api.getTithes('all', year, inspectorMonth);
           if (res && res.members && Array.isArray(res.members)) {
             setInspectorLedger(res);
+            if (res.columns && Array.isArray(res.columns) && res.columns.length > 0) {
+              setTitheColumns(res.columns);
+            }
             return;
           }
         } catch (e) {
@@ -179,10 +189,15 @@ export default function AdminDashboard({ user, showToast }) {
           a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
         );
 
+        let discoveredCols = titheColumns;
+
         const bialResults = await Promise.all(
           sortedBials.map(async (b) => {
             try {
               const res = await api.getTithes(b.id, year, inspectorMonth);
+              if (res?.columns && Array.isArray(res.columns) && res.columns.length > 0) {
+                discoveredCols = res.columns;
+              }
               const members = (res.members || []).map(m => ({
                 ...m,
                 bial_id: b.id,
@@ -197,6 +212,10 @@ export default function AdminDashboard({ user, showToast }) {
           })
         );
 
+        if (discoveredCols && discoveredCols.length > 0) {
+          setTitheColumns(discoveredCols);
+        }
+
         const allMembersRaw = bialResults.flat();
         let runningSerial = 1;
         const allMembers = allMembersRaw.map((m) => ({
@@ -207,14 +226,25 @@ export default function AdminDashboard({ user, showToast }) {
           sl_no: runningSerial++
         }));
 
-        let sumPR = 0, sumRT = 0, sumTch = 0, sumBldg = 0, grandTot = 0;
-        allMembers.forEach(m => {
-          sumPR += m.pathian_ram || 0;
-          sumRT += m.ramthar || 0;
-          sumTch += m.tualchhung || 0;
-          sumBldg += m.building || 0;
-          grandTot += m.total || 0;
+        const colSums = { grand_total: 0 };
+        discoveredCols.forEach(c => {
+          colSums[c.field_key] = 0;
+          colSums[`sum_${c.field_key}`] = 0;
         });
+        allMembers.forEach(m => {
+          discoveredCols.forEach(c => {
+            const v = m[c.field_key] || 0;
+            colSums[c.field_key] += v;
+            colSums[`sum_${c.field_key}`] += v;
+          });
+          colSums.grand_total += (m.total || 0);
+        });
+
+        // Legacy compat:
+        colSums.sum_pathian_ram = colSums.pathian_ram || 0;
+        colSums.sum_ramthar = colSums.ramthar || 0;
+        colSums.sum_tualchhung = colSums.tualchhung || 0;
+        colSums.sum_building = colSums.building || 0;
 
         setInspectorLedger({
           bial_id: 'all',
@@ -222,17 +252,15 @@ export default function AdminDashboard({ user, showToast }) {
           month: inspectorMonth,
           is_locked: false,
           members: allMembers,
-          summary: {
-            sum_pathian_ram: sumPR,
-            sum_ramthar: sumRT,
-            sum_tualchhung: sumTch,
-            sum_building: sumBldg,
-            grand_total: grandTot
-          }
+          summary: colSums,
+          columns: discoveredCols
         });
       } else {
         const res = await api.getTithes(inspectorBialId, year, inspectorMonth);
         setInspectorLedger(res);
+        if (res?.columns && Array.isArray(res.columns) && res.columns.length > 0) {
+          setTitheColumns(res.columns);
+        }
       }
     } catch (err) {
       showToast(err.message || 'Failed to load Bial monthly ledger', 'error');
@@ -540,6 +568,7 @@ export default function AdminDashboard({ user, showToast }) {
           onOpenMatrix={() => setShowMatrixModal(true)}
           onOpenCredentials={() => setShowCredentialsModal(true)}
           onOpenYears={() => setShowYearModal(true)}
+          onOpenColumns={() => setShowColumnsModal(true)}
           year={year}
           setYear={setYear}
           financialYears={financialYears}
@@ -987,18 +1016,14 @@ export default function AdminDashboard({ user, showToast }) {
                         <th onClick={() => handleSort('name')} className="py-2.5 px-3 sortable-header cursor-pointer select-none">
                           <div className="flex items-center gap-1"><span>Hming (Member Name)</span>{getSortIcon('name')}</div>
                         </th>
-                        <th onClick={() => handleSort('pathian_ram')} className="py-2.5 px-2.5 text-right w-24 sm:w-28 sortable-header cursor-pointer select-none">
-                          <div className="flex items-center justify-end gap-1"><span>PTR</span>{getSortIcon('pathian_ram')}</div>
-                        </th>
-                        <th onClick={() => handleSort('ramthar')} className="py-2.5 px-2.5 text-right w-24 sm:w-28 sortable-header cursor-pointer select-none">
-                          <div className="flex items-center justify-end gap-1"><span>RT</span>{getSortIcon('ramthar')}</div>
-                        </th>
-                        <th onClick={() => handleSort('tualchhung')} className="py-2.5 px-2.5 text-right w-24 sm:w-28 sortable-header cursor-pointer select-none">
-                          <div className="flex items-center justify-end gap-1"><span>Tch</span>{getSortIcon('tualchhung')}</div>
-                        </th>
-                        <th onClick={() => handleSort('building')} className="py-2.5 px-2.5 text-right w-24 sm:w-28 sortable-header cursor-pointer select-none">
-                          <div className="flex items-center justify-end gap-1"><span>Bldg</span>{getSortIcon('building')}</div>
-                        </th>
+                        {titheColumns.map(col => (
+                          <th key={col.id} onClick={() => handleSort(col.field_key)} className="py-2.5 px-2.5 text-right w-24 sm:w-28 sortable-header cursor-pointer select-none">
+                            <div className="flex items-center justify-end gap-1">
+                              <span style={{ color: col.color || '#334155' }}>{col.code}</span>
+                              {getSortIcon(col.field_key)}
+                            </div>
+                          </th>
+                        ))}
                         <th onClick={() => handleSort('total')} className="py-2.5 px-3 text-right w-28 sm:w-32 sortable-header cursor-pointer select-none">
                           <div className="flex items-center justify-end gap-1 text-emerald-800 font-extrabold"><span>Total</span>{getSortIcon('total')}</div>
                         </th>
@@ -1007,9 +1032,9 @@ export default function AdminDashboard({ user, showToast }) {
                     </thead>
                     <tbody className="divide-y divide-slate-200 text-xs sm:text-sm font-mono tabular-nums">
                       {inspectorLoading ? (
-                        <tr><td colSpan="8" className="py-10 text-center text-indigo-600 font-semibold animate-pulse font-sans">Loading ledger...</td></tr>
+                        <tr><td colSpan={3 + titheColumns.length} className="py-10 text-center text-indigo-600 font-semibold animate-pulse font-sans">Loading ledger...</td></tr>
                       ) : sortedInspectorMembers.length === 0 ? (
-                        <tr><td colSpan="8" className="py-10 text-center text-slate-500 font-sans">No tithes recorded.</td></tr>
+                        <tr><td colSpan={3 + titheColumns.length} className="py-10 text-center text-slate-500 font-sans">No tithes recorded.</td></tr>
                       ) : (
                         sortedInspectorMembers.map(m => (
                           <tr key={m.member_id} className="hover:bg-slate-50 transition-colors">
@@ -1034,10 +1059,11 @@ export default function AdminDashboard({ user, showToast }) {
                                 )}
                               </button>
                             </td>
-                            <td className="py-2 px-2.5 text-right text-blue-700 font-medium">₹{(m.pathian_ram || 0).toLocaleString('en-IN')}</td>
-                            <td className="py-2 px-2.5 text-right text-emerald-700 font-medium">₹{(m.ramthar || 0).toLocaleString('en-IN')}</td>
-                            <td className="py-2 px-2.5 text-right text-amber-700 font-medium">₹{(m.tualchhung || 0).toLocaleString('en-IN')}</td>
-                            <td className="py-2 px-2.5 text-right text-purple-700 font-medium">₹{(m.building || 0).toLocaleString('en-IN')}</td>
+                            {titheColumns.map(col => (
+                              <td key={col.id} className="py-2 px-2.5 text-right font-medium" style={{ color: col.color || '#334155' }}>
+                                ₹{(m[col.field_key] || 0).toLocaleString('en-IN')}
+                              </td>
+                            ))}
                             <td className="py-2 px-3 text-right font-extrabold text-emerald-900 bg-emerald-50/40">₹{(m.total || 0).toLocaleString('en-IN')}</td>
                             <td className="py-2 px-2 text-center">
                               <div className="flex items-center justify-center gap-1">
@@ -1074,10 +1100,11 @@ export default function AdminDashboard({ user, showToast }) {
                         <tr>
                           <td className="py-2.5 px-2.5 text-center text-slate-600 uppercase text-[11px] font-sans">TOTAL</td>
                           <td className="py-2.5 px-3 text-slate-900 font-sans truncate">Summary ({sortedInspectorMembers.length} Members)</td>
-                          <td className="py-2.5 px-2.5 text-right text-blue-700">₹{(inspectorLedger.summary.sum_pathian_ram || 0).toLocaleString('en-IN')}</td>
-                          <td className="py-2.5 px-2.5 text-right text-emerald-700">₹{(inspectorLedger.summary.sum_ramthar || 0).toLocaleString('en-IN')}</td>
-                          <td className="py-2.5 px-2.5 text-right text-amber-700">₹{(inspectorLedger.summary.sum_tualchhung || 0).toLocaleString('en-IN')}</td>
-                          <td className="py-2.5 px-2.5 text-right text-purple-700">₹{(inspectorLedger.summary.sum_building || 0).toLocaleString('en-IN')}</td>
+                          {titheColumns.map(col => (
+                            <td key={col.id} className="py-2.5 px-2.5 text-right font-bold" style={{ color: col.color || '#334155' }}>
+                              ₹{((inspectorLedger.summary && (inspectorLedger.summary[col.field_key] ?? inspectorLedger.summary[`sum_${col.field_key}`])) || 0).toLocaleString('en-IN')}
+                            </td>
+                          ))}
                           <td className="py-2.5 px-3 text-right text-emerald-900 text-sm sm:text-base bg-emerald-100">₹{(inspectorLedger.summary.grand_total || 0).toLocaleString('en-IN')}</td>
                           <td></td>
                         </tr>
@@ -1148,24 +1175,14 @@ export default function AdminDashboard({ user, showToast }) {
                           </div>
                         </div>
 
-                        {/* Category Breakdown (2x2 mini grid) */}
+                        {/* Category Breakdown (Dynamic mini grid) */}
                         <div className="grid grid-cols-2 gap-1 bg-slate-50 p-1.5 rounded-xl border border-slate-100 text-[10px] font-mono">
-                          <div className="flex items-center justify-between text-blue-900">
-                            <span className="font-bold text-slate-400">PTR:</span>
-                            <span>₹{(m.pathian_ram || 0).toLocaleString('en-IN')}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-emerald-900">
-                            <span className="font-bold text-slate-400">RT:</span>
-                            <span>₹{(m.ramthar || 0).toLocaleString('en-IN')}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-amber-900">
-                            <span className="font-bold text-slate-400">Tch:</span>
-                            <span>₹{(m.tualchhung || 0).toLocaleString('en-IN')}</span>
-                          </div>
-                          <div className="flex items-center justify-between text-purple-900">
-                            <span className="font-bold text-slate-400">Bldg:</span>
-                            <span>₹{(m.building || 0).toLocaleString('en-IN')}</span>
-                          </div>
+                          {titheColumns.map(col => (
+                            <div key={col.id} className="flex items-center justify-between" style={{ color: col.color || '#334155' }}>
+                              <span className="font-bold text-slate-400">{col.code}:</span>
+                              <span>₹{(m[col.field_key] || 0).toLocaleString('en-IN')}</span>
+                            </div>
+                          ))}
                         </div>
 
                         {/* Total Line */}
@@ -1206,23 +1223,13 @@ export default function AdminDashboard({ user, showToast }) {
                       <span className="text-indigo-200 uppercase tracking-wider text-[10px]">Monthly Bial Total</span>
                       <span className="text-slate-300 font-sans text-[11px]">{sortedInspectorMembers.length} Members</span>
                     </div>
-                    <div className="grid grid-cols-4 gap-1 text-center font-mono text-[10px] pt-0.5">
-                      <div className="bg-indigo-950/60 p-1 rounded-lg border border-indigo-800/60">
-                        <span className="text-blue-300 text-[9px] block">PTR</span>
-                        <span className="font-bold">₹{(inspectorLedger.summary.sum_pathian_ram || 0).toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="bg-indigo-950/60 p-1 rounded-lg border border-indigo-800/60">
-                        <span className="text-emerald-300 text-[9px] block">RT</span>
-                        <span className="font-bold">₹{(inspectorLedger.summary.sum_ramthar || 0).toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="bg-indigo-950/60 p-1 rounded-lg border border-indigo-800/60">
-                        <span className="text-amber-300 text-[9px] block">Tch</span>
-                        <span className="font-bold">₹{(inspectorLedger.summary.sum_tualchhung || 0).toLocaleString('en-IN')}</span>
-                      </div>
-                      <div className="bg-indigo-950/60 p-1 rounded-lg border border-indigo-800/60">
-                        <span className="text-purple-300 text-[9px] block">Bldg</span>
-                        <span className="font-bold">₹{(inspectorLedger.summary.sum_building || 0).toLocaleString('en-IN')}</span>
-                      </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-center font-mono text-[10px] pt-0.5">
+                      {titheColumns.map(col => (
+                        <div key={col.id} className="bg-indigo-950/60 p-1 rounded-lg border border-indigo-800/60">
+                          <span className="text-[9px] block" style={{ color: col.color || '#93c5fd' }}>{col.code}</span>
+                          <span className="font-bold">₹{((inspectorLedger.summary && (inspectorLedger.summary[col.field_key] ?? inspectorLedger.summary[`sum_${col.field_key}`])) || 0).toLocaleString('en-IN')}</span>
+                        </div>
+                      ))}
                     </div>
                     <div className="flex items-center justify-between pt-1 border-t border-indigo-800 text-xs">
                       <span className="font-bold text-indigo-200">GRAND TOTAL:</span>
@@ -2026,7 +2033,8 @@ export default function AdminDashboard({ user, showToast }) {
                     year,
                     month: inspectorMonth,
                     members: sortedInspectorMembers,
-                    summary: inspectorLedger?.summary || {}
+                    summary: inspectorLedger?.summary || {},
+                    columns: titheColumns
                   });
                   setShowInspectorExportModal(false);
                   showToast('Excel ledger downloaded', 'success');
@@ -2044,7 +2052,8 @@ export default function AdminDashboard({ user, showToast }) {
                     year,
                     month: inspectorMonth,
                     members: sortedInspectorMembers,
-                    summary: inspectorLedger?.summary || {}
+                    summary: inspectorLedger?.summary || {},
+                    columns: titheColumns
                   });
                   setShowInspectorExportModal(false);
                   showToast('PDF ledger downloaded', 'success');
@@ -2110,6 +2119,7 @@ export default function AdminDashboard({ user, showToast }) {
         bial={selectedBialObj}
         year={year}
         month={inspectorMonth}
+        columns={titheColumns}
         onSaved={() => {
           loadInspectorLedger();
           loadAdminData();
@@ -2120,6 +2130,16 @@ export default function AdminDashboard({ user, showToast }) {
           setShowTransferModal(true);
         }}
         showToast={showToast}
+      />
+
+      {/* Manage Contribution Columns Modal */}
+      <ManageColumnsModal
+        isOpen={showColumnsModal}
+        onClose={() => setShowColumnsModal(false)}
+        onColumnsUpdated={() => {
+          loadAdminData();
+          loadInspectorLedger();
+        }}
       />
 
       {/* Admin Member Transfer Modal */}

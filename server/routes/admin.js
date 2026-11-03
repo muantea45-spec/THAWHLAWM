@@ -1,6 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
-import { db } from '../db/database.js';
+import { db, getTitheColumns } from '../db/database.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -253,11 +253,13 @@ router.post('/month-locks/toggle', (req, res) => {
 
 // GET /api/admin/dashboard - Aggregated Global Analytics with optional Bial & Month filters
 router.get('/dashboard', (req, res) => {
-  const year = parseInt(req.query.year) || new Date().getFullYear();
+  const year = parseInt(req.query.year) || getActiveYear();
   const bialId = req.query.bial_id && req.query.bial_id !== 'all' ? parseInt(req.query.bial_id) : null;
   const month = req.query.month && req.query.month !== 'all' ? parseInt(req.query.month) : null;
 
   try {
+    const columns = getTitheColumns();
+
     let whereClause = 'WHERE year = ?';
     const params = [year];
 
@@ -270,19 +272,36 @@ router.get('/dashboard', (req, res) => {
       params.push(month);
     }
 
-    // Aggregated totals matching selected filters
-    const grandTotals = db.prepare(`
-      SELECT
-        COALESCE(SUM(pathian_ram), 0) as total_pathian_ram,
-        COALESCE(SUM(ramthar), 0) as total_ramthar,
-        COALESCE(SUM(tualchhung), 0) as total_tualchhung,
-        COALESCE(SUM(building), 0) as total_building,
-        COALESCE(SUM(total), 0) as grand_total
+    const allMatchingTithes = db.prepare(`
+      SELECT pathian_ram, ramthar, tualchhung, building, extra_amounts, total
       FROM tithes
       ${whereClause}
-    `).get(...params);
+    `).all(...params);
 
-    // Totals per Bial (filtered by month if specified)
+    const grandTotals = { grand_total: 0 };
+    columns.forEach(col => {
+      grandTotals[col.field_key] = 0;
+      grandTotals[`total_${col.field_key}`] = 0;
+    });
+
+    (allMatchingTithes || []).forEach(t => {
+      const extra = t.extra_amounts ? (typeof t.extra_amounts === 'string' ? JSON.parse(t.extra_amounts || '{}') : t.extra_amounts) : {};
+      columns.forEach(col => {
+        const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(col.field_key)
+          ? (t[col.field_key] || 0)
+          : (extra[col.field_key] || 0);
+        grandTotals[col.field_key] += v;
+        grandTotals[`total_${col.field_key}`] += v;
+      });
+      grandTotals.grand_total += (t.total || 0);
+    });
+
+    // Backward-compat keys:
+    grandTotals.total_pathian_ram = grandTotals.pathian_ram || 0;
+    grandTotals.total_ramthar = grandTotals.ramthar || 0;
+    grandTotals.total_tualchhung = grandTotals.tualchhung || 0;
+    grandTotals.total_building = grandTotals.building || 0;
+
     let bialWhere = '';
     const subParams = [year];
     if (month) subParams.push(month);
@@ -321,18 +340,52 @@ router.get('/dashboard', (req, res) => {
       ORDER BY total DESC, b.name ASC
     `).all(...queryParams);
 
+    // Query extra amounts per bial to enrich breakdown
+    const rawBialTithes = db.prepare(`
+      SELECT t.bial_id, t.pathian_ram, t.ramthar, t.tualchhung, t.building, t.extra_amounts, t.total
+      FROM tithes t
+      WHERE t.year = ? ${month ? 'AND t.month = ' + month : ''}
+    `).all(year);
+
+    const bialTotalsMap = new Map();
+    (rawBialTithes || []).forEach(t => {
+      if (!bialTotalsMap.has(t.bial_id)) {
+        const init = { total: 0 };
+        columns.forEach(c => { init[c.field_key] = 0; });
+        bialTotalsMap.set(t.bial_id, init);
+      }
+      const bObj = bialTotalsMap.get(t.bial_id);
+      const extra = t.extra_amounts ? (typeof t.extra_amounts === 'string' ? JSON.parse(t.extra_amounts || '{}') : t.extra_amounts) : {};
+      columns.forEach(c => {
+        const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(c.field_key)
+          ? (t[c.field_key] || 0)
+          : (extra[c.field_key] || 0);
+        bObj[c.field_key] += v;
+      });
+      bObj.total += (t.total || 0);
+    });
+
     const grandTotalVal = grandTotals?.grand_total || 0;
 
     const bialBreakdown = rawBialBreakdown.map(b => {
+      const bSums = bialTotalsMap.get(b.id) || {};
       const return_rate = b.total_members > 0 ? Math.round((b.returned_members / b.total_members) * 1000) / 10 : 0;
-      const percentage_share = grandTotalVal > 0 ? Math.round((b.total / grandTotalVal) * 1000) / 10 : 0;
-      const avg_per_member = b.returned_members > 0 ? Math.round(b.total / b.returned_members) : 0;
-      return {
+      const bTotal = bSums.total !== undefined ? bSums.total : b.total;
+      const percentage_share = grandTotalVal > 0 ? Math.round((bTotal / grandTotalVal) * 1000) / 10 : 0;
+      const avg_per_member = b.returned_members > 0 ? Math.round(bTotal / b.returned_members) : 0;
+
+      const resB = {
         ...b,
+        total: bTotal,
         return_rate,
         percentage_share,
         avg_per_member
       };
+      columns.forEach(c => {
+        resB[c.field_key] = bSums[c.field_key] || b[c.field_key] || 0;
+        resB[`total_${c.field_key}`] = resB[c.field_key];
+      });
+      return resB;
     });
 
     // Natural sort by code (Bial 1 to Bial 12)
@@ -404,19 +457,34 @@ router.get('/dashboard', (req, res) => {
         mParams.push(bialId);
       }
 
-      const mData = db.prepare(`
-        SELECT
-          COALESCE(SUM(pathian_ram), 0) as pathian_ram,
-          COALESCE(SUM(ramthar), 0) as ramthar,
-          COALESCE(SUM(tualchhung), 0) as tualchhung,
-          COALESCE(SUM(building), 0) as building,
-          COALESCE(SUM(total), 0) as total,
-          COUNT(DISTINCT CASE WHEN total > 0 THEN member_id END) as returned_members
+      const mTithes = db.prepare(`
+        SELECT pathian_ram, ramthar, tualchhung, building, extra_amounts, total, member_id
         FROM tithes
         ${mWhere}
-      `).get(...mParams);
+      `).all(...mParams);
 
-      const returnedCount = mData?.returned_members || 0;
+      const mSums = { total: 0 };
+      columns.forEach(c => { mSums[c.field_key] = 0; });
+      const returnedMemberSet = new Set();
+      (mTithes || []).forEach(r => {
+        const extra = r.extra_amounts ? (typeof r.extra_amounts === 'string' ? JSON.parse(r.extra_amounts || '{}') : r.extra_amounts) : {};
+        columns.forEach(c => {
+          const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(c.field_key)
+            ? (r[c.field_key] || 0)
+            : (extra[c.field_key] || 0);
+          mSums[c.field_key] += v;
+        });
+        mSums.total += (r.total || 0);
+        if (r.total > 0) returnedMemberSet.add(r.member_id);
+      });
+
+      // Backward-compat keys:
+      mSums.pathian_ram = mSums.pathian_ram || 0;
+      mSums.ramthar = mSums.ramthar || 0;
+      mSums.tualchhung = mSums.tualchhung || 0;
+      mSums.building = mSums.building || 0;
+
+      const returnedCount = returnedMemberSet.size;
       const mReturnRate = total_system_members > 0 
         ? Math.round((returnedCount / total_system_members) * 1000) / 10 
         : 0;
@@ -424,7 +492,7 @@ router.get('/dashboard', (req, res) => {
       monthlyTrends.push({
         month: monthNames[m - 1],
         monthNum: m,
-        ...mData,
+        ...mSums,
         returned_members: returnedCount,
         return_rate: mReturnRate,
         total_system_members
@@ -437,7 +505,8 @@ router.get('/dashboard', (req, res) => {
       bialBreakdown,
       monthlyTrends,
       filteredBialId: bialId,
-      filteredMonth: month
+      filteredMonth: month,
+      columns
     });
   } catch (err) {
     console.error('Error fetching admin dashboard stats:', err);
@@ -548,80 +617,114 @@ router.delete('/years/:year', (req, res) => {
 
 // GET /api/admin/overall-member-contributions - Aggregated Full Year contributions per member grouped by Bial
 router.get('/overall-member-contributions', (req, res) => {
-  const year = parseInt(req.query.year) || new Date().getFullYear();
+  const year = parseInt(req.query.year) || getActiveYear();
 
   try {
-    const bials = db.prepare(`SELECT id, name, code FROM bials ORDER BY id ASC`).all();
+    const columns = getTitheColumns();
+    const bials = db.prepare('SELECT id, name, code FROM bials ORDER BY id ASC').all();
     bials.sort((a, b) => {
       const numA = parseInt(a.code?.replace(/\D/g, '') || a.id) || 0;
       const numB = parseInt(b.code?.replace(/\D/g, '') || b.id) || 0;
       return numA - numB;
     });
 
-    const data = bials.map(b => {
-      const members = db.prepare(`
-        SELECT
-          m.id as member_id,
-          m.sl_no,
-          m.name as member_name,
-          COALESCE(SUM(t.pathian_ram), 0) as total_pathian_ram,
-          COALESCE(SUM(t.ramthar), 0) as total_ramthar,
-          COALESCE(SUM(t.tualchhung), 0) as total_tualchhung,
-          COALESCE(SUM(t.building), 0) as total_building,
-          COALESCE(SUM(t.total), 0) as grand_total
-        FROM members m
-        LEFT JOIN tithes t ON m.id = t.member_id AND t.year = ?
-        WHERE m.bial_id = ? AND m.year = ?
-        GROUP BY m.id
-        ORDER BY m.sl_no ASC, m.id ASC
-      `).all(year, b.id, year);
+    const data = [];
+    const churchGrandTotal = { grand_total: 0 };
+    columns.forEach(col => {
+      churchGrandTotal[col.field_key] = 0;
+      churchGrandTotal[`total_${col.field_key}`] = 0;
+    });
+    let totalMemberCount = 0;
 
-      let bialPR = 0, bialRT = 0, bialTch = 0, bialBldg = 0, bialTotal = 0;
-      members.forEach(m => {
-        bialPR += m.total_pathian_ram;
-        bialRT += m.total_ramthar;
-        bialTch += m.total_tualchhung;
-        bialBldg += m.total_building;
-        bialTotal += m.grand_total;
+    for (const b of bials) {
+      const rawMembers = db.prepare(`
+        SELECT m.id as member_id, m.sl_no, m.name as member_name
+        FROM members m
+        WHERE m.bial_id = ? AND m.year = ?
+        ORDER BY m.sl_no ASC, m.id ASC
+      `).all(b.id, year);
+
+      const allBialYearTithes = db.prepare(`
+        SELECT t.member_id, t.pathian_ram, t.ramthar, t.tualchhung, t.building, t.extra_amounts, t.total
+        FROM tithes t
+        WHERE t.bial_id = ? AND t.year = ?
+      `).all(b.id, year);
+
+      const memberTithesMap = new Map();
+      (allBialYearTithes || []).forEach(t => {
+        if (!memberTithesMap.has(t.member_id)) {
+          const init = { grand_total: 0 };
+          columns.forEach(c => { init[c.field_key] = 0; });
+          memberTithesMap.set(t.member_id, init);
+        }
+        const mObj = memberTithesMap.get(t.member_id);
+        const extra = t.extra_amounts ? (typeof t.extra_amounts === 'string' ? JSON.parse(t.extra_amounts || '{}') : t.extra_amounts) : {};
+        columns.forEach(c => {
+          const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(c.field_key)
+            ? (t[c.field_key] || 0)
+            : (extra[c.field_key] || 0);
+          mObj[c.field_key] += v;
+          mObj.grand_total += v;
+        });
       });
 
-      return {
+      const bialSubtotal = { grand_total: 0 };
+      columns.forEach(c => {
+        bialSubtotal[c.field_key] = 0;
+        bialSubtotal[`total_${c.field_key}`] = 0;
+      });
+
+      const processedMembers = (rawMembers || []).map(m => {
+        const tData = memberTithesMap.get(m.member_id) || {};
+        const resMem = {
+          member_id: m.member_id,
+          sl_no: m.sl_no,
+          member_name: m.member_name,
+          grand_total: tData.grand_total || 0
+        };
+        columns.forEach(c => {
+          const v = tData[c.field_key] || 0;
+          resMem[c.field_key] = v;
+          resMem[`total_${c.field_key}`] = v;
+          bialSubtotal[c.field_key] += v;
+          bialSubtotal[`total_${c.field_key}`] += v;
+          churchGrandTotal[c.field_key] += v;
+          churchGrandTotal[`total_${c.field_key}`] += v;
+        });
+        bialSubtotal.grand_total += resMem.grand_total;
+        churchGrandTotal.grand_total += resMem.grand_total;
+        return resMem;
+      });
+
+      // Backward-compat keys for bialSubtotal
+      bialSubtotal.total_pathian_ram = bialSubtotal.pathian_ram || 0;
+      bialSubtotal.total_ramthar = bialSubtotal.ramthar || 0;
+      bialSubtotal.total_tualchhung = bialSubtotal.tualchhung || 0;
+      bialSubtotal.total_building = bialSubtotal.building || 0;
+
+      totalMemberCount += processedMembers.length;
+
+      data.push({
         bial_id: b.id,
         bial_name: b.name,
         bial_code: b.code,
-        members,
-        subtotal: {
-          total_pathian_ram: bialPR,
-          total_ramthar: bialRT,
-          total_tualchhung: bialTch,
-          total_building: bialBldg,
-          grand_total: bialTotal
-        }
-      };
-    });
+        members: processedMembers,
+        subtotal: bialSubtotal
+      });
+    }
 
-    let churchPR = 0, churchRT = 0, churchTch = 0, churchBldg = 0, churchTotal = 0;
-    let totalMemberCount = 0;
-    data.forEach(b => {
-      churchPR += b.subtotal.total_pathian_ram;
-      churchRT += b.subtotal.total_ramthar;
-      churchTch += b.subtotal.total_tualchhung;
-      churchBldg += b.subtotal.total_building;
-      churchTotal += b.subtotal.grand_total;
-      totalMemberCount += b.members.length;
-    });
+    // Backward-compat keys for churchGrandTotal
+    churchGrandTotal.total_pathian_ram = churchGrandTotal.pathian_ram || 0;
+    churchGrandTotal.total_ramthar = churchGrandTotal.ramthar || 0;
+    churchGrandTotal.total_tualchhung = churchGrandTotal.tualchhung || 0;
+    churchGrandTotal.total_building = churchGrandTotal.building || 0;
 
     res.json({
       year,
       totalMemberCount,
       bials: data,
-      churchGrandTotal: {
-        total_pathian_ram: churchPR,
-        total_ramthar: churchRT,
-        total_tualchhung: churchTch,
-        total_building: churchBldg,
-        grand_total: churchTotal
-      }
+      churchGrandTotal,
+      columns
     });
   } catch (err) {
     console.error('Error fetching overall member contributions:', err);

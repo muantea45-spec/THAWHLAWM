@@ -1,5 +1,5 @@
 import express from 'express';
-import { db } from '../db/database.js';
+import { db, getTitheColumns } from '../db/database.js';
 import { authenticateToken, requireBialUser } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -16,10 +16,10 @@ function getTargetBialId(req) {
   return req.user.bial_id;
 }
 
-// Helper function to check if month is locked for a Bial
-export function isMonthLocked(bial_id, year, month) {
-  if (bial_id === 'all') return false;
-  const targetBialId = parseInt(bial_id);
+// Helper function to check if a month is locked
+function isMonthLocked(bialId, year, month) {
+  if (bialId === 'all') return false;
+  const targetBialId = parseInt(bialId);
   const targetYear = parseInt(year);
   const targetMonth = parseInt(month);
 
@@ -37,7 +37,7 @@ export function isMonthLocked(bial_id, year, month) {
   try {
     const activeYearRow = db.prepare('SELECT year FROM financial_years WHERE is_active = 1 LIMIT 1').get();
     if (activeYearRow && targetYear !== activeYearRow.year) {
-      return true; // Non-active financial years default to locked
+      return true;
     }
   } catch (e) {
     // ignore
@@ -49,10 +49,9 @@ export function isMonthLocked(bial_id, year, month) {
 // Helper validation function for strictly numeric digits-only non-negative values
 function cleanNumericInput(val) {
   if (val === null || val === undefined || val === '') return 0;
-  // If string, reject any non-numeric characters (except single decimal point)
   const strVal = String(val).trim();
   if (!/^\d+(\.\d{1,2})?$/.test(strVal)) {
-    return null; // Invalid digit format
+    return null;
   }
   const parsed = parseFloat(strVal);
   return isNaN(parsed) || parsed < 0 ? null : parsed;
@@ -71,11 +70,10 @@ router.get('/', (req, res) => {
   try {
     const isAll = bialId === 'all';
     const locked = isAll ? false : isMonthLocked(bialId, year, month);
+    const columns = getTitheColumns();
 
-    // Fetch members with their tithe entry for the specified month
     let rows;
     if (isAll) {
-      // Fetch all bials ordered naturally (Bial 1 to Bial 12)
       const allBials = db.prepare('SELECT id, name, code FROM bials').all();
       allBials.sort((a, b) => {
         const numA = parseInt(a.code?.replace(/\D/g, '') || a.id) || 0;
@@ -96,6 +94,7 @@ router.get('/', (req, res) => {
           COALESCE(t.ramthar, 0) as ramthar,
           COALESCE(t.tualchhung, 0) as tualchhung,
           COALESCE(t.building, 0) as building,
+          COALESCE(t.extra_amounts, '{}') as extra_amounts,
           COALESCE(t.total, 0) as total
         FROM members m
         JOIN bials b ON m.bial_id = b.id
@@ -103,11 +102,9 @@ router.get('/', (req, res) => {
         WHERE m.year = ?
       `).all(year, month, year);
 
-      // Create a mapping of Bial natural order
       const bialOrderMap = new Map();
       allBials.forEach((b, idx) => bialOrderMap.set(b.id, idx));
 
-      // Sort by Bial natural order, then member sl_no ASC, then member_id ASC
       rawRows.sort((a, b) => {
         const orderA = bialOrderMap.has(a.bial_id) ? bialOrderMap.get(a.bial_id) : 999;
         const orderB = bialOrderMap.has(b.bial_id) ? bialOrderMap.get(b.bial_id) : 999;
@@ -116,16 +113,28 @@ router.get('/', (req, res) => {
         return a.member_id - b.member_id;
       });
 
-      // Assign continuous sequential serial numbers starting from Bial 1 (1...N, N+1...M, etc.)
-      rows = rawRows.map((m, index) => ({
-        ...m,
-        original_sl_no: m.sl_no,
-        global_sl_no: index + 1,
-        display_sl_no: index + 1,
-        sl_no: index + 1
-      }));
+      rows = rawRows.map((m, index) => {
+        const extra = m.extra_amounts ? (typeof m.extra_amounts === 'string' ? JSON.parse(m.extra_amounts || '{}') : m.extra_amounts) : {};
+        const memberObj = {
+          ...m,
+          original_sl_no: m.sl_no,
+          global_sl_no: index + 1,
+          display_sl_no: index + 1,
+          sl_no: index + 1
+        };
+        let rowTotal = 0;
+        columns.forEach(col => {
+          const val = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(col.field_key)
+            ? (parseFloat(m[col.field_key]) || 0)
+            : (parseFloat(extra[col.field_key]) || 0);
+          memberObj[col.field_key] = val;
+          rowTotal += val;
+        });
+        memberObj.total = rowTotal;
+        return memberObj;
+      });
     } else {
-      rows = db.prepare(`
+      const bialRows = db.prepare(`
         SELECT
           m.id as member_id,
           m.bial_id,
@@ -138,6 +147,7 @@ router.get('/', (req, res) => {
           COALESCE(t.ramthar, 0) as ramthar,
           COALESCE(t.tualchhung, 0) as tualchhung,
           COALESCE(t.building, 0) as building,
+          COALESCE(t.extra_amounts, '{}') as extra_amounts,
           COALESCE(t.total, 0) as total
         FROM members m
         JOIN bials b ON m.bial_id = b.id
@@ -145,22 +155,36 @@ router.get('/', (req, res) => {
         WHERE m.bial_id = ? AND m.year = ?
         ORDER BY m.sl_no ASC, m.id ASC
       `).all(year, month, bialId, year);
+
+      rows = bialRows.map(m => {
+        const extra = m.extra_amounts ? (typeof m.extra_amounts === 'string' ? JSON.parse(m.extra_amounts || '{}') : m.extra_amounts) : {};
+        const memberObj = { ...m };
+        let rowTotal = 0;
+        columns.forEach(col => {
+          const val = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(col.field_key)
+            ? (parseFloat(m[col.field_key]) || 0)
+            : (parseFloat(extra[col.field_key]) || 0);
+          memberObj[col.field_key] = val;
+          rowTotal += val;
+        });
+        memberObj.total = rowTotal;
+        return memberObj;
+      });
     }
 
-    // Calculate Summary Footer Totals
-    let sumPathianRam = 0;
-    let sumRamthar = 0;
-    let sumTualchhung = 0;
-    let sumBuilding = 0;
-    let grandTotal = 0;
-
+    const summary = { grand_total: 0 };
+    columns.forEach(c => { summary[c.field_key] = 0; });
     rows.forEach(r => {
-      sumPathianRam += r.pathian_ram;
-      sumRamthar += r.ramthar;
-      sumTualchhung += r.tualchhung;
-      sumBuilding += r.building;
-      grandTotal += r.total;
+      columns.forEach(c => {
+        summary[c.field_key] += (r[c.field_key] || 0);
+      });
+      summary.grand_total += (r.total || 0);
     });
+
+    summary.sum_pathian_ram = summary.pathian_ram || 0;
+    summary.sum_ramthar = summary.ramthar || 0;
+    summary.sum_tualchhung = summary.tualchhung || 0;
+    summary.sum_building = summary.building || 0;
 
     res.json({
       bial_id: bialId,
@@ -168,13 +192,8 @@ router.get('/', (req, res) => {
       month,
       is_locked: locked,
       members: rows,
-      summary: {
-        sum_pathian_ram: sumPathianRam,
-        sum_ramthar: sumRamthar,
-        sum_tualchhung: sumTualchhung,
-        sum_building: sumBuilding,
-        grand_total: grandTotal
-      }
+      summary,
+      columns
     });
   } catch (err) {
     console.error('Error fetching tithes ledger:', err);
@@ -184,45 +203,49 @@ router.get('/', (req, res) => {
 
 // POST /api/tithes/upsert - Single member tithe update
 router.post('/upsert', (req, res) => {
-  const { member_id, year, month, pathian_ram, ramthar, tualchhung, building } = req.body;
+  const { member_id, year, month } = req.body;
   const bialId = getTargetBialId(req);
 
   if (!bialId || !member_id || !year || !month) {
     return res.status(400).json({ error: 'Missing required parameters' });
   }
 
-  // Check Month Lock
   if (isMonthLocked(bialId, year, month) && req.user.role !== 'ADMIN') {
     return res.status(403).json({ error: 'Month Locked by Admin. Data entry and edits are restricted.' });
   }
 
-  // Strictly Validate Numeric Digits
-  const pr = cleanNumericInput(pathian_ram);
-  const ram = cleanNumericInput(ramthar);
-  const tual = cleanNumericInput(tualchhung);
-  const bldg = cleanNumericInput(building);
+  const columns = getTitheColumns();
+  const pr = cleanNumericInput(req.body.pathian_ram) || 0;
+  const ram = cleanNumericInput(req.body.ramthar) || 0;
+  const tual = cleanNumericInput(req.body.tualchhung) || 0;
+  const bldg = cleanNumericInput(req.body.building) || 0;
 
-  if (pr === null || ram === null || tual === null || bldg === null) {
-    return res.status(400).json({
-      error: 'Invalid numeric value. Financial entries accept DIGITS ONLY (non-negative numbers).'
-    });
-  }
+  const extra = {};
+  let extraSum = 0;
+  columns.forEach(col => {
+    if (!['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(col.field_key)) {
+      const val = cleanNumericInput(req.body[col.field_key]) || 0;
+      extra[col.field_key] = val;
+      extraSum += val;
+    }
+  });
 
-  // AUTO-CALCULATED TOTAL
-  const rowTotal = pr + ram + tual + bldg;
+  const rowTotal = pr + ram + tual + bldg + extraSum;
+  const extraJson = JSON.stringify(extra);
 
   try {
     db.prepare(`
-      INSERT INTO tithes (member_id, bial_id, year, month, pathian_ram, ramthar, tualchhung, building, total, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO tithes (member_id, bial_id, year, month, pathian_ram, ramthar, tualchhung, building, extra_amounts, total, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(member_id, year, month) DO UPDATE SET
         pathian_ram = excluded.pathian_ram,
         ramthar = excluded.ramthar,
         tualchhung = excluded.tualchhung,
         building = excluded.building,
+        extra_amounts = excluded.extra_amounts,
         total = excluded.total,
         updated_at = CURRENT_TIMESTAMP
-    `).run(member_id, bialId, year, month, pr, ram, tual, bldg, rowTotal);
+    `).run(member_id, bialId, year, month, pr, ram, tual, bldg, extraJson, rowTotal);
 
     res.json({
       message: 'Tithe entry saved successfully',
@@ -234,8 +257,10 @@ router.post('/upsert', (req, res) => {
         ramthar: ram,
         tualchhung: tual,
         building: bldg,
+        ...extra,
         total: rowTotal
-      }
+      },
+      columns
     });
   } catch (err) {
     console.error('Error saving tithe entry:', err);
@@ -252,20 +277,22 @@ router.post('/bulk-upsert', (req, res) => {
     return res.status(400).json({ error: 'Invalid payload for bulk save' });
   }
 
-  // Check Month Lock
   if (isMonthLocked(bialId, year, month) && req.user.role !== 'ADMIN') {
     return res.status(403).json({ error: 'Month Locked by Admin. Edits are not allowed.' });
   }
 
+  const columns = getTitheColumns();
+
   try {
     const stmt = db.prepare(`
-      INSERT INTO tithes (member_id, bial_id, year, month, pathian_ram, ramthar, tualchhung, building, total, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO tithes (member_id, bial_id, year, month, pathian_ram, ramthar, tualchhung, building, extra_amounts, total, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(member_id, year, month) DO UPDATE SET
         pathian_ram = excluded.pathian_ram,
         ramthar = excluded.ramthar,
         tualchhung = excluded.tualchhung,
         building = excluded.building,
+        extra_amounts = excluded.extra_amounts,
         total = excluded.total,
         updated_at = CURRENT_TIMESTAMP
     `);
@@ -275,12 +302,24 @@ router.post('/bulk-upsert', (req, res) => {
       const ram = cleanNumericInput(item.ramthar) || 0;
       const tual = cleanNumericInput(item.tualchhung) || 0;
       const bldg = cleanNumericInput(item.building) || 0;
-      const rowTotal = pr + ram + tual + bldg;
 
-      stmt.run(item.member_id, bialId, year, month, pr, ram, tual, bldg, rowTotal);
+      const extra = {};
+      let extraSum = 0;
+      columns.forEach(col => {
+        if (!['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(col.field_key)) {
+          const val = cleanNumericInput(item[col.field_key]) || 0;
+          extra[col.field_key] = val;
+          extraSum += val;
+        }
+      });
+
+      const rowTotal = pr + ram + tual + bldg + extraSum;
+      const extraJson = JSON.stringify(extra);
+
+      stmt.run(item.member_id, bialId, year, month, pr, ram, tual, bldg, extraJson, rowTotal);
     }
 
-    res.json({ message: 'Bulk tithes saved successfully' });
+    res.json({ message: 'Bulk tithes saved successfully', columns });
   } catch (err) {
     console.error('Bulk save error:', err);
     res.status(500).json({ error: 'Failed to complete bulk save' });
@@ -302,6 +341,7 @@ router.get('/yearly-summary', (req, res) => {
       return res.status(404).json({ error: 'Bial not found' });
     }
 
+    const columns = getTitheColumns();
     const financialMonthOrder = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
     const monthNames = {
       1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June',
@@ -310,59 +350,106 @@ router.get('/yearly-summary', (req, res) => {
 
     const monthlyBreakdown = financialMonthOrder.map(m => {
       const isLocked = isMonthLocked(bialId, year, m);
-      const row = db.prepare(`
-        SELECT
-          COALESCE(SUM(pathian_ram), 0) as pathian_ram,
-          COALESCE(SUM(ramthar), 0) as ramthar,
-          COALESCE(SUM(tualchhung), 0) as tualchhung,
-          COALESCE(SUM(building), 0) as building,
-          COALESCE(SUM(total), 0) as total
+      const mRows = db.prepare(`
+        SELECT pathian_ram, ramthar, tualchhung, building, extra_amounts, total
         FROM tithes
         WHERE bial_id = ? AND year = ? AND month = ?
-      `).get(bialId, year, m);
+      `).all(bialId, year, m);
+
+      const mSums = { total: 0 };
+      columns.forEach(c => { mSums[c.field_key] = 0; });
+      (mRows || []).forEach(r => {
+        const extra = r.extra_amounts ? (typeof r.extra_amounts === 'string' ? JSON.parse(r.extra_amounts || '{}') : r.extra_amounts) : {};
+        columns.forEach(c => {
+          const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(c.field_key)
+            ? (r[c.field_key] || 0)
+            : (extra[c.field_key] || 0);
+          mSums[c.field_key] += v;
+          mSums.total += v;
+        });
+      });
+
+      mSums.pathian_ram = mSums.pathian_ram || 0;
+      mSums.ramthar = mSums.ramthar || 0;
+      mSums.tualchhung = mSums.tualchhung || 0;
+      mSums.building = mSums.building || 0;
 
       return {
         month: m,
         month_name: monthNames[m],
         is_locked: isLocked ? 1 : 0,
-        ...row
+        ...mSums
       };
     });
 
-    const memberTotals = db.prepare(`
-      SELECT
-        m.id as member_id,
-        m.sl_no,
-        m.name,
-        COALESCE(SUM(t.pathian_ram), 0) as total_pathian_ram,
-        COALESCE(SUM(t.ramthar), 0) as total_ramthar,
-        COALESCE(SUM(t.tualchhung), 0) as total_tualchhung,
-        COALESCE(SUM(t.building), 0) as total_building,
-        COALESCE(SUM(t.total), 0) as grand_total
+    const memberList = db.prepare(`
+      SELECT m.id as member_id, m.sl_no, m.name
       FROM members m
-      LEFT JOIN tithes t ON m.id = t.member_id AND t.year = ?
       WHERE m.bial_id = ? AND m.year = ?
-      GROUP BY m.id
       ORDER BY m.sl_no ASC, m.id ASC
-    `).all(year, bialId, year);
+    `).all(bialId, year);
 
-    const grandTotals = db.prepare(`
-      SELECT
-        COALESCE(SUM(pathian_ram), 0) as total_pathian_ram,
-        COALESCE(SUM(ramthar), 0) as total_ramthar,
-        COALESCE(SUM(tualchhung), 0) as total_tualchhung,
-        COALESCE(SUM(building), 0) as total_building,
-        COALESCE(SUM(total), 0) as grand_total
-      FROM tithes
-      WHERE bial_id = ? AND year = ?
-    `).get(bialId, year);
+    const allYearTithes = db.prepare(`
+      SELECT t.member_id, t.pathian_ram, t.ramthar, t.tualchhung, t.building, t.extra_amounts, t.total
+      FROM tithes t
+      WHERE t.bial_id = ? AND t.year = ?
+    `).all(bialId, year);
+
+    const memberMap = new Map();
+    (allYearTithes || []).forEach(t => {
+      if (!memberMap.has(t.member_id)) {
+        const initial = { grand_total: 0 };
+        columns.forEach(c => { initial[c.field_key] = 0; });
+        memberMap.set(t.member_id, initial);
+      }
+      const entry = memberMap.get(t.member_id);
+      const extra = t.extra_amounts ? (typeof t.extra_amounts === 'string' ? JSON.parse(t.extra_amounts || '{}') : t.extra_amounts) : {};
+      columns.forEach(c => {
+        const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(c.field_key)
+          ? (t[c.field_key] || 0)
+          : (extra[c.field_key] || 0);
+        entry[c.field_key] += v;
+        entry.grand_total += v;
+      });
+    });
+
+    const memberTotals = (memberList || []).map(m => {
+      const entry = memberMap.get(m.member_id) || {};
+      const resMem = {
+        member_id: m.member_id,
+        sl_no: m.sl_no,
+        name: m.name,
+        grand_total: entry.grand_total || 0
+      };
+      columns.forEach(c => {
+        resMem[c.field_key] = entry[c.field_key] || 0;
+        resMem[`total_${c.field_key}`] = entry[c.field_key] || 0;
+      });
+      resMem.total_pathian_ram = resMem.pathian_ram || 0;
+      resMem.total_ramthar = resMem.ramthar || 0;
+      resMem.total_tualchhung = resMem.tualchhung || 0;
+      resMem.total_building = resMem.building || 0;
+      return resMem;
+    });
+
+    const grandTotals = { grand_total: 0 };
+    columns.forEach(c => {
+      grandTotals[c.field_key] = memberTotals.reduce((acc, m) => acc + (m[c.field_key] || 0), 0);
+      grandTotals[`total_${c.field_key}`] = grandTotals[c.field_key];
+    });
+    grandTotals.grand_total = memberTotals.reduce((acc, m) => acc + (m.grand_total || 0), 0);
+    grandTotals.total_pathian_ram = grandTotals.pathian_ram || 0;
+    grandTotals.total_ramthar = grandTotals.ramthar || 0;
+    grandTotals.total_tualchhung = grandTotals.tualchhung || 0;
+    grandTotals.total_building = grandTotals.building || 0;
 
     res.json({
       bial,
       year,
       monthlyBreakdown,
       memberTotals,
-      grandTotals
+      grandTotals,
+      columns
     });
   } catch (err) {
     console.error('Error fetching bial yearly summary:', err);
@@ -395,53 +482,65 @@ router.get('/member-history', (req, res) => {
       return res.status(403).json({ error: 'Access denied to member outside your Bial' });
     }
 
+    const columns = getTitheColumns();
     const financialMonthOrder = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
     const monthNames = {
       1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June',
       7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'
     };
 
+    const annualSummary = { grand_total: 0 };
+    columns.forEach(c => {
+      annualSummary[c.field_key] = 0;
+      annualSummary[`total_${c.field_key}`] = 0;
+    });
+
     const monthlyEntries = financialMonthOrder.map(m => {
       const isLocked = isMonthLocked(member.bial_id, year, m);
       const entry = db.prepare(`
-        SELECT
-          COALESCE(pathian_ram, 0) as pathian_ram,
-          COALESCE(ramthar, 0) as ramthar,
-          COALESCE(tualchhung, 0) as tualchhung,
-          COALESCE(building, 0) as building,
-          COALESCE(total, 0) as total
+        SELECT pathian_ram, ramthar, tualchhung, building, extra_amounts, total
         FROM tithes
         WHERE member_id = ? AND year = ? AND month = ?
       `).get(memberId, year, m);
 
-      return {
+      const extra = entry?.extra_amounts ? (typeof entry.extra_amounts === 'string' ? JSON.parse(entry.extra_amounts || '{}') : entry.extra_amounts) : {};
+      const mObj = {
         month: m,
         month_name: monthNames[m],
         is_locked: isLocked ? 1 : 0,
-        pathian_ram: entry ? entry.pathian_ram : 0,
-        ramthar: entry ? entry.ramthar : 0,
-        tualchhung: entry ? entry.tualchhung : 0,
-        building: entry ? entry.building : 0,
-        total: entry ? entry.total : 0
+        total: 0
       };
+
+      columns.forEach(c => {
+        const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(c.field_key)
+          ? (entry ? (entry[c.field_key] || 0) : 0)
+          : (extra[c.field_key] || 0);
+        mObj[c.field_key] = v;
+        mObj.total += v;
+        annualSummary[c.field_key] += v;
+        annualSummary[`total_${c.field_key}`] += v;
+      });
+      annualSummary.grand_total += mObj.total;
+
+      mObj.pathian_ram = mObj.pathian_ram || 0;
+      mObj.ramthar = mObj.ramthar || 0;
+      mObj.tualchhung = mObj.tualchhung || 0;
+      mObj.building = mObj.building || 0;
+
+      return mObj;
     });
 
-    const annualSummary = db.prepare(`
-      SELECT
-        COALESCE(SUM(pathian_ram), 0) as total_pathian_ram,
-        COALESCE(SUM(ramthar), 0) as total_ramthar,
-        COALESCE(SUM(tualchhung), 0) as total_tualchhung,
-        COALESCE(SUM(building), 0) as total_building,
-        COALESCE(SUM(total), 0) as grand_total
-      FROM tithes
-      WHERE member_id = ? AND year = ?
-    `).get(memberId, year);
+    annualSummary.total_pathian_ram = annualSummary.pathian_ram || 0;
+    annualSummary.total_ramthar = annualSummary.ramthar || 0;
+    annualSummary.total_tualchhung = annualSummary.tualchhung || 0;
+    annualSummary.total_building = annualSummary.building || 0;
 
     res.json({
       member,
       year,
       monthlyEntries,
-      annualSummary
+      annualSummary,
+      columns
     });
   } catch (err) {
     console.error('Error fetching member history:', err);
@@ -450,4 +549,3 @@ router.get('/member-history', (req, res) => {
 });
 
 export default router;
-

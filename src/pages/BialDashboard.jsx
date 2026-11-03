@@ -26,7 +26,7 @@ import {
   exportBialYearlySummaryExcel,
   exportBialYearlySummaryPDF
 } from '../utils/exportEngine';
-import { FINANCIAL_MONTHS, MONTH_NAME_MAP } from '../utils/constants';
+import { FINANCIAL_MONTHS, MONTH_NAME_MAP, DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 import churchLogo from '../assets/church_logo.jpg';
 
 const CATEGORY_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#a855f7'];
@@ -38,6 +38,7 @@ export default function BialDashboard({ user, showToast }) {
   const [year, setYear] = useState(new Date().getFullYear());
   const [month, setMonth] = useState(4); // Default to April (financial month 1)
   const [ledger, setLedger] = useState(null);
+  const [titheColumns, setTitheColumns] = useState(DEFAULT_TITHE_COLUMNS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -135,15 +136,16 @@ export default function BialDashboard({ user, showToast }) {
       const res = await api.getTithes(targetBialId, year, month);
       setLedger(res);
 
+      const cols = (res?.columns && Array.isArray(res.columns) && res.columns.length > 0) ? res.columns : DEFAULT_TITHE_COLUMNS;
+      setTitheColumns(cols);
+
       const initialDrafts = {};
       (res.members || []).forEach(m => {
-        initialDrafts[m.member_id] = {
-          pathian_ram: m.pathian_ram || '',
-          ramthar: m.ramthar || '',
-          tualchhung: m.tualchhung || '',
-          building: m.building || '',
-          total: m.total || 0
-        };
+        const row = { total: m.total || 0 };
+        cols.forEach(c => {
+          row[c.field_key] = m[c.field_key] || '';
+        });
+        initialDrafts[m.member_id] = row;
       });
       setDrafts(initialDrafts);
     } catch (err) {
@@ -204,15 +206,14 @@ export default function BialDashboard({ user, showToast }) {
     const sanitizedVal = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join('')}` : cleaned;
 
     setDrafts(prev => {
-      const current = prev[memberId] || { pathian_ram: '', ramthar: '', tualchhung: '', building: '', total: 0 };
+      const current = prev[memberId] || { total: 0 };
       const updatedRow = { ...current, [field]: sanitizedVal };
 
-      const pr = parseFloat(updatedRow.pathian_ram) || 0;
-      const ram = parseFloat(updatedRow.ramthar) || 0;
-      const tual = parseFloat(updatedRow.tualchhung) || 0;
-      const bldg = parseFloat(updatedRow.building) || 0;
-
-      updatedRow.total = pr + ram + tual + bldg;
+      let total = 0;
+      titheColumns.forEach(c => {
+        total += parseFloat(updatedRow[c.field_key]) || 0;
+      });
+      updatedRow.total = total;
 
       return {
         ...prev,
@@ -223,7 +224,7 @@ export default function BialDashboard({ user, showToast }) {
 
   // Keyboard Shortcuts Navigation (Enter/Tab/Arrows)
   const handleKeyDown = (e, memberIndex, fieldName, membersList) => {
-    const fields = ['pathian_ram', 'ramthar', 'tualchhung', 'building'];
+    const fields = titheColumns.map(c => c.field_key);
     const fieldIndex = fields.indexOf(fieldName);
 
     if (e.key === 'Enter' || e.key === 'Tab') {
@@ -269,16 +270,20 @@ export default function BialDashboard({ user, showToast }) {
     if (!row) return;
 
     try {
-      await api.saveTithe({
+      const payload = {
         bial_id: targetBialId,
         member_id: memberId,
         year,
         month,
-        pathian_ram: row.pathian_ram || 0,
-        ramthar: row.ramthar || 0,
-        tualchhung: row.tualchhung || 0,
-        building: row.building || 0
+        pathian_ram: parseFloat(row.pathian_ram) || 0,
+        ramthar: parseFloat(row.ramthar) || 0,
+        tualchhung: parseFloat(row.tualchhung) || 0,
+        building: parseFloat(row.building) || 0
+      };
+      titheColumns.forEach(c => {
+        payload[c.field_key] = parseFloat(row[c.field_key]) || 0;
       });
+      await api.saveTithe(payload);
     } catch (err) {
       console.error('Autosave error:', err);
     }
@@ -292,13 +297,20 @@ export default function BialDashboard({ user, showToast }) {
 
     try {
       setSaving(true);
-      const entries = Object.keys(drafts).map(memberId => ({
-        member_id: parseInt(memberId),
-        pathian_ram: drafts[memberId].pathian_ram || 0,
-        ramthar: drafts[memberId].ramthar || 0,
-        tualchhung: drafts[memberId].tualchhung || 0,
-        building: drafts[memberId].building || 0
-      }));
+      const entries = Object.keys(drafts).map(memberId => {
+        const row = drafts[memberId] || {};
+        const entry = {
+          member_id: parseInt(memberId),
+          pathian_ram: parseFloat(row.pathian_ram) || 0,
+          ramthar: parseFloat(row.ramthar) || 0,
+          tualchhung: parseFloat(row.tualchhung) || 0,
+          building: parseFloat(row.building) || 0
+        };
+        titheColumns.forEach(c => {
+          entry[c.field_key] = parseFloat(row[c.field_key]) || 0;
+        });
+        return entry;
+      });
 
       await api.bulkSaveTithes({
         bial_id: targetBialId,
@@ -355,18 +367,20 @@ export default function BialDashboard({ user, showToast }) {
   // Filter & Sort Members List
   const rawMembers = ledger?.members || [];
 
-  const contributedCount = rawMembers.filter(m => {
-    const d = drafts[m.member_id] || {};
-    return (parseFloat(d.pathian_ram) || 0) > 0 || (parseFloat(d.ramthar) || 0) > 0 || (parseFloat(d.tualchhung) || 0) > 0 || (parseFloat(d.building) || 0) > 0 || (d.total || 0) > 0;
-  }).length;
+  const isMemberPaid = (memberId) => {
+    const d = drafts[memberId] || {};
+    if ((d.total || 0) > 0) return true;
+    return titheColumns.some(c => (parseFloat(d[c.field_key]) || 0) > 0);
+  };
+
+  const contributedCount = rawMembers.filter(m => isMemberPaid(m.member_id)).length;
   const unpaidCount = Math.max(0, rawMembers.length - contributedCount);
 
   let processedMembers = rawMembers.filter(m => {
     const matchesSearch = m.name.toLowerCase().includes(searchQuery.toLowerCase()) || String(m.sl_no).includes(searchQuery);
     if (!matchesSearch) return false;
 
-    const d = drafts[m.member_id] || {};
-    const hasPaid = (parseFloat(d.pathian_ram) || 0) > 0 || (parseFloat(d.ramthar) || 0) > 0 || (parseFloat(d.tualchhung) || 0) > 0 || (parseFloat(d.building) || 0) > 0 || (d.total || 0) > 0;
+    const hasPaid = isMemberPaid(m.member_id);
 
     if (memberFilter === 'contributed') return hasPaid;
     if (memberFilter === 'unpaid') return !hasPaid;
@@ -400,22 +414,18 @@ export default function BialDashboard({ user, showToast }) {
   });
 
   // Footer Column Totals
-  let footerSumPR = 0;
-  let footerSumRamthar = 0;
-  let footerSumTualchhung = 0;
-  let footerSumBuilding = 0;
+  const footerColumnSums = {};
+  titheColumns.forEach(c => { footerColumnSums[c.field_key] = 0; });
   let footerGrandTotal = 0;
 
   Object.values(drafts).forEach(d => {
-    const pr = parseFloat(d.pathian_ram) || 0;
-    const ram = parseFloat(d.ramthar) || 0;
-    const tual = parseFloat(d.tualchhung) || 0;
-    const bldg = parseFloat(d.building) || 0;
-    footerSumPR += pr;
-    footerSumRamthar += ram;
-    footerSumTualchhung += tual;
-    footerSumBuilding += bldg;
-    footerGrandTotal += (d.total || (pr + ram + tual + bldg));
+    let rowTotal = 0;
+    titheColumns.forEach(c => {
+      const v = parseFloat(d[c.field_key]) || 0;
+      footerColumnSums[c.field_key] += v;
+      rowTotal += v;
+    });
+    footerGrandTotal += (d.total !== undefined ? d.total : rowTotal);
   });
 
   const isLocked = ledger?.is_locked === true;
@@ -438,26 +448,25 @@ export default function BialDashboard({ user, showToast }) {
   const monthlyBreakdown = analyticsData?.monthlyBreakdown || [];
   const chartMonthlyTrends = monthlyBreakdown.map(m => {
     const mObj = FINANCIAL_MONTHS.find(f => f.id === m.month);
-    return {
+    const item = {
       month: mObj ? mObj.short : `M${m.month}`,
       fullMonth: mObj ? mObj.name : `Month ${m.month}`,
       total: m.total || 0,
-      pathian_ram: m.pathian_ram || 0,
-      ramthar: m.ramthar || 0,
-      tualchhung: m.tualchhung || 0,
-      building: m.building || 0,
       returned_members: m.returned_members || 0,
       total_system_members: m.total_system_members || 0
     };
+    titheColumns.forEach(c => {
+      item[c.field_key] = m[c.field_key] || 0;
+    });
+    return item;
   });
 
   const grandTotals = analyticsData?.grandTotals || {};
-  const pieChartData = [
-    { name: 'Pathian Ram', value: grandTotals.total_pathian_ram || 0 },
-    { name: 'Ramthar', value: grandTotals.total_ramthar || 0 },
-    { name: 'Tualchhung', value: grandTotals.total_tualchhung || 0 },
-    { name: 'Building', value: grandTotals.total_building || 0 }
-  ].filter(d => d.value > 0);
+  const pieChartData = titheColumns.map(c => ({
+    name: c.name,
+    value: grandTotals[c.field_key] || grandTotals[`total_${c.field_key}`] || 0,
+    color: c.color || '#6366f1'
+  })).filter(d => d.value > 0);
 
   return (
     <div className="min-h-screen text-slate-900 p-2.5 sm:p-3.5 lg:p-4">
@@ -527,36 +536,32 @@ export default function BialDashboard({ user, showToast }) {
               {/* TOP MONTHLY / ALL MONTHS SUMMARY BOX */}
               {(() => {
                 const getSummaryDisplay = () => {
+                  const result = { total: 0 };
+                  titheColumns.forEach(c => { result[c.field_key] = 0; });
+
                   if (summaryViewMode === 'all') {
-                    return {
-                      label: 'All Months Combined (FY Total)',
-                      pr: grandTotals.total_pathian_ram || 0,
-                      rt: grandTotals.total_ramthar || 0,
-                      tch: grandTotals.total_tualchhung || 0,
-                      bldg: grandTotals.total_building || 0,
-                      total: grandTotals.grand_total || 0
-                    };
+                    titheColumns.forEach(c => {
+                      result[c.field_key] = grandTotals[c.field_key] ?? grandTotals[`total_${c.field_key}`] ?? 0;
+                    });
+                    result.total = grandTotals.grand_total || 0;
+                    return result;
                   }
+
                   const selectedMId = parseInt(summaryViewMode) || month;
                   if (selectedMId === month) {
-                    return {
-                      label: `${FINANCIAL_MONTHS.find(m => m.id === month)?.name || ''} ${year}`,
-                      pr: footerSumPR,
-                      rt: footerSumRamthar,
-                      tch: footerSumTualchhung,
-                      bldg: footerSumBuilding,
-                      total: footerGrandTotal
-                    };
+                    titheColumns.forEach(c => {
+                      result[c.field_key] = footerColumnSums[c.field_key] || 0;
+                    });
+                    result.total = footerGrandTotal;
+                    return result;
                   }
-                  const mObj = monthlyBreakdown.find(m => m.month === selectedMId) || { pathian_ram: 0, ramthar: 0, tualchhung: 0, building: 0, total: 0 };
-                  return {
-                    label: `${FINANCIAL_MONTHS.find(m => m.id === selectedMId)?.name || ''} ${year}`,
-                    pr: mObj.pathian_ram || 0,
-                    rt: mObj.ramthar || 0,
-                    tch: mObj.tualchhung || 0,
-                    bldg: mObj.building || 0,
-                    total: mObj.total || 0
-                  };
+
+                  const mObj = monthlyBreakdown.find(m => m.month === selectedMId) || {};
+                  titheColumns.forEach(c => {
+                    result[c.field_key] = mObj[c.field_key] || 0;
+                  });
+                  result.total = mObj.total || 0;
+                  return result;
                 };
 
                 const disp = getSummaryDisplay();
@@ -586,32 +591,25 @@ export default function BialDashboard({ user, showToast }) {
                       </div>
                     </div>
 
-                    {/* Centered Segment Boxes Grid */}
+                    {/* Centered Segment Boxes Grid (Dynamic Columns) */}
                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs text-center">
-                      <div className="bg-blue-50/80 p-2.5 rounded-xl border border-blue-200 flex flex-col items-center justify-center text-center">
-                        <div className="text-[9.5px] font-extrabold text-blue-800 uppercase tracking-wider text-center">Pathian Ram</div>
-                        <div className="font-mono text-xs sm:text-sm font-extrabold text-blue-950 mt-0.5 text-center">
-                          ₹{disp.pr.toLocaleString('en-IN')}
+                      {titheColumns.map(col => (
+                        <div 
+                          key={col.id} 
+                          className="p-2.5 rounded-xl border flex flex-col items-center justify-center text-center"
+                          style={{ 
+                            backgroundColor: `${col.color || '#6366f1'}15`, 
+                            borderColor: `${col.color || '#6366f1'}35` 
+                          }}
+                        >
+                          <div className="text-[9.5px] font-extrabold uppercase tracking-wider text-center" style={{ color: col.color || '#1e293b' }}>
+                            {col.name}
+                          </div>
+                          <div className="font-mono text-xs sm:text-sm font-extrabold text-slate-900 mt-0.5 text-center">
+                            ₹{(disp[col.field_key] || 0).toLocaleString('en-IN')}
+                          </div>
                         </div>
-                      </div>
-                      <div className="bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200 flex flex-col items-center justify-center text-center">
-                        <div className="text-[9.5px] font-extrabold text-emerald-800 uppercase tracking-wider text-center">Ramthar</div>
-                        <div className="font-mono text-xs sm:text-sm font-extrabold text-emerald-950 mt-0.5 text-center">
-                          ₹{disp.rt.toLocaleString('en-IN')}
-                        </div>
-                      </div>
-                      <div className="bg-amber-50/80 p-2.5 rounded-xl border border-amber-200 flex flex-col items-center justify-center text-center">
-                        <div className="text-[9.5px] font-extrabold text-amber-800 uppercase tracking-wider text-center">Tualchhung</div>
-                        <div className="font-mono text-xs sm:text-sm font-extrabold text-amber-950 mt-0.5 text-center">
-                          ₹{disp.tch.toLocaleString('en-IN')}
-                        </div>
-                      </div>
-                      <div className="bg-purple-50/80 p-2.5 rounded-xl border border-purple-200 flex flex-col items-center justify-center text-center">
-                        <div className="text-[9.5px] font-extrabold text-purple-800 uppercase tracking-wider text-center">Building</div>
-                        <div className="font-mono text-xs sm:text-sm font-extrabold text-purple-950 mt-0.5 text-center">
-                          ₹{disp.bldg.toLocaleString('en-IN')}
-                        </div>
-                      </div>
+                      ))}
                       <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-2.5 rounded-xl border border-indigo-700 flex flex-col items-center justify-center text-center">
                         <div className="text-[9.5px] font-extrabold text-emerald-300 uppercase tracking-wider text-center">Total</div>
                         <div className="font-mono text-xs sm:text-sm font-black text-emerald-300 mt-0.5 text-center">
@@ -809,63 +807,31 @@ export default function BialDashboard({ user, showToast }) {
                             </div>
                           </div>
 
-                          {/* Category Breakdown (2x2 Grid with Fixed Sizing & Currency Alignments) */}
+                          {/* Category Breakdown (Dynamic mini grid with Fixed Sizing & Currency Alignments) */}
                           <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
-                            {/* Pathian Ram */}
-                            <div className="bg-blue-50/70 hover:bg-blue-50/90 p-1.5 rounded-xl border border-blue-200/80 flex items-center justify-between transition-colors">
-                              <span className="text-[10px] font-extrabold text-blue-800 uppercase tracking-tight pl-0.5">PTR</span>
-                              <div className="relative flex items-center">
-                                <span className="absolute left-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">₹</span>
-                                <input
-                                  type="text"
-                                  readOnly
-                                  value={rowDraft.pathian_ram || '0'}
-                                  className="w-18 sm:w-20 pl-4 pr-1.5 py-1 bg-white rounded-lg border border-blue-200 text-xs font-mono font-bold text-slate-900 text-right shadow-2xs pointer-events-none cursor-pointer"
-                                />
+                            {titheColumns.map(col => (
+                              <div 
+                                key={col.id} 
+                                className="p-1.5 rounded-xl border flex items-center justify-between transition-colors"
+                                style={{ 
+                                  backgroundColor: `${col.color || '#6366f1'}10`, 
+                                  borderColor: `${col.color || '#6366f1'}30` 
+                                }}
+                              >
+                                <span className="text-[10px] font-extrabold uppercase tracking-tight pl-0.5 truncate" style={{ color: col.color || '#1e293b' }}>
+                                  {col.code}
+                                </span>
+                                <div className="relative flex items-center shrink-0">
+                                  <span className="absolute left-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">₹</span>
+                                  <input
+                                    type="text"
+                                    readOnly
+                                    value={rowDraft[col.field_key] || '0'}
+                                    className="w-18 sm:w-20 pl-4 pr-1.5 py-1 bg-white rounded-lg border border-slate-200 text-xs font-mono font-bold text-slate-900 text-right shadow-2xs pointer-events-none cursor-pointer"
+                                  />
+                                </div>
                               </div>
-                            </div>
-
-                            {/* Ramthar */}
-                            <div className="bg-emerald-50/70 hover:bg-emerald-50/90 p-1.5 rounded-xl border border-emerald-200/80 flex items-center justify-between transition-colors">
-                              <span className="text-[10px] font-extrabold text-emerald-800 uppercase tracking-tight pl-0.5">RT</span>
-                              <div className="relative flex items-center">
-                                <span className="absolute left-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">₹</span>
-                                <input
-                                  type="text"
-                                  readOnly
-                                  value={rowDraft.ramthar || '0'}
-                                  className="w-18 sm:w-20 pl-4 pr-1.5 py-1 bg-white rounded-lg border border-emerald-200 text-xs font-mono font-bold text-slate-900 text-right shadow-2xs pointer-events-none cursor-pointer"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Tualchhung */}
-                            <div className="bg-amber-50/70 hover:bg-amber-50/90 p-1.5 rounded-xl border border-amber-200/80 flex items-center justify-between transition-colors">
-                              <span className="text-[10px] font-extrabold text-amber-800 uppercase tracking-tight pl-0.5">Tch</span>
-                              <div className="relative flex items-center">
-                                <span className="absolute left-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">₹</span>
-                                <input
-                                  type="text"
-                                  readOnly
-                                  value={rowDraft.tualchhung || '0'}
-                                  className="w-18 sm:w-20 pl-4 pr-1.5 py-1 bg-white rounded-lg border border-amber-200 text-xs font-mono font-bold text-slate-900 text-right shadow-2xs pointer-events-none cursor-pointer"
-                                />
-                              </div>
-                            </div>
-
-                            {/* Building */}
-                            <div className="bg-purple-50/70 hover:bg-purple-50/90 p-1.5 rounded-xl border border-purple-200/80 flex items-center justify-between transition-colors">
-                              <span className="text-[10px] font-extrabold text-purple-800 uppercase tracking-tight pl-0.5">Bldg</span>
-                              <div className="relative flex items-center">
-                                <span className="absolute left-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">₹</span>
-                                <input
-                                  type="text"
-                                  readOnly
-                                  value={rowDraft.building || '0'}
-                                  className="w-18 sm:w-20 pl-4 pr-1.5 py-1 bg-white rounded-lg border border-purple-200 text-xs font-mono font-bold text-slate-900 text-right shadow-2xs pointer-events-none cursor-pointer"
-                                />
-                              </div>
-                            </div>
+                            ))}
                           </div>
 
                           {/* Total Row Aligned at Bottom */}
@@ -914,40 +880,28 @@ export default function BialDashboard({ user, showToast }) {
               </div>
             ) : (
               <>
-                {/* 5-Segment Summary Cards: Row 1: PTR, RT, Tch | Row 2: BLDG, Grand Total */}
-                <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-                  {/* Row 1: PTR, RT, Tch in a single line (3 columns) */}
-                  <div className="col-span-1 bg-blue-50/80 p-2 sm:p-2.5 rounded-xl border border-blue-200 flex flex-col justify-between">
-                    <span className="text-[9px] sm:text-[10px] font-extrabold text-blue-800 uppercase tracking-wider">PTR</span>
-                    <div className="font-mono font-bold text-blue-950 text-xs sm:text-sm lg:text-base truncate">
-                      ₹{(grandTotals.total_pathian_ram || 0).toLocaleString('en-IN')}
+                {/* Dynamic Summary Cards: Each Tithe Column + Grand Total */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2">
+                  {titheColumns.map(col => (
+                    <div 
+                      key={col.id} 
+                      className="col-span-1 p-2 sm:p-2.5 rounded-xl border flex flex-col justify-between"
+                      style={{
+                        backgroundColor: `${col.color || '#6366f1'}12`,
+                        borderColor: `${col.color || '#6366f1'}35`
+                      }}
+                    >
+                      <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider truncate" style={{ color: col.color || '#1e293b' }}>
+                        {col.code}
+                      </span>
+                      <div className="font-mono font-bold text-slate-900 text-xs sm:text-sm lg:text-base truncate">
+                        ₹{(grandTotals[col.field_key] || grandTotals[`total_${col.field_key}`] || 0).toLocaleString('en-IN')}
+                      </div>
                     </div>
-                  </div>
+                  ))}
 
-                  <div className="col-span-1 bg-emerald-50/80 p-2 sm:p-2.5 rounded-xl border border-emerald-200 flex flex-col justify-between">
-                    <span className="text-[9px] sm:text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">RT</span>
-                    <div className="font-mono font-bold text-emerald-950 text-xs sm:text-sm lg:text-base truncate">
-                      ₹{(grandTotals.total_ramthar || 0).toLocaleString('en-IN')}
-                    </div>
-                  </div>
-
-                  <div className="col-span-1 bg-amber-50/80 p-2 sm:p-2.5 rounded-xl border border-amber-200 flex flex-col justify-between">
-                    <span className="text-[9px] sm:text-[10px] font-extrabold text-amber-800 uppercase tracking-wider">Tch</span>
-                    <div className="font-mono font-bold text-amber-950 text-xs sm:text-sm lg:text-base truncate">
-                      ₹{(grandTotals.total_tualchhung || 0).toLocaleString('en-IN')}
-                    </div>
-                  </div>
-
-                  {/* Row 2: BLDG (1 col) and Grand Total (2 cols) below */}
-                  <div className="col-span-1 bg-purple-50/80 p-2 sm:p-2.5 rounded-xl border border-purple-200 flex flex-col justify-between">
-                    <span className="text-[9px] sm:text-[10px] font-extrabold text-purple-800 uppercase tracking-wider">BLDG</span>
-                    <div className="font-mono font-bold text-purple-950 text-xs sm:text-sm lg:text-base truncate">
-                      ₹{(grandTotals.total_building || 0).toLocaleString('en-IN')}
-                    </div>
-                  </div>
-
-                  <div className="col-span-2 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2 sm:p-2.5 rounded-xl border border-indigo-700 text-white shadow-xs flex items-center justify-between px-3">
-<div>
+                  <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2 sm:p-2.5 rounded-xl border border-indigo-700 text-white shadow-xs flex items-center justify-between px-3">
+                    <div>
                       <span className="text-[9px] sm:text-[10px] font-extrabold text-indigo-200 uppercase tracking-wider block">GRAND TOTAL</span>
                       <span className="text-[9px] text-slate-300 font-sans">FY {year} Total</span>
                     </div>
@@ -962,8 +916,11 @@ export default function BialDashboard({ user, showToast }) {
                   const targetMObj = FINANCIAL_MONTHS.find(f => f.id === compareMonthTarget);
                   const baseMObj = FINANCIAL_MONTHS.find(f => f.id === compareMonthBase);
 
-                  const targetMonthData = chartMonthlyTrends.find(m => m.month === (targetMObj ? targetMObj.short : `M${compareMonthTarget}`)) || { pathian_ram: 0, ramthar: 0, tualchhung: 0, building: 0, total: 0, returned_members: 0 };
-                  const baseMonthData = chartMonthlyTrends.find(m => m.month === (baseMObj ? baseMObj.short : `M${compareMonthBase}`)) || { pathian_ram: 0, ramthar: 0, tualchhung: 0, building: 0, total: 0, returned_members: 0 };
+                  const defaultMonthData = { total: 0, returned_members: 0 };
+                  titheColumns.forEach(c => { defaultMonthData[c.field_key] = 0; });
+
+                  const targetMonthData = chartMonthlyTrends.find(m => m.month === (targetMObj ? targetMObj.short : `M${compareMonthTarget}`)) || defaultMonthData;
+                  const baseMonthData = chartMonthlyTrends.find(m => m.month === (baseMObj ? baseMObj.short : `M${compareMonthBase}`)) || defaultMonthData;
 
                   const getComparison = (targetVal = 0, baseVal = 0) => {
                     const delta = targetVal - baseVal;
@@ -972,10 +929,12 @@ export default function BialDashboard({ user, showToast }) {
                   };
 
                   const categories = [
-                    { key: 'pathian_ram', label: 'PTR (PATHIAN RAM)', valA: targetMonthData.pathian_ram || 0, valB: baseMonthData.pathian_ram || 0 },
-                    { key: 'ramthar', label: 'RT (RAMTHAR)', valA: targetMonthData.ramthar || 0, valB: baseMonthData.ramthar || 0 },
-                    { key: 'tualchhung', label: 'TCH (TUALCHHUNG)', valA: targetMonthData.tualchhung || 0, valB: baseMonthData.tualchhung || 0 },
-                    { key: 'building', label: 'BLDG (BUILDING)', valA: targetMonthData.building || 0, valB: baseMonthData.building || 0 },
+                    ...titheColumns.map(col => ({
+                      key: col.field_key,
+                      label: `${col.code} (${col.name.toUpperCase()})`,
+                      valA: targetMonthData[col.field_key] || 0,
+                      valB: baseMonthData[col.field_key] || 0
+                    })),
                     { key: 'total', label: 'GRAND TOTAL', valA: targetMonthData.total || 0, valB: baseMonthData.total || 0 }
                   ];
 
@@ -1134,7 +1093,7 @@ export default function BialDashboard({ user, showToast }) {
                               dataKey="value"
                             >
                               {pieChartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                                <Cell key={`cell-${index}`} fill={entry.color || CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
                               ))}
                             </Pie>
                             <Tooltip
@@ -1208,19 +1167,19 @@ export default function BialDashboard({ user, showToast }) {
                     bialName,
                     year,
                     month,
-                    members: processedMembers.map(m => ({
-                      ...m,
-                      pathian_ram: parseFloat(drafts[m.member_id]?.pathian_ram) || 0,
-                      ramthar: parseFloat(drafts[m.member_id]?.ramthar) || 0,
-                      tualchhung: parseFloat(drafts[m.member_id]?.tualchhung) || 0,
-                      building: parseFloat(drafts[m.member_id]?.building) || 0,
-                      total: drafts[m.member_id]?.total || 0
-                    })),
+                    columns: titheColumns,
+                    members: processedMembers.map(m => {
+                      const row = {
+                        ...m,
+                        total: drafts[m.member_id]?.total || 0
+                      };
+                      titheColumns.forEach(c => {
+                        row[c.field_key] = parseFloat(drafts[m.member_id]?.[c.field_key]) || 0;
+                      });
+                      return row;
+                    }),
                     summary: {
-                      sum_pathian_ram: footerSumPR,
-                      sum_ramthar: footerSumRamthar,
-                      sum_tualchhung: footerSumTualchhung,
-                      sum_building: footerSumBuilding,
+                      ...footerColumnSums,
                       grand_total: footerGrandTotal
                     }
                   });
@@ -1239,19 +1198,19 @@ export default function BialDashboard({ user, showToast }) {
                     bialName,
                     year,
                     month,
-                    members: processedMembers.map(m => ({
-                      ...m,
-                      pathian_ram: parseFloat(drafts[m.member_id]?.pathian_ram) || 0,
-                      ramthar: parseFloat(drafts[m.member_id]?.ramthar) || 0,
-                      tualchhung: parseFloat(drafts[m.member_id]?.tualchhung) || 0,
-                      building: parseFloat(drafts[m.member_id]?.building) || 0,
-                      total: drafts[m.member_id]?.total || 0
-                    })),
+                    columns: titheColumns,
+                    members: processedMembers.map(m => {
+                      const row = {
+                        ...m,
+                        total: drafts[m.member_id]?.total || 0
+                      };
+                      titheColumns.forEach(c => {
+                        row[c.field_key] = parseFloat(drafts[m.member_id]?.[c.field_key]) || 0;
+                      });
+                      return row;
+                    }),
                     summary: {
-                      sum_pathian_ram: footerSumPR,
-                      sum_ramthar: footerSumRamthar,
-                      sum_tualchhung: footerSumTualchhung,
-                      sum_building: footerSumBuilding,
+                      ...footerColumnSums,
                       grand_total: footerGrandTotal
                     }
                   });
@@ -1280,6 +1239,7 @@ export default function BialDashboard({ user, showToast }) {
                     exportBialYearlySummaryExcel({
                       bialName: res.bial?.name || bialName,
                       year: res.year,
+                      columns: res.columns || titheColumns,
                       monthlyBreakdown: res.monthlyBreakdown,
                       memberTotals: res.memberTotals,
                       grandTotals: res.grandTotals
@@ -1304,6 +1264,7 @@ export default function BialDashboard({ user, showToast }) {
                     exportBialYearlySummaryPDF({
                       bialName: res.bial?.name || bialName,
                       year: res.year,
+                      columns: res.columns || titheColumns,
                       monthlyBreakdown: res.monthlyBreakdown,
                       memberTotals: res.memberTotals,
                       grandTotals: res.grandTotals
@@ -1339,12 +1300,10 @@ export default function BialDashboard({ user, showToast }) {
           setShowMemberEditModal(false);
           setSelectedMemberForEditModal(null);
         }}
+        columns={titheColumns}
         member={selectedMemberForEditModal ? {
           ...selectedMemberForEditModal,
-          pathian_ram: drafts[selectedMemberForEditModal.member_id]?.pathian_ram ?? selectedMemberForEditModal.pathian_ram,
-          ramthar: drafts[selectedMemberForEditModal.member_id]?.ramthar ?? selectedMemberForEditModal.ramthar,
-          tualchhung: drafts[selectedMemberForEditModal.member_id]?.tualchhung ?? selectedMemberForEditModal.tualchhung,
-          building: drafts[selectedMemberForEditModal.member_id]?.building ?? selectedMemberForEditModal.building,
+          ...(drafts[selectedMemberForEditModal.member_id] || {})
         } : null}
         bialName={bialName}
         bialId={targetBialId}
@@ -1360,10 +1319,14 @@ export default function BialDashboard({ user, showToast }) {
       <DigitalReceiptModal
         isOpen={Boolean(receiptMember)}
         onClose={() => setReceiptMember(null)}
-        member={receiptMember}
+        member={receiptMember ? {
+          ...receiptMember,
+          ...(drafts[receiptMember.member_id] || {})
+        } : null}
         month={month}
         year={year}
         bialName={bialName}
+        columns={titheColumns}
         showToast={showToast}
       />
 

@@ -84,7 +84,43 @@ export function initDatabase() {
       is_active INTEGER DEFAULT 0 CHECK(is_active IN (0, 1)),
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS tithe_columns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      code TEXT NOT NULL,
+      field_key TEXT UNIQUE NOT NULL,
+      color TEXT DEFAULT '#6366f1',
+      display_order INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  // Migrate extra_amounts column on tithes if missing
+  try {
+    db.exec("ALTER TABLE tithes ADD COLUMN extra_amounts TEXT DEFAULT '{}';");
+  } catch (e) {
+    // Column already exists
+  }
+
+  // Seed default tithe columns if empty
+  try {
+    const colCheck = db.prepare('SELECT COUNT(*) as count FROM tithe_columns').get();
+    if (colCheck.count === 0) {
+      const defaultCols = [
+        { name: 'Pathian Ram', code: 'PTR', field_key: 'pathian_ram', color: '#6366f1', display_order: 1 },
+        { name: 'Ramthar', code: 'RT', field_key: 'ramthar', color: '#10b981', display_order: 2 },
+        { name: 'Tualchhung', code: 'Tch', field_key: 'tualchhung', color: '#f59e0b', display_order: 3 },
+        { name: 'Building', code: 'Bldg', field_key: 'building', color: '#a855f7', display_order: 4 }
+      ];
+      const stmt = db.prepare('INSERT INTO tithe_columns (name, code, field_key, color, display_order) VALUES (?, ?, ?, ?, ?)');
+      for (const c of defaultCols) {
+        stmt.run(c.name, c.code, c.field_key, c.color, c.display_order);
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
 
   // Migrate year column in members table if missing
   try {
@@ -202,4 +238,17 @@ export function initDatabase() {
   }
 
   console.log('Database initialization complete.');
+}
+
+export function getTitheColumns() {
+  try {
+    const cols = db.prepare('SELECT id, name, code, field_key, color, display_order FROM tithe_columns ORDER BY display_order ASC, id ASC').all();
+    if (cols && cols.length > 0) return cols;
+  } catch (e) {}
+  return [
+    { id: 1, name: 'Pathian Ram', code: 'PTR', field_key: 'pathian_ram', color: '#6366f1', display_order: 1 },
+    { id: 2, name: 'Ramthar', code: 'RT', field_key: 'ramthar', color: '#10b981', display_order: 2 },
+    { id: 3, name: 'Tualchhung', code: 'Tch', field_key: 'tualchhung', color: '#f59e0b', display_order: 3 },
+    { id: 4, name: 'Building', code: 'Bldg', field_key: 'building', color: '#a855f7', display_order: 4 }
+  ];
 }

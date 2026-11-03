@@ -110,6 +110,13 @@ export const api = {
   getYearlySummary: (bial_id, year) => request(`/tithes/yearly-summary?bial_id=${bial_id}&year=${year}`),
   getMemberHistory: (member_id, year) => request(`/tithes/member-history?member_id=${member_id}&year=${year}`),
 
+  // Tithe Columns
+  getColumns: () => request('/columns'),
+  createColumn: (data) => request('/columns', { method: 'POST', body: JSON.stringify(data) }),
+  updateColumn: (id, data) => request(`/columns/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteColumn: (id) => request(`/columns/${id}`, { method: 'DELETE' }),
+  reorderColumns: (orders) => request('/columns/reorder', { method: 'PUT', body: JSON.stringify({ orders }) }),
+
   // Backup & Restore
   triggerBackupNow: async () => {
     const token = getAuthToken();

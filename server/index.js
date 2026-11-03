@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.js';
 import adminRoutes from './routes/admin.js';
 import memberRoutes from './routes/members.js';
 import titheRoutes from './routes/tithes.js';
+import columnRoutes from './routes/columns.js';
 import backupRoutes, { generateBackupSnapshot } from './routes/backup.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -30,6 +31,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/members', memberRoutes);
 app.use('/api/tithes', titheRoutes);
+app.use('/api/columns', columnRoutes);
 app.use('/api/backup', backupRoutes);
 
 // Scheduled Automated Backup (Runs every day at Midnight 00:00)

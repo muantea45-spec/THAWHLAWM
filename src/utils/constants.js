@@ -28,3 +28,10 @@ export const MONTH_NAME_MAP = {
   11: 'November',
   12: 'December'
 };
+
+export const DEFAULT_TITHE_COLUMNS = [
+  { id: 1, name: 'Pathian Ram', code: 'PTR', field_key: 'pathian_ram', color: '#6366f1', display_order: 1 },
+  { id: 2, name: 'Ramthar', code: 'RT', field_key: 'ramthar', color: '#10b981', display_order: 2 },
+  { id: 3, name: 'Tualchhung', code: 'Tch', field_key: 'tualchhung', color: '#f59e0b', display_order: 3 },
+  { id: 4, name: 'Building', code: 'Bldg', field_key: 'building', color: '#a855f7', display_order: 4 }
+];

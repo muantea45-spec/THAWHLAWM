@@ -5,6 +5,7 @@ import html2canvas from 'html2canvas-pro';
 import { pdf } from '@react-pdf/renderer';
 import React from 'react';
 import OfficialReportPDFDocument from '../components/OfficialReportPDFDocument';
+import { DEFAULT_TITHE_COLUMNS } from './constants';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -14,68 +15,61 @@ const MONTH_NAMES = [
 /**
  * Excel Export (.xlsx)
  */
-export function exportToExcel({ bialName, year, month, members, summary }) {
+export function exportToExcel({ bialName, year, month, members, summary, columns }) {
+  const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
   const monthName = MONTH_NAMES[month - 1] || month;
   const hasBialCol = members.some(m => m.bial_name);
 
   // Header rows
+  const headerCols = hasBialCol
+    ? ['Sl No', 'HMING (Member Name)', 'Bial', ...cols.map(c => `${c.name} (${c.code})`), 'TOTAL']
+    : ['Sl No', 'HMING (Member Name)', ...cols.map(c => `${c.name} (${c.code})`), 'TOTAL'];
+
   const sheetData = [
     ['PATHIAN RAM TITHE COLLECTION LEDGER'],
     [`Bial Name: ${bialName}`],
     [`Period: ${monthName} ${year}`],
     ['Generated On: ' + new Date().toLocaleString()],
     [], // empty row
-    hasBialCol
-      ? ['Sl No', 'HMING (Member Name)', 'Bial', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Building', 'TOTAL']
-      : ['Sl No', 'HMING (Member Name)', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Building', 'TOTAL']
+    headerCols
   ];
 
   // Data rows
   members.forEach((m, idx) => {
+    const rowAmounts = cols.map(c => m[c.field_key] || 0);
     if (hasBialCol) {
       sheetData.push([
         m.sl_no || idx + 1,
         m.name,
         m.bial_name || '',
-        m.pathian_ram || 0,
-        m.ramthar || 0,
-        m.tualchhung || 0,
-        m.building || 0,
+        ...rowAmounts,
         m.total || 0
       ]);
     } else {
       sheetData.push([
         m.sl_no || idx + 1,
         m.name,
-        m.pathian_ram || 0,
-        m.ramthar || 0,
-        m.tualchhung || 0,
-        m.building || 0,
+        ...rowAmounts,
         m.total || 0
       ]);
     }
   });
 
   // Summary Footer Row
+  const footerAmounts = cols.map(c => summary[c.field_key] ?? summary[`sum_${c.field_key}`] ?? 0);
   if (hasBialCol) {
     sheetData.push([
       'TOTAL',
       `Total Members: ${members.length}`,
       '',
-      summary.sum_pathian_ram || 0,
-      summary.sum_ramthar || 0,
-      summary.sum_tualchhung || 0,
-      summary.sum_building || 0,
+      ...footerAmounts,
       summary.grand_total || 0
     ]);
   } else {
     sheetData.push([
       'TOTAL',
       `Total Members: ${members.length}`,
-      summary.sum_pathian_ram || 0,
-      summary.sum_ramthar || 0,
-      summary.sum_tualchhung || 0,
-      summary.sum_building || 0,
+      ...footerAmounts,
       summary.grand_total || 0
     ]);
   }
@@ -83,23 +77,12 @@ export function exportToExcel({ bialName, year, month, members, summary }) {
   const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
 
   // Set Column Widths
-  worksheet['!cols'] = hasBialCol ? [
-    { wch: 8 },  // Sl No
-    { wch: 28 }, // Name
-    { wch: 20 }, // Bial
-    { wch: 15 }, // Pathian Ram
-    { wch: 15 }, // Ramthar
-    { wch: 15 }, // Tualchhung
-    { wch: 15 }, // Building
-    { wch: 18 }  // TOTAL
-  ] : [
-    { wch: 8 },  // Sl No
-    { wch: 28 }, // Name
-    { wch: 15 }, // Pathian Ram
-    { wch: 15 }, // Ramthar
-    { wch: 15 }, // Tualchhung
-    { wch: 15 }, // Building
-    { wch: 18 }  // TOTAL
+  worksheet['!cols'] = [
+    { wch: 8 },
+    { wch: 28 },
+    ...(hasBialCol ? [{ wch: 20 }] : []),
+    ...cols.map(() => ({ wch: 16 })),
+    { wch: 18 }
   ];
 
   const workbook = XLSX.utils.book_new();
@@ -113,71 +96,77 @@ export function exportToExcel({ bialName, year, month, members, summary }) {
 /**
  * Printable PDF Report Export
  */
-export function exportToPDF({ bialName, year, month, members, summary }) {
+export function exportToPDF({ bialName, year, month, members, summary, columns }) {
+  const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
   const monthName = MONTH_NAMES[month - 1] || month;
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const doc = new jsPDF({ orientation: cols.length > 5 ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
   const hasBialCol = members.some(m => m.bial_name);
 
   // Title Header Block
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(30, 41, 59);
-  doc.text('PATHIAN RAM TITHE LEDGER', 105, 16, { align: 'center' });
+  doc.text('PATHIAN RAM TITHE LEDGER', doc.internal.pageSize.getWidth() / 2, 16, { align: 'center' });
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(71, 85, 105);
   doc.text(`Bial: ${bialName}`, 14, 25);
   doc.text(`Period & Location: ${monthName} ${year}`, 14, 31);
-  doc.text(`Date of Issue: ${new Date().toLocaleDateString()}`, 196, 31, { align: 'right' });
+  doc.text(`Date of Issue: ${new Date().toLocaleDateString()}`, doc.internal.pageSize.getWidth() - 14, 31, { align: 'right' });
 
   doc.setLineWidth(0.5);
   doc.setDrawColor(203, 213, 225);
-  doc.line(14, 34, 196, 34);
+  doc.line(14, 34, doc.internal.pageSize.getWidth() - 14, 34);
 
   // Format table data
   const tableHead = hasBialCol
-    ? [['Sl No', 'Member Name', 'Bial', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Building', 'Total (₹)']]
-    : [['Sl No', 'Member Name', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Building', 'Total (₹)']];
+    ? [['Sl No', 'Member Name', 'Bial', ...cols.map(c => c.code), 'Total (₹)']]
+    : [['Sl No', 'Member Name', ...cols.map(c => c.code), 'Total (₹)']];
 
-  const tableBody = members.map((m, idx) => hasBialCol ? [
-    m.sl_no || idx + 1,
-    m.name,
-    m.bial_name || '',
-    (m.pathian_ram || 0).toLocaleString('en-IN'),
-    (m.ramthar || 0).toLocaleString('en-IN'),
-    (m.tualchhung || 0).toLocaleString('en-IN'),
-    (m.building || 0).toLocaleString('en-IN'),
-    (m.total || 0).toLocaleString('en-IN')
-  ] : [
-    m.sl_no || idx + 1,
-    m.name,
-    (m.pathian_ram || 0).toLocaleString('en-IN'),
-    (m.ramthar || 0).toLocaleString('en-IN'),
-    (m.tualchhung || 0).toLocaleString('en-IN'),
-    (m.building || 0).toLocaleString('en-IN'),
-    (m.total || 0).toLocaleString('en-IN')
-  ]);
+  const tableBody = members.map((m, idx) => {
+    const rowAmounts = cols.map(c => (m[c.field_key] || 0).toLocaleString('en-IN'));
+    return hasBialCol ? [
+      m.sl_no || idx + 1,
+      m.name,
+      m.bial_name || '',
+      ...rowAmounts,
+      (m.total || 0).toLocaleString('en-IN')
+    ] : [
+      m.sl_no || idx + 1,
+      m.name,
+      ...rowAmounts,
+      (m.total || 0).toLocaleString('en-IN')
+    ];
+  });
 
   // Footer total row inside table
+  const footerAmounts = cols.map(c => ((summary[c.field_key] ?? summary[`sum_${c.field_key}`] ?? 0)).toLocaleString('en-IN'));
   const tableFoot = hasBialCol ? [[
     'TOTAL',
     `Members: ${members.length}`,
     '',
-    (summary.sum_pathian_ram || 0).toLocaleString('en-IN'),
-    (summary.sum_ramthar || 0).toLocaleString('en-IN'),
-    (summary.sum_tualchhung || 0).toLocaleString('en-IN'),
-    (summary.sum_building || 0).toLocaleString('en-IN'),
+    ...footerAmounts,
     (summary.grand_total || 0).toLocaleString('en-IN')
   ]] : [[
     'TOTAL',
     `Members: ${members.length}`,
-    (summary.sum_pathian_ram || 0).toLocaleString('en-IN'),
-    (summary.sum_ramthar || 0).toLocaleString('en-IN'),
-    (summary.sum_tualchhung || 0).toLocaleString('en-IN'),
-    (summary.sum_building || 0).toLocaleString('en-IN'),
+    ...footerAmounts,
     (summary.grand_total || 0).toLocaleString('en-IN')
   ]];
+
+  const colStyles = {
+    0: { halign: 'center', cellWidth: 14 },
+    1: { halign: 'left' }
+  };
+  let colIdx = 2;
+  if (hasBialCol) {
+    colStyles[colIdx++] = { halign: 'left', cellWidth: 24 };
+  }
+  cols.forEach(() => {
+    colStyles[colIdx++] = { halign: 'right' };
+  });
+  colStyles[colIdx] = { halign: 'right', fontStyle: 'bold' };
 
   doc.autoTable({
     startY: 38,
@@ -185,31 +174,10 @@ export function exportToPDF({ bialName, year, month, members, summary }) {
     body: tableBody,
     foot: tableFoot,
     theme: 'grid',
-    headStyles: {
-      fillColor: [30, 41, 59],
-      textColor: [255, 255, 255],
-      fontStyle: 'bold',
-      halign: 'center'
-    },
-    footStyles: {
-      fillColor: [241, 245, 249],
-      textColor: [15, 23, 42],
-      fontStyle: 'bold',
-      halign: 'right'
-    },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 16 },
-      1: { halign: 'left' },
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'right' },
-      5: { halign: 'right' },
-      6: { halign: 'right', fontStyle: 'bold' }
-    },
-    styles: {
-      fontSize: 9,
-      cellPadding: 2.5
-    }
+    headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+    footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
+    styles: { fontSize: 8.5, cellPadding: 2 },
+    columnStyles: colStyles
   });
 
   const cleanBialName = bialName.replace(/[^a-zA-Z0-9]/g, '_');
@@ -220,68 +188,57 @@ export function exportToPDF({ bialName, year, month, members, summary }) {
 /**
  * Admin Consolidated Report Export (PDF)
  */
-export function exportAdminConsolidatedPDF({ year, grandTotals, bialBreakdown }) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+export function exportAdminConsolidatedPDF({ year, grandTotals, bialBreakdown, columns }) {
+  const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
+  const doc = new jsPDF({ orientation: cols.length > 4 ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(30, 41, 59);
-  doc.text('PATHIAN RAM TITHE COLLECTION SUMMARY', 105, 16, { align: 'center' });
+  doc.text('PATHIAN RAM TITHE COLLECTION SUMMARY', pageWidth / 2, 16, { align: 'center' });
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.text(`Consolidated Admin Report - Year ${year}`, 14, 25);
-  doc.text(`Generated: ${new Date().toLocaleString()}`, 196, 25, { align: 'right' });
+  doc.text(`Generated: ${new Date().toLocaleString()}`, pageWidth - 14, 25, { align: 'right' });
 
   doc.setLineWidth(0.5);
-  doc.line(14, 28, 196, 28);
+  doc.line(14, 28, pageWidth - 14, 28);
 
-  // Grand Totals Summary Cards
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Pathian Ram: ₹${(grandTotals.total_pathian_ram || 0).toLocaleString('en-IN')}`, 14, 36);
-  doc.text(`Ramthar: ₹${(grandTotals.total_ramthar || 0).toLocaleString('en-IN')}`, 65, 36);
-  doc.text(`Tualchhung: ₹${(grandTotals.total_tualchhung || 0).toLocaleString('en-IN')}`, 115, 36);
-  doc.text(`Building: ₹${(grandTotals.total_building || 0).toLocaleString('en-IN')}`, 160, 36);
-
-  const tableHead = [['Code', 'Bial Name', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Building', 'Grand Total']];
+  const tableHead = [['Code', 'Bial Name', ...cols.map(c => c.name), 'Grand Total']];
   const tableBody = bialBreakdown.map(b => [
     b.code,
     b.name,
-    (b.pathian_ram || 0).toLocaleString('en-IN'),
-    (b.ramthar || 0).toLocaleString('en-IN'),
-    (b.tualchhung || 0).toLocaleString('en-IN'),
-    (b.building || 0).toLocaleString('en-IN'),
+    ...cols.map(c => (b[c.field_key] || 0).toLocaleString('en-IN')),
     (b.total || 0).toLocaleString('en-IN')
   ]);
 
   const tableFoot = [[
     'ALL',
     'TOTAL SUMS',
-    (grandTotals.total_pathian_ram || 0).toLocaleString('en-IN'),
-    (grandTotals.total_ramthar || 0).toLocaleString('en-IN'),
-    (grandTotals.total_tualchhung || 0).toLocaleString('en-IN'),
-    (grandTotals.total_building || 0).toLocaleString('en-IN'),
+    ...cols.map(c => ((grandTotals[c.field_key] ?? grandTotals[`total_${c.field_key}`] ?? 0)).toLocaleString('en-IN')),
     (grandTotals.grand_total || 0).toLocaleString('en-IN')
   ]];
 
+  const colStyles = {
+    0: { halign: 'center', cellWidth: 20 },
+    1: { halign: 'left' }
+  };
+  cols.forEach((_, i) => {
+    colStyles[2 + i] = { halign: 'right' };
+  });
+  colStyles[2 + cols.length] = { halign: 'right', fontStyle: 'bold' };
+
   doc.autoTable({
-    startY: 42,
+    startY: 34,
     head: tableHead,
     body: tableBody,
     foot: tableFoot,
     theme: 'grid',
     headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
     footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 20 },
-      1: { halign: 'left' },
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'right' },
-      5: { halign: 'right' },
-      6: { halign: 'right', fontStyle: 'bold' }
-    }
+    columnStyles: colStyles
   });
 
   doc.save(`Pathian_Ram_Admin_Summary_${year}.pdf`);
@@ -290,23 +247,21 @@ export function exportAdminConsolidatedPDF({ year, grandTotals, bialBreakdown })
 /**
  * Admin Consolidated Report Export (Excel)
  */
-export function exportAdminConsolidatedExcel({ year, grandTotals, bialBreakdown }) {
+export function exportAdminConsolidatedExcel({ year, grandTotals, bialBreakdown, columns }) {
+  const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
   const sheetData = [
     ['PATHIAN RAM TITHE COLLECTION SUMMARY - CONSOLIDATED REPORT'],
     [`Financial Year: FY ${year} - ${year + 1}`],
     ['Generated On: ' + new Date().toLocaleString()],
     [],
-    ['Code', 'Bial Name', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Building', 'Grand Total']
+    ['Code', 'Bial Name', ...cols.map(c => `${c.name} (${c.code})`), 'Grand Total']
   ];
 
   bialBreakdown.forEach(b => {
     sheetData.push([
       b.code,
       b.name,
-      b.pathian_ram || 0,
-      b.ramthar || 0,
-      b.tualchhung || 0,
-      b.building || 0,
+      ...cols.map(c => b[c.field_key] || 0),
       b.total || 0
     ]);
   });
@@ -314,10 +269,7 @@ export function exportAdminConsolidatedExcel({ year, grandTotals, bialBreakdown 
   sheetData.push([
     'ALL',
     'TOTAL SUMS',
-    grandTotals.total_pathian_ram || 0,
-    grandTotals.total_ramthar || 0,
-    grandTotals.total_tualchhung || 0,
-    grandTotals.total_building || 0,
+    ...cols.map(c => (grandTotals[c.field_key] ?? grandTotals[`total_${c.field_key}`] ?? 0)),
     grandTotals.grand_total || 0
   ]);
 
@@ -325,10 +277,7 @@ export function exportAdminConsolidatedExcel({ year, grandTotals, bialBreakdown 
   worksheet['!cols'] = [
     { wch: 12 },
     { wch: 28 },
-    { wch: 18 },
-    { wch: 18 },
-    { wch: 18 },
-    { wch: 18 },
+    ...cols.map(() => ({ wch: 18 })),
     { wch: 20 }
   ];
 
@@ -340,14 +289,16 @@ export function exportAdminConsolidatedExcel({ year, grandTotals, bialBreakdown 
 /**
  * Printable PDF Statement for an Individual Member's Overall Payments
  */
-export function exportMemberHistoryPDF({ member, year, monthlyEntries, annualSummary }) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+export function exportMemberHistoryPDF({ member, year, monthlyEntries, annualSummary, columns }) {
+  const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
+  const doc = new jsPDF({ orientation: cols.length > 5 ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
 
   // Title Header Block
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
   doc.setTextColor(30, 41, 59);
-  doc.text('PATHIAN RAM TITHE PAYMENT STATEMENT', 105, 16, { align: 'center' });
+  doc.text('PATHIAN RAM TITHE PAYMENT STATEMENT', pageWidth / 2, 16, { align: 'center' });
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
@@ -356,31 +307,33 @@ export function exportMemberHistoryPDF({ member, year, monthlyEntries, annualSum
   doc.text(`Sl No: ${member.sl_no}`, 14, 30);
   doc.text(`Bial: ${member.bial_name} (${member.bial_code})`, 120, 25);
   doc.text(`Financial Year: ${year}`, 120, 30);
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, 30, { align: 'right' });
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth - 14, 30, { align: 'right' });
 
   doc.setLineWidth(0.5);
   doc.setDrawColor(203, 213, 225);
-  doc.line(14, 33, 196, 33);
+  doc.line(14, 33, pageWidth - 14, 33);
 
   // Table Data
-  const tableHead = [['Month', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Building', 'Total (₹)']];
+  const tableHead = [['Month', ...cols.map(c => c.code), 'Total (₹)']];
   const tableBody = monthlyEntries.map(e => [
     e.month_name,
-    (e.pathian_ram || 0).toLocaleString('en-IN'),
-    (e.ramthar || 0).toLocaleString('en-IN'),
-    (e.tualchhung || 0).toLocaleString('en-IN'),
-    (e.building || 0).toLocaleString('en-IN'),
+    ...cols.map(c => (e[c.field_key] || 0).toLocaleString('en-IN')),
     (e.total || 0).toLocaleString('en-IN')
   ]);
 
   const tableFoot = [[
     'OVERALL TOTAL',
-    (annualSummary.total_pathian_ram || 0).toLocaleString('en-IN'),
-    (annualSummary.total_ramthar || 0).toLocaleString('en-IN'),
-    (annualSummary.total_tualchhung || 0).toLocaleString('en-IN'),
-    (annualSummary.total_building || 0).toLocaleString('en-IN'),
+    ...cols.map(c => ((annualSummary[c.field_key] ?? annualSummary[`total_${c.field_key}`] ?? 0)).toLocaleString('en-IN')),
     (annualSummary.grand_total || 0).toLocaleString('en-IN')
   ]];
+
+  const colStyles = {
+    0: { halign: 'left', fontStyle: 'bold' }
+  };
+  cols.forEach((_, i) => {
+    colStyles[1 + i] = { halign: 'right' };
+  });
+  colStyles[1 + cols.length] = { halign: 'right', fontStyle: 'bold' };
 
   doc.autoTable({
     startY: 37,
@@ -400,14 +353,7 @@ export function exportMemberHistoryPDF({ member, year, monthlyEntries, annualSum
       fontStyle: 'bold',
       halign: 'right'
     },
-    columnStyles: {
-      0: { halign: 'left', fontStyle: 'bold' },
-      1: { halign: 'right' },
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'right' },
-      5: { halign: 'right', fontStyle: 'bold' }
-    },
+    columnStyles: colStyles,
     styles: {
       fontSize: 9,
       cellPadding: 2.5
@@ -421,7 +367,8 @@ export function exportMemberHistoryPDF({ member, year, monthlyEntries, annualSum
 /**
  * Excel Export for Bial Aggregated Collection & Member Totals
  */
-export function exportBialYearlySummaryExcel({ bialName, year, monthlyBreakdown, memberTotals, grandTotals }) {
+export function exportBialYearlySummaryExcel({ bialName, year, monthlyBreakdown, memberTotals, grandTotals, columns }) {
+  const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
   const workbook = XLSX.utils.book_new();
 
   // Sheet 1: Monthly Aggregated Trends
@@ -431,31 +378,25 @@ export function exportBialYearlySummaryExcel({ bialName, year, monthlyBreakdown,
     [`Financial Year: ${year}`],
     ['Generated On: ' + new Date().toLocaleString()],
     [],
-    ['Month', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Building', 'TOTAL']
+    ['Month', ...cols.map(c => `${c.name} (${c.code})`), 'TOTAL']
   ];
 
   monthlyBreakdown.forEach(m => {
     monthlySheetData.push([
       m.month_name,
-      m.pathian_ram || 0,
-      m.ramthar || 0,
-      m.tualchhung || 0,
-      m.building || 0,
+      ...cols.map(c => m[c.field_key] || 0),
       m.total || 0
     ]);
   });
 
   monthlySheetData.push([
     'OVERALL TOTAL',
-    grandTotals.total_pathian_ram || 0,
-    grandTotals.total_ramthar || 0,
-    grandTotals.total_tualchhung || 0,
-    grandTotals.total_building || 0,
+    ...cols.map(c => (grandTotals[c.field_key] ?? grandTotals[`total_${c.field_key}`] ?? 0)),
     grandTotals.grand_total || 0
   ]);
 
   const monthlyWs = XLSX.utils.aoa_to_sheet(monthlySheetData);
-  monthlyWs['!cols'] = [{ wch: 18 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 20 }];
+  monthlyWs['!cols'] = [{ wch: 18 }, ...cols.map(() => ({ wch: 16 })), { wch: 20 }];
   XLSX.utils.book_append_sheet(workbook, monthlyWs, 'Monthly Summary');
 
   // Sheet 2: Member Annual Totals Matrix
@@ -464,17 +405,14 @@ export function exportBialYearlySummaryExcel({ bialName, year, monthlyBreakdown,
     [`Bial Name: ${bialName}`],
     [`Financial Year: ${year}`],
     [],
-    ['Sl No', 'Member Name', 'Total Pathian Ram', 'Total Ramthar', 'Total Tualchhung', 'Total Building', 'GRAND TOTAL']
+    ['Sl No', 'Member Name', ...cols.map(c => `Total ${c.name}`), 'GRAND TOTAL']
   ];
 
   memberTotals.forEach(m => {
     memberSheetData.push([
       m.sl_no,
       m.name,
-      m.total_pathian_ram || 0,
-      m.total_ramthar || 0,
-      m.total_tualchhung || 0,
-      m.total_building || 0,
+      ...cols.map(c => (m[c.field_key] ?? m[`total_${c.field_key}`] ?? 0)),
       m.grand_total || 0
     ]);
   });
@@ -482,15 +420,12 @@ export function exportBialYearlySummaryExcel({ bialName, year, monthlyBreakdown,
   memberSheetData.push([
     'TOTAL',
     `Total Members: ${memberTotals.length}`,
-    grandTotals.total_pathian_ram || 0,
-    grandTotals.total_ramthar || 0,
-    grandTotals.total_tualchhung || 0,
-    grandTotals.total_building || 0,
+    ...cols.map(c => (grandTotals[c.field_key] ?? grandTotals[`total_${c.field_key}`] ?? 0)),
     grandTotals.grand_total || 0
   ]);
 
   const memberWs = XLSX.utils.aoa_to_sheet(memberSheetData);
-  memberWs['!cols'] = [{ wch: 8 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 20 }];
+  memberWs['!cols'] = [{ wch: 8 }, { wch: 28 }, ...cols.map(() => ({ wch: 18 })), { wch: 20 }];
   XLSX.utils.book_append_sheet(workbook, memberWs, 'Member Annual Totals');
 
   const cleanBialName = bialName.replace(/[^a-zA-Z0-9]/g, '_');
@@ -500,46 +435,46 @@ export function exportBialYearlySummaryExcel({ bialName, year, monthlyBreakdown,
 /**
  * PDF Export for Bial Aggregated Collection Summary
  */
-export function exportBialYearlySummaryPDF({ bialName, year, monthlyBreakdown, memberTotals, grandTotals }) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+export function exportBialYearlySummaryPDF({ bialName, year, monthlyBreakdown, memberTotals, grandTotals, columns }) {
+  const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
+  const doc = new jsPDF({ orientation: cols.length > 4 ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
   doc.setTextColor(30, 41, 59);
-  doc.text('PATHIAN RAM AGGREGATED COLLECTION REPORT', 105, 16, { align: 'center' });
+  doc.text('PATHIAN RAM AGGREGATED COLLECTION REPORT', pageWidth / 2, 16, { align: 'center' });
 
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
   doc.text(`Bial: ${bialName}`, 14, 25);
   doc.text(`Financial Year: ${year}`, 14, 30);
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, 30, { align: 'right' });
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth - 14, 30, { align: 'right' });
 
   doc.setLineWidth(0.5);
-  doc.line(14, 33, 196, 33);
+  doc.line(14, 33, pageWidth - 14, 33);
 
   // Section 1: Monthly Breakdown Table
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.text('1. Monthly Collection Breakdown (April - March)', 14, 40);
 
-  const monthHead = [['Month', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Building', 'Total (₹)']];
+  const monthHead = [['Month', ...cols.map(c => c.code), 'Total (₹)']];
   const monthBody = monthlyBreakdown.map(m => [
     m.month_name,
-    (m.pathian_ram || 0).toLocaleString('en-IN'),
-    (m.ramthar || 0).toLocaleString('en-IN'),
-    (m.tualchhung || 0).toLocaleString('en-IN'),
-    (m.building || 0).toLocaleString('en-IN'),
+    ...cols.map(c => (m[c.field_key] || 0).toLocaleString('en-IN')),
     (m.total || 0).toLocaleString('en-IN')
   ]);
 
   const monthFoot = [[
     'OVERALL TOTAL',
-    (grandTotals.total_pathian_ram || 0).toLocaleString('en-IN'),
-    (grandTotals.total_ramthar || 0).toLocaleString('en-IN'),
-    (grandTotals.total_tualchhung || 0).toLocaleString('en-IN'),
-    (grandTotals.total_building || 0).toLocaleString('en-IN'),
+    ...cols.map(c => ((grandTotals[c.field_key] ?? grandTotals[`total_${c.field_key}`] ?? 0)).toLocaleString('en-IN')),
     (grandTotals.grand_total || 0).toLocaleString('en-IN')
   ]];
+
+  const monthColStyles = { 0: { halign: 'left', fontStyle: 'bold' } };
+  cols.forEach((_, i) => { monthColStyles[1 + i] = { halign: 'right' }; });
+  monthColStyles[1 + cols.length] = { halign: 'right', fontStyle: 'bold' };
 
   doc.autoTable({
     startY: 44,
@@ -549,14 +484,7 @@ export function exportBialYearlySummaryPDF({ bialName, year, monthlyBreakdown, m
     theme: 'grid',
     headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
     footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
-    columnStyles: {
-      0: { halign: 'left', fontStyle: 'bold' },
-      1: { halign: 'right' },
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'right' },
-      5: { halign: 'right', fontStyle: 'bold' }
-    },
+    columnStyles: monthColStyles,
     styles: { fontSize: 8.5, cellPadding: 2 }
   });
 
@@ -566,26 +494,24 @@ export function exportBialYearlySummaryPDF({ bialName, year, monthlyBreakdown, m
   doc.setFontSize(11);
   doc.text('2. Member Annual Overall Payments', 14, nextY);
 
-  const memHead = [['Sl', 'Name', 'Pathian Ram', 'Ramthar', 'Tualchhung', 'Building', 'Total (₹)']];
+  const memHead = [['Sl', 'Name', ...cols.map(c => c.code), 'Total (₹)']];
   const memBody = memberTotals.map(m => [
     m.sl_no,
     m.name,
-    (m.total_pathian_ram || 0).toLocaleString('en-IN'),
-    (m.total_ramthar || 0).toLocaleString('en-IN'),
-    (m.total_tualchhung || 0).toLocaleString('en-IN'),
-    (m.total_building || 0).toLocaleString('en-IN'),
+    ...cols.map(c => ((m[c.field_key] ?? m[`total_${c.field_key}`] ?? 0)).toLocaleString('en-IN')),
     (m.grand_total || 0).toLocaleString('en-IN')
   ]);
 
   const memFoot = [[
     'TOT',
     `Members: ${memberTotals.length}`,
-    (grandTotals.total_pathian_ram || 0).toLocaleString('en-IN'),
-    (grandTotals.total_ramthar || 0).toLocaleString('en-IN'),
-    (grandTotals.total_tualchhung || 0).toLocaleString('en-IN'),
-    (grandTotals.total_building || 0).toLocaleString('en-IN'),
+    ...cols.map(c => ((grandTotals[c.field_key] ?? grandTotals[`total_${c.field_key}`] ?? 0)).toLocaleString('en-IN')),
     (grandTotals.grand_total || 0).toLocaleString('en-IN')
   ]];
+
+  const memColStyles = { 0: { halign: 'center', cellWidth: 10 }, 1: { halign: 'left' } };
+  cols.forEach((_, i) => { memColStyles[2 + i] = { halign: 'right' }; });
+  memColStyles[2 + cols.length] = { halign: 'right', fontStyle: 'bold' };
 
   doc.autoTable({
     startY: nextY + 4,
@@ -595,15 +521,7 @@ export function exportBialYearlySummaryPDF({ bialName, year, monthlyBreakdown, m
     theme: 'grid',
     headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
     footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold' },
-    columnStyles: {
-      0: { halign: 'center', cellWidth: 10 },
-      1: { halign: 'left' },
-      2: { halign: 'right' },
-      3: { halign: 'right' },
-      4: { halign: 'right' },
-      5: { halign: 'right' },
-      6: { halign: 'right', fontStyle: 'bold' }
-    },
+    columnStyles: memColStyles,
     styles: { fontSize: 8.5, cellPadding: 2 }
   });
 
@@ -615,13 +533,14 @@ export function exportBialYearlySummaryPDF({ bialName, year, monthlyBreakdown, m
  * Overall Annual Member-Level Contributions Export (Excel)
  * Groups members by Bial (Bial 1, Bial 2...) with 12-month summed totals for each member
  */
-export function exportOverallMemberExcel({ year, bialsData, churchGrandTotal }) {
+export function exportOverallMemberExcel({ year, bialsData, churchGrandTotal, columns }) {
+  const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
   const sheetData = [
     ['BETHLEHEM KOHHRAN - PATHIAN RAM'],
     [`OVERALL ANNUAL MEMBER TITHE CONTRIBUTIONS (FY ${year} - ${year + 1})`],
     ['Generated On: ' + new Date().toLocaleString()],
     [],
-    ['Sl No', 'Bial', 'Hming (Member Name)', 'Pathian Ram (PTR)', 'Ramthar (RT)', 'Tualchhung (Tch)', 'Building (Bldg)', 'Total (₹)']
+    ['Sl No', 'Bial', 'Hming (Member Name)', ...cols.map(c => `${c.name} (${c.code})`), 'Total (₹)']
   ];
 
   (bialsData || []).forEach((b) => {
@@ -630,10 +549,7 @@ export function exportOverallMemberExcel({ year, bialsData, churchGrandTotal }) 
         m.sl_no,
         b.bial_name,
         m.member_name,
-        m.total_pathian_ram || 0,
-        m.total_ramthar || 0,
-        m.total_tualchhung || 0,
-        m.total_building || 0,
+        ...cols.map(c => (m[c.field_key] ?? m[`total_${c.field_key}`] ?? 0)),
         m.grand_total || 0
       ]);
     });
@@ -643,10 +559,7 @@ export function exportOverallMemberExcel({ year, bialsData, churchGrandTotal }) 
       '',
       `${b.bial_name} Subtotal`,
       `(${b.members?.length || 0} Members)`,
-      b.subtotal?.total_pathian_ram || 0,
-      b.subtotal?.total_ramthar || 0,
-      b.subtotal?.total_tualchhung || 0,
-      b.subtotal?.total_building || 0,
+      ...cols.map(c => (b.subtotal?.[c.field_key] ?? b.subtotal?.[`total_${c.field_key}`] ?? 0)),
       b.subtotal?.grand_total || 0
     ]);
     sheetData.push([]); // blank row between bials
@@ -657,10 +570,7 @@ export function exportOverallMemberExcel({ year, bialsData, churchGrandTotal }) 
     'TOTAL',
     'CHURCH OVERALL GRAND TOTAL',
     'All Bials Combined',
-    churchGrandTotal?.total_pathian_ram || 0,
-    churchGrandTotal?.total_ramthar || 0,
-    churchGrandTotal?.total_tualchhung || 0,
-    churchGrandTotal?.total_building || 0,
+    ...cols.map(c => (churchGrandTotal?.[c.field_key] ?? churchGrandTotal?.[`total_${c.field_key}`] ?? 0)),
     churchGrandTotal?.grand_total || 0
   ]);
 
@@ -670,10 +580,7 @@ export function exportOverallMemberExcel({ year, bialsData, churchGrandTotal }) 
     { wch: 8 },  // Sl No
     { wch: 20 }, // Bial
     { wch: 26 }, // Name
-    { wch: 18 }, // PTR
-    { wch: 18 }, // RT
-    { wch: 18 }, // Tch
-    { wch: 18 }, // Bldg
+    ...cols.map(() => ({ wch: 18 })),
     { wch: 20 }  // Total
   ];
 
@@ -686,28 +593,30 @@ export function exportOverallMemberExcel({ year, bialsData, churchGrandTotal }) 
  * Overall Annual Member-Level Contributions Export (PDF)
  * Formatted multi-page PDF with all bials and member annual totals
  */
-export function exportOverallMemberPDF({ year, bialsData, churchGrandTotal }) {
-  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+export function exportOverallMemberPDF({ year, bialsData, churchGrandTotal, columns }) {
+  const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
+  const doc = new jsPDF({ orientation: cols.length > 4 ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+  const pageWidth = doc.internal.pageSize.getWidth();
 
   // Header Title
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(13);
   doc.setTextColor(30, 41, 59);
-  doc.text('BETHLEHEM KOHHRAN', 105, 14, { align: 'center' });
+  doc.text('BETHLEHEM KOHHRAN', pageWidth / 2, 14, { align: 'center' });
 
   doc.setFontSize(10.5);
   doc.setTextColor(67, 56, 202);
-  doc.text(`PATHIAN RAM - OVERALL ANNUAL MEMBER CONTRIBUTIONS`, 105, 19.5, { align: 'center' });
+  doc.text(`PATHIAN RAM - OVERALL ANNUAL MEMBER CONTRIBUTIONS`, pageWidth / 2, 19.5, { align: 'center' });
 
   doc.setFontSize(8.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(100, 116, 139);
   doc.text(`Financial Year: FY ${year} - ${year + 1}`, 14, 26);
-  doc.text(`Date of Issue: ${new Date().toLocaleDateString()}`, 196, 26, { align: 'right' });
+  doc.text(`Date of Issue: ${new Date().toLocaleDateString()}`, pageWidth - 14, 26, { align: 'right' });
 
   doc.setLineWidth(0.4);
   doc.setDrawColor(203, 213, 225);
-  doc.line(14, 28.5, 196, 28.5);
+  doc.line(14, 28.5, pageWidth - 14, 28.5);
 
   let currentY = 32;
 
@@ -724,26 +633,29 @@ export function exportOverallMemberPDF({ year, bialsData, churchGrandTotal }) {
     doc.text(`${b.bial_name} (${b.bial_code}) - ${b.members?.length || 0} Members`, 14, currentY);
     currentY += 2.5;
 
-    const head = [['Sl', 'Hming (Member Name)', 'PTR (₹)', 'RT (₹)', 'Tch (₹)', 'Bldg (₹)', 'Total (₹)']];
+    const head = [['Sl', 'Hming (Member Name)', ...cols.map(c => `${c.code} (₹)`), 'Total (₹)']];
     const body = (b.members || []).map((m) => [
       m.sl_no,
       m.member_name,
-      (m.total_pathian_ram || 0).toLocaleString('en-IN'),
-      (m.total_ramthar || 0).toLocaleString('en-IN'),
-      (m.total_tualchhung || 0).toLocaleString('en-IN'),
-      (m.total_building || 0).toLocaleString('en-IN'),
+      ...cols.map(c => ((m[c.field_key] ?? m[`total_${c.field_key}`] ?? 0)).toLocaleString('en-IN')),
       (m.grand_total || 0).toLocaleString('en-IN')
     ]);
 
     const foot = [[
       'TOT',
       `${b.bial_name} Subtotal`,
-      (b.subtotal?.total_pathian_ram || 0).toLocaleString('en-IN'),
-      (b.subtotal?.total_ramthar || 0).toLocaleString('en-IN'),
-      (b.subtotal?.total_tualchhung || 0).toLocaleString('en-IN'),
-      (b.subtotal?.total_building || 0).toLocaleString('en-IN'),
+      ...cols.map(c => ((b.subtotal?.[c.field_key] ?? b.subtotal?.[`total_${c.field_key}`] ?? 0)).toLocaleString('en-IN')),
       (b.subtotal?.grand_total || 0).toLocaleString('en-IN')
     ]];
+
+    const colStyles = {
+      0: { halign: 'center', cellWidth: 8 },
+      1: { halign: 'left' }
+    };
+    cols.forEach((_, i) => {
+      colStyles[2 + i] = { halign: 'right' };
+    });
+    colStyles[2 + cols.length] = { halign: 'right', fontStyle: 'bold' };
 
     doc.autoTable({
       startY: currentY,
@@ -754,19 +666,10 @@ export function exportOverallMemberPDF({ year, bialsData, churchGrandTotal }) {
       headStyles: { fillColor: [67, 56, 202], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 7.5 },
       footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 7.5 },
       bodyStyles: { fontSize: 7, cellPadding: 1.2 },
-      columnStyles: {
-        0: { halign: 'center', cellWidth: 8 },
-        1: { halign: 'left' },
-        2: { halign: 'right', cellWidth: 22 },
-        3: { halign: 'right', cellWidth: 22 },
-        4: { halign: 'right', cellWidth: 22 },
-        5: { halign: 'right', cellWidth: 22 },
-        6: { halign: 'right', cellWidth: 26, fontStyle: 'bold' }
-      },
-      margin: { left: 14, right: 14 }
+      columnStyles: colStyles
     });
 
-    currentY = doc.lastAutoTable.finalY + 6;
+    currentY = doc.lastAutoTable.finalY + 8;
   });
 
   // Final Overall Church Grand Total Box
@@ -783,10 +686,10 @@ export function exportOverallMemberPDF({ year, bialsData, churchGrandTotal }) {
 
   const summaryHead = [['Category', 'Amount (₹)']];
   const summaryBody = [
-    ['Pathian Ram (PTR)', `Rs. ${(churchGrandTotal?.total_pathian_ram || 0).toLocaleString('en-IN')}`],
-    ['Ramthar (RT)', `Rs. ${(churchGrandTotal?.total_ramthar || 0).toLocaleString('en-IN')}`],
-    ['Tualchhung (Tch)', `Rs. ${(churchGrandTotal?.total_tualchhung || 0).toLocaleString('en-IN')}`],
-    ['Building (Bldg)', `Rs. ${(churchGrandTotal?.total_building || 0).toLocaleString('en-IN')}`],
+    ...cols.map(c => [
+      `${c.name} (${c.code})`,
+      `Rs. ${(churchGrandTotal?.[c.field_key] ?? churchGrandTotal?.[`total_${c.field_key}`] ?? 0).toLocaleString('en-IN')}`
+    ]),
     ['OVERALL GRAND TOTAL', `Rs. ${(churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}`]
   ];
 

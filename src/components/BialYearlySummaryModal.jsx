@@ -3,6 +3,7 @@ import { Calendar, Layers, Users, FileText, Search, ArrowUp, ArrowDown, ArrowUpD
 import Modal from './common/Modal';
 import { api } from '../utils/api';
 import { exportBialYearlySummaryPDF } from '../utils/exportEngine';
+import { DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 
 export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initialYear, showToast, onSelectMember }) {
   const [year, setYear] = useState(initialYear || new Date().getFullYear());
@@ -47,6 +48,7 @@ export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initia
   const monthly = data?.monthlyBreakdown || [];
   const members = data?.memberTotals || [];
   const grand = data?.grandTotals || {};
+  const activeCols = (data?.columns && data.columns.length > 0) ? data.columns : DEFAULT_TITHE_COLUMNS;
 
   // Sort Members
   const handleSort = (field) => {
@@ -93,36 +95,26 @@ export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initia
 
       <Modal.Body className="space-y-4">
         {data && (
-          <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
-            <div className="col-span-1 bg-blue-50/80 p-2 sm:p-2.5 rounded-xl border border-blue-200 flex flex-col justify-between">
-              <span className="text-[9px] sm:text-[10px] font-extrabold text-blue-800 uppercase tracking-wider">PTR</span>
-              <div className="font-mono text-xs sm:text-sm font-extrabold text-blue-900 truncate">
-                ₹{(grand.total_pathian_ram || 0).toLocaleString('en-IN')}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2">
+            {activeCols.map(col => (
+              <div 
+                key={col.id} 
+                className="col-span-1 p-2 sm:p-2.5 rounded-xl border flex flex-col justify-between"
+                style={{
+                  backgroundColor: `${col.color || '#6366f1'}12`,
+                  borderColor: `${col.color || '#6366f1'}35`
+                }}
+              >
+                <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider truncate" style={{ color: col.color || '#1e293b' }}>
+                  {col.code}
+                </span>
+                <div className="font-mono text-xs sm:text-sm font-extrabold text-slate-900 truncate">
+                  ₹{(grand[col.field_key] || grand[`total_${col.field_key}`] || 0).toLocaleString('en-IN')}
+                </div>
               </div>
-            </div>
+            ))}
 
-            <div className="col-span-1 bg-emerald-50/80 p-2 sm:p-2.5 rounded-xl border border-emerald-200 flex flex-col justify-between">
-              <span className="text-[9px] sm:text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">Ramthar</span>
-              <div className="font-mono text-xs sm:text-sm font-extrabold text-emerald-900 truncate">
-                ₹{(grand.total_ramthar || 0).toLocaleString('en-IN')}
-              </div>
-            </div>
-
-            <div className="col-span-1 bg-amber-50/80 p-2 sm:p-2.5 rounded-xl border border-amber-200 flex flex-col justify-between">
-              <span className="text-[9px] sm:text-[10px] font-extrabold text-amber-800 uppercase tracking-wider">Tualchhung</span>
-              <div className="font-mono text-xs sm:text-sm font-extrabold text-amber-900 truncate">
-                ₹{(grand.total_tualchhung || 0).toLocaleString('en-IN')}
-              </div>
-            </div>
-
-            <div className="col-span-1 bg-purple-50/80 p-2 sm:p-2.5 rounded-xl border border-purple-200 flex flex-col justify-between">
-              <span className="text-[9px] sm:text-[10px] font-extrabold text-purple-800 uppercase tracking-wider">Building</span>
-              <div className="font-mono text-xs sm:text-sm font-extrabold text-purple-900 truncate">
-                ₹{(grand.total_building || 0).toLocaleString('en-IN')}
-              </div>
-            </div>
-
-            <div className="col-span-2 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2 sm:p-2.5 rounded-xl border border-indigo-700 text-white shadow-xs flex flex-col justify-between">
+            <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2 sm:p-2.5 rounded-xl border border-indigo-700 text-white shadow-xs flex flex-col justify-between">
               <span className="text-[9px] sm:text-[10px] font-extrabold text-indigo-200 uppercase tracking-wider block">TOTAL</span>
               <div className="font-mono text-xs sm:text-sm font-black text-emerald-300 truncate">
                 ₹{(grand.grand_total || 0).toLocaleString('en-IN')}
@@ -182,6 +174,7 @@ export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initia
                 onClick={() => exportBialYearlySummaryPDF({
                   bialName: bial?.name || 'Bial',
                   year,
+                  columns: activeCols,
                   monthlyBreakdown: monthly,
                   memberTotals: members,
                   grandTotals: grand
@@ -210,10 +203,11 @@ export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initia
                   <thead className="sticky top-0 bg-slate-100 border-b border-slate-200 text-slate-700 uppercase tracking-wider text-[11px] font-bold">
                     <tr>
                       <th className="py-3 px-4">Month</th>
-                      <th className="py-3 px-4 text-right">PTR</th>
-                      <th className="py-3 px-4 text-right">Ramthar</th>
-                      <th className="py-3 px-4 text-right">Tualchhung</th>
-                      <th className="py-3 px-4 text-right">Building</th>
+                      {activeCols.map(col => (
+                        <th key={col.id} className="py-3 px-4 text-right" style={{ color: col.color || undefined }}>
+                          {col.code}
+                        </th>
+                      ))}
                       <th className="py-3 px-4 text-right text-emerald-700 font-extrabold">Total</th>
                     </tr>
                   </thead>
@@ -221,10 +215,11 @@ export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initia
                     {monthly.map((m) => (
                       <tr key={m.month} className="hover:bg-slate-50 transition-colors">
                         <td className="py-2.5 px-4 font-sans font-bold text-slate-900">{m.month_name}</td>
-                        <td className="py-2.5 px-4 text-right text-blue-700">₹{(m.pathian_ram || 0).toLocaleString('en-IN')}</td>
-                        <td className="py-2.5 px-4 text-right text-emerald-700">₹{(m.ramthar || 0).toLocaleString('en-IN')}</td>
-                        <td className="py-2.5 px-4 text-right text-amber-700">₹{(m.tualchhung || 0).toLocaleString('en-IN')}</td>
-                        <td className="py-2.5 px-4 text-right text-purple-700">₹{(m.building || 0).toLocaleString('en-IN')}</td>
+                        {activeCols.map(col => (
+                          <td key={col.id} className="py-2.5 px-4 text-right" style={{ color: col.color || '#334155' }}>
+                            ₹{(m[col.field_key] || 0).toLocaleString('en-IN')}
+                          </td>
+                        ))}
                         <td className="py-2.5 px-4 text-right font-extrabold text-emerald-800 bg-emerald-50">₹{(m.total || 0).toLocaleString('en-IN')}</td>
                       </tr>
                     ))}
@@ -244,22 +239,21 @@ export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initia
                   </div>
 
                   <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
-                    <div className="bg-blue-50/70 p-1.5 rounded-xl border border-blue-100 flex items-center justify-between">
-                      <span className="text-[9.5px] font-extrabold text-blue-800 uppercase">PTR</span>
-                      <span className="font-bold text-blue-900">₹{(m.pathian_ram || 0).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="bg-emerald-50/70 p-1.5 rounded-xl border border-emerald-100 flex items-center justify-between">
-                      <span className="text-[9.5px] font-extrabold text-emerald-800 uppercase">RT</span>
-                      <span className="font-bold text-emerald-900">₹{(m.ramthar || 0).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="bg-amber-50/70 p-1.5 rounded-xl border border-amber-100 flex items-center justify-between">
-                      <span className="text-[9.5px] font-extrabold text-amber-800 uppercase">Tch</span>
-                      <span className="font-bold text-amber-900">₹{(m.tualchhung || 0).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="bg-purple-50/70 p-1.5 rounded-xl border border-purple-100 flex items-center justify-between">
-                      <span className="text-[9.5px] font-extrabold text-purple-800 uppercase">Bldg</span>
-                      <span className="font-bold text-purple-900">₹{(m.building || 0).toLocaleString('en-IN')}</span>
-                    </div>
+                    {activeCols.map(col => (
+                      <div 
+                        key={col.id} 
+                        className="p-1.5 rounded-xl border flex items-center justify-between"
+                        style={{
+                          backgroundColor: `${col.color || '#6366f1'}10`,
+                          borderColor: `${col.color || '#6366f1'}25`
+                        }}
+                      >
+                        <span className="text-[9.5px] font-extrabold uppercase truncate" style={{ color: col.color || '#1e293b' }}>
+                          {col.code}
+                        </span>
+                        <span className="font-bold text-slate-900">₹{(m[col.field_key] || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -278,18 +272,16 @@ export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initia
                       <th onClick={() => handleSort('name')} className="py-3 px-4 cursor-pointer hover:text-indigo-600">
                         Member Name {getSortIcon('name')}
                       </th>
-                      <th onClick={() => handleSort('total_pathian_ram')} className="py-3 px-4 text-right cursor-pointer hover:text-indigo-600">
-                        PTR {getSortIcon('total_pathian_ram')}
-                      </th>
-                      <th onClick={() => handleSort('total_ramthar')} className="py-3 px-4 text-right cursor-pointer hover:text-indigo-600">
-                        RT {getSortIcon('total_ramthar')}
-                      </th>
-                      <th onClick={() => handleSort('total_tualchhung')} className="py-3 px-4 text-right cursor-pointer hover:text-indigo-600">
-                        Tch {getSortIcon('total_tualchhung')}
-                      </th>
-                      <th onClick={() => handleSort('total_building')} className="py-3 px-4 text-right cursor-pointer hover:text-indigo-600">
-                        Bldg {getSortIcon('total_building')}
-                      </th>
+                      {activeCols.map(col => (
+                        <th 
+                          key={col.id} 
+                          onClick={() => handleSort(col.field_key)} 
+                          className="py-3 px-4 text-right cursor-pointer hover:text-indigo-600"
+                          style={{ color: col.color || undefined }}
+                        >
+                          {col.code} {getSortIcon(col.field_key)}
+                        </th>
+                      ))}
                       <th onClick={() => handleSort('grand_total')} className="py-3 px-4 text-right text-emerald-700 font-extrabold cursor-pointer hover:text-indigo-600">
                         TOTAL {getSortIcon('grand_total')}
                       </th>
@@ -301,10 +293,14 @@ export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initia
                       <tr key={m.member_id} className="hover:bg-slate-50 transition-colors">
                         <td className="py-2.5 px-3 text-center text-slate-500 font-bold">{m.sl_no}</td>
                         <td className="py-2.5 px-4 font-sans font-bold text-slate-900">{m.name}</td>
-                        <td className="py-2.5 px-4 text-right text-blue-700">₹{(m.total_pathian_ram || 0).toLocaleString('en-IN')}</td>
-                        <td className="py-2.5 px-4 text-right text-emerald-700">₹{(m.total_ramthar || 0).toLocaleString('en-IN')}</td>
-                        <td className="py-2.5 px-4 text-right text-amber-700">₹{(m.total_tualchhung || 0).toLocaleString('en-IN')}</td>
-                        <td className="py-2.5 px-4 text-right text-purple-700">₹{(m.total_building || 0).toLocaleString('en-IN')}</td>
+                        {activeCols.map(col => {
+                          const val = m[col.field_key] || m[`total_${col.field_key}`] || 0;
+                          return (
+                            <td key={col.id} className="py-2.5 px-4 text-right" style={{ color: col.color || '#334155' }}>
+                              ₹{val.toLocaleString('en-IN')}
+                            </td>
+                          );
+                        })}
                         <td className="py-2.5 px-4 text-right font-extrabold text-emerald-800 bg-emerald-50">₹{(m.grand_total || 0).toLocaleString('en-IN')}</td>
                         <td className="py-2.5 px-3 text-center">
                           <button
@@ -341,22 +337,24 @@ export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initia
                   </div>
 
                   <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
-                    <div className="bg-blue-50/70 p-1.5 rounded-xl border border-blue-100 flex items-center justify-between">
-                      <span className="text-[9.5px] font-extrabold text-blue-800 uppercase">PTR</span>
-                      <span className="font-bold text-blue-900">₹{(m.total_pathian_ram || 0).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="bg-emerald-50/70 p-1.5 rounded-xl border border-emerald-100 flex items-center justify-between">
-                      <span className="text-[9.5px] font-extrabold text-emerald-800 uppercase">RT</span>
-                      <span className="font-bold text-emerald-900">₹{(m.total_ramthar || 0).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="bg-amber-50/70 p-1.5 rounded-xl border border-amber-100 flex items-center justify-between">
-                      <span className="text-[9.5px] font-extrabold text-amber-800 uppercase">Tch</span>
-                      <span className="font-bold text-amber-900">₹{(m.total_tualchhung || 0).toLocaleString('en-IN')}</span>
-                    </div>
-                    <div className="bg-purple-50/70 p-1.5 rounded-xl border border-purple-100 flex items-center justify-between">
-                      <span className="text-[9.5px] font-extrabold text-purple-800 uppercase">Bldg</span>
-                      <span className="font-bold text-purple-900">₹{(m.total_building || 0).toLocaleString('en-IN')}</span>
-                    </div>
+                    {activeCols.map(col => {
+                      const val = m[col.field_key] || m[`total_${col.field_key}`] || 0;
+                      return (
+                        <div 
+                          key={col.id} 
+                          className="p-1.5 rounded-xl border flex items-center justify-between"
+                          style={{
+                            backgroundColor: `${col.color || '#6366f1'}10`,
+                            borderColor: `${col.color || '#6366f1'}25`
+                          }}
+                        >
+                          <span className="text-[9.5px] font-extrabold uppercase truncate" style={{ color: col.color || '#1e293b' }}>
+                            {col.code}
+                          </span>
+                          <span className="font-bold text-slate-900">₹{val.toLocaleString('en-IN')}</span>
+                        </div>
+                      );
+                    })}
                   </div>
 
                   <div className="flex justify-between items-center pt-1 border-t border-slate-100 text-xs">

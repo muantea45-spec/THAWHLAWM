@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserCheck, Trash2, Save, Lock, Edit3 } from 'lucide-react';
 import { api } from '../utils/api';
-import { FINANCIAL_MONTHS } from '../utils/constants';
+import { FINANCIAL_MONTHS, DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 import Modal from './common/Modal';
 
 export default function BialMemberEditModal({
@@ -12,35 +12,39 @@ export default function BialMemberEditModal({
   bialId,
   year,
   month,
+  columns = DEFAULT_TITHE_COLUMNS,
   isLocked = false,
   onSaved = () => {},
   showToast = () => {}
 }) {
   const [name, setName] = useState('');
   const [slNo, setSlNo] = useState('');
-  const [pathianRam, setPathianRam] = useState('');
-  const [ramthar, setRamthar] = useState('');
-  const [tualchhung, setTualchhung] = useState('');
-  const [building, setBuilding] = useState('');
+  const [amounts, setAmounts] = useState({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const activeCols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
 
   useEffect(() => {
     if (member) {
       setName(member.name || '');
       setSlNo(member.sl_no || '');
-      setPathianRam(member.pathian_ram !== undefined && member.pathian_ram !== null ? String(member.pathian_ram) : '');
-      setRamthar(member.ramthar !== undefined && member.ramthar !== null ? String(member.ramthar) : '');
-      setTualchhung(member.tualchhung !== undefined && member.tualchhung !== null ? String(member.tualchhung) : '');
-      setBuilding(member.building !== undefined && member.building !== null ? String(member.building) : '');
+      const initAmounts = {};
+      activeCols.forEach(col => {
+        const v = member[col.field_key];
+        initAmounts[col.field_key] = (v !== undefined && v !== null && v !== '') ? String(v) : '';
+      });
+      setAmounts(initAmounts);
     }
   }, [member, isOpen]);
 
-  const numPR = parseFloat(pathianRam) || 0;
-  const numRT = parseFloat(ramthar) || 0;
-  const numTch = parseFloat(tualchhung) || 0;
-  const numBldg = parseFloat(building) || 0;
-  const calculatedTotal = numPR + numRT + numTch + numBldg;
+  const handleAmountChange = (fieldKey, val) => {
+    setAmounts(prev => ({ ...prev, [fieldKey]: val }));
+  };
+
+  const calculatedTotal = activeCols.reduce((sum, col) => {
+    return sum + (parseFloat(amounts[col.field_key]) || 0);
+  }, 0);
 
   const monthName = FINANCIAL_MONTHS.find(m => m.id === month)?.name || `Month ${month}`;
 
@@ -68,16 +72,21 @@ export default function BialMemberEditModal({
 
       // 2. Save Tithes for selected Month
       if (bialId) {
-        await api.saveTithe({
+        const tithePayload = {
           bial_id: bialId,
           member_id: memberId,
           year,
           month,
-          pathian_ram: numPR,
-          ramthar: numRT,
-          tualchhung: numTch,
-          building: numBldg
+          pathian_ram: parseFloat(amounts.pathian_ram) || 0,
+          ramthar: parseFloat(amounts.ramthar) || 0,
+          tualchhung: parseFloat(amounts.tualchhung) || 0,
+          building: parseFloat(amounts.building) || 0
+        };
+        activeCols.forEach(col => {
+          tithePayload[col.field_key] = parseFloat(amounts[col.field_key]) || 0;
         });
+
+        await api.saveTithe(tithePayload);
       }
 
       showToast(`Updated tithes & info for ${name.trim()}!`, 'success');
@@ -109,27 +118,27 @@ export default function BialMemberEditModal({
     }
   };
 
-  if (!isOpen || !member) return null;
+  if (!member) return null;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-md">
       <Modal.Header
-        title="Edit Member & Tithe Figures"
+        title="Edit Member & Tithes"
         subtitle={`${bialName || 'Bial'} • ${monthName} FY ${year}`}
         icon={Edit3}
         onClose={onClose}
       />
       <form onSubmit={handleSave} className="space-y-4">
         <Modal.Body className="space-y-3.5">
-          {/* Locked Notice if applicable */}
+          {/* Lock Notice if Month is locked */}
           {isLocked && (
-            <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-center gap-2">
-              <Lock className="w-4 h-4 text-rose-600 shrink-0" />
-              <span>This month is locked by Admin. Figures are in read-only mode.</span>
+            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center gap-2">
+              <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>Month is locked by Admin. Records are view-only.</span>
             </div>
           )}
 
-          {/* Section 1: Member Identity */}
+          {/* Section 1: Member Info */}
           <div className="space-y-2">
             <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
               1. Member Identity
@@ -179,85 +188,36 @@ export default function BialMemberEditModal({
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 font-mono">
-              {/* Pathian Ram */}
-              <div className="bg-blue-50/70 p-2.5 rounded-xl border border-blue-200">
-                <label className="block text-[10.5px] font-extrabold text-blue-900 mb-1 uppercase tracking-tight">
-                  Pathian Ram (PTR)
-                </label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-2 text-xs font-bold text-blue-400">₹</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    disabled={isLocked}
-                    value={pathianRam}
-                    onChange={(e) => setPathianRam(e.target.value)}
-                    placeholder="0"
-                    className="w-full pl-6 pr-2.5 py-1.5 rounded-lg bg-white border border-blue-200 text-blue-950 font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 text-xs shadow-2xs disabled:bg-slate-50"
-                  />
+              {activeCols.map(col => (
+                <div 
+                  key={col.id} 
+                  className="p-2.5 rounded-xl border transition-all"
+                  style={{ 
+                    backgroundColor: `${col.color || '#6366f1'}10`, 
+                    borderColor: `${col.color || '#6366f1'}35` 
+                  }}
+                >
+                  <label 
+                    className="block text-[10.5px] font-extrabold mb-1 uppercase tracking-tight truncate"
+                    style={{ color: col.color || '#1e293b' }}
+                  >
+                    {col.name} ({col.code})
+                  </label>
+                  <div className="relative flex items-center">
+                    <span className="absolute left-2 text-xs font-bold text-slate-400 pointer-events-none">₹</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      disabled={isLocked}
+                      value={amounts[col.field_key] || ''}
+                      onChange={(e) => handleAmountChange(col.field_key, e.target.value)}
+                      placeholder="0"
+                      className="w-full pl-6 pr-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs shadow-2xs disabled:bg-slate-50"
+                    />
+                  </div>
                 </div>
-              </div>
-
-              {/* Ramthar */}
-              <div className="bg-emerald-50/70 p-2.5 rounded-xl border border-emerald-200">
-                <label className="block text-[10.5px] font-extrabold text-emerald-900 mb-1 uppercase tracking-tight">
-                  Ramthar (RT)
-                </label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-2 text-xs font-bold text-emerald-400">₹</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    disabled={isLocked}
-                    value={ramthar}
-                    onChange={(e) => setRamthar(e.target.value)}
-                    placeholder="0"
-                    className="w-full pl-6 pr-2.5 py-1.5 rounded-lg bg-white border border-emerald-200 text-emerald-950 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs shadow-2xs disabled:bg-slate-50"
-                  />
-                </div>
-              </div>
-
-              {/* Tualchhung */}
-              <div className="bg-amber-50/70 p-2.5 rounded-xl border border-amber-200">
-                <label className="block text-[10.5px] font-extrabold text-amber-900 mb-1 uppercase tracking-tight">
-                  Tualchhung (Tch)
-                </label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-2 text-xs font-bold text-amber-400">₹</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    disabled={isLocked}
-                    value={tualchhung}
-                    onChange={(e) => setTualchhung(e.target.value)}
-                    placeholder="0"
-                    className="w-full pl-6 pr-2.5 py-1.5 rounded-lg bg-white border border-amber-200 text-amber-950 font-bold focus:outline-none focus:ring-2 focus:ring-amber-500 text-xs shadow-2xs disabled:bg-slate-50"
-                  />
-                </div>
-              </div>
-
-              {/* Building */}
-              <div className="bg-purple-50/70 p-2.5 rounded-xl border border-purple-200">
-                <label className="block text-[10.5px] font-extrabold text-purple-900 mb-1 uppercase tracking-tight">
-                  Building (Bldg)
-                </label>
-                <div className="relative flex items-center">
-                  <span className="absolute left-2 text-xs font-bold text-purple-400">₹</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    disabled={isLocked}
-                    value={building}
-                    onChange={(e) => setBuilding(e.target.value)}
-                    placeholder="0"
-                    className="w-full pl-6 pr-2.5 py-1.5 rounded-lg bg-white border border-purple-200 text-purple-950 font-bold focus:outline-none focus:ring-2 focus:ring-purple-500 text-xs shadow-2xs disabled:bg-slate-50"
-                  />
-                </div>
-              </div>
+              ))}
             </div>
           </div>
         </Modal.Body>

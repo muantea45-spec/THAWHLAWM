@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Building2, Eye, BarChart3, RefreshCw, ArrowRightLeft,
   FileText, FileSpreadsheet, Calendar, KeyRound, CalendarDays, ChevronLeft,
-  ChevronRight, X, Shield, Sparkles, FolderArchive, LogOut, Award
+  ChevronRight, X, Shield, Sparkles, FolderArchive, LogOut, Award, SlidersHorizontal
 } from 'lucide-react';
 
 export default function AdminSidebar({
@@ -14,6 +14,7 @@ export default function AdminSidebar({
   onOpenMatrix,
   onOpenCredentials,
   onOpenYears,
+  onOpenColumns,
   year,
   setYear,
   financialYears = [],
@@ -108,6 +109,15 @@ export default function AdminSidebar({
       color: 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border-indigo-200',
       action: onOpenYears,
       tooltip: 'Manage financial years & active FY'
+    },
+    {
+      id: 'columns',
+      label: 'Tithe Headers & Columns',
+      shortLabel: 'Headers',
+      icon: SlidersHorizontal,
+      color: 'text-teal-700 bg-teal-50 hover:bg-teal-100 border-teal-200',
+      action: onOpenColumns,
+      tooltip: 'Add, rename, edit or delete tithe columns'
     }
   ];
 

@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { exportMemberHistoryPDF } from '../utils/exportEngine';
+import { DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 import Modal from './common/Modal';
 
 export default function MemberHistoryModal({
@@ -31,12 +32,7 @@ export default function MemberHistoryModal({
 
   // Month editing state
   const [editingMonth, setEditingMonth] = useState(null);
-  const [editDraft, setEditDraft] = useState({
-    pathian_ram: '',
-    ramthar: '',
-    tualchhung: '',
-    building: ''
-  });
+  const [editDraft, setEditDraft] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
@@ -71,6 +67,7 @@ export default function MemberHistoryModal({
   const member = data?.member;
   const annual = data?.annualSummary || {};
   const entries = data?.monthlyEntries || [];
+  const activeCols = (data?.columns && data.columns.length > 0) ? data.columns : DEFAULT_TITHE_COLUMNS;
 
   // Start editing a specific month on click
   const startEditing = (entry) => {
@@ -81,23 +78,18 @@ export default function MemberHistoryModal({
       return;
     }
     setEditingMonth(entry.month);
-    setEditDraft({
-      pathian_ram: entry.pathian_ram > 0 ? String(entry.pathian_ram) : '',
-      ramthar: entry.ramthar > 0 ? String(entry.ramthar) : '',
-      tualchhung: entry.tualchhung > 0 ? String(entry.tualchhung) : '',
-      building: entry.building > 0 ? String(entry.building) : ''
+    const draft = {};
+    activeCols.forEach(col => {
+      const v = entry[col.field_key];
+      draft[col.field_key] = (v !== undefined && v !== null && Number(v) > 0) ? String(v) : '';
     });
+    setEditDraft(draft);
   };
 
   // Cancel current editing
   const cancelEditing = () => {
     setEditingMonth(null);
-    setEditDraft({
-      pathian_ram: '',
-      ramthar: '',
-      tualchhung: '',
-      building: ''
-    });
+    setEditDraft({});
   };
 
   // Draft input handler (numeric only)
@@ -108,11 +100,7 @@ export default function MemberHistoryModal({
   };
 
   // Live total for the month currently being edited
-  const liveEditTotal =
-    (parseFloat(editDraft.pathian_ram) || 0) +
-    (parseFloat(editDraft.ramthar) || 0) +
-    (parseFloat(editDraft.tualchhung) || 0) +
-    (parseFloat(editDraft.building) || 0);
+  const liveEditTotal = activeCols.reduce((sum, col) => sum + (parseFloat(editDraft[col.field_key]) || 0), 0);
 
   // Keydown handler for saving with Enter key or canceling with Escape key
   const handleKeyDown = (e, monthNum) => {
@@ -129,48 +117,48 @@ export default function MemberHistoryModal({
   const handleSaveEdit = async (monthNum) => {
     if (!member) return;
 
-    const pr = parseFloat(editDraft.pathian_ram) || 0;
-    const ram = parseFloat(editDraft.ramthar) || 0;
-    const tual = parseFloat(editDraft.tualchhung) || 0;
-    const bldg = parseFloat(editDraft.building) || 0;
-    const monthTotal = pr + ram + tual + bldg;
+    const payload = {
+      member_id: member.id,
+      year,
+      month: monthNum,
+      bial_id: member.bial_id
+    };
+
+    let monthTotal = 0;
+    activeCols.forEach(col => {
+      const val = parseFloat(editDraft[col.field_key]) || 0;
+      payload[col.field_key] = val;
+      monthTotal += val;
+    });
 
     try {
       setIsSaving(true);
-      await api.saveTithe({
-        member_id: member.id,
-        year,
-        month: monthNum,
-        pathian_ram: pr,
-        ramthar: ram,
-        tualchhung: tual,
-        building: bldg,
-        bial_id: member.bial_id
-      });
+      await api.saveTithe(payload);
 
       // Update local state entries
       const updatedEntries = (data.monthlyEntries || []).map(entry => {
         if (entry.month === monthNum) {
-          return {
+          const updated = {
             ...entry,
-            pathian_ram: pr,
-            ramthar: ram,
-            tualchhung: tual,
-            building: bldg,
             total: monthTotal
           };
+          activeCols.forEach(col => {
+            updated[col.field_key] = payload[col.field_key];
+          });
+          return updated;
         }
         return entry;
       });
 
       // Recalculate annual summary dynamically
       const updatedAnnual = {
-        total_pathian_ram: updatedEntries.reduce((acc, curr) => acc + (Number(curr.pathian_ram) || 0), 0),
-        total_ramthar: updatedEntries.reduce((acc, curr) => acc + (Number(curr.ramthar) || 0), 0),
-        total_tualchhung: updatedEntries.reduce((acc, curr) => acc + (Number(curr.tualchhung) || 0), 0),
-        total_building: updatedEntries.reduce((acc, curr) => acc + (Number(curr.building) || 0), 0),
         grand_total: updatedEntries.reduce((acc, curr) => acc + (Number(curr.total) || 0), 0)
       };
+      activeCols.forEach(col => {
+        const sum = updatedEntries.reduce((acc, curr) => acc + (Number(curr[col.field_key]) || 0), 0);
+        updatedAnnual[col.field_key] = sum;
+        updatedAnnual[`total_${col.field_key}`] = sum;
+      });
 
       setData(prev => ({
         ...prev,
@@ -299,38 +287,26 @@ export default function MemberHistoryModal({
                   {entries.filter(e => e.is_locked === 0).length} of 12 months unlocked for edits
                 </span>
               </div>
-              <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-xs">
-                {/* Row 1: PTR, RT, Tch */}
-                <div className="col-span-1 bg-blue-50/80 p-2 sm:p-2.5 rounded-xl border border-blue-200 flex flex-col justify-between shadow-2xs">
-                  <span className="text-[9px] sm:text-[10px] font-extrabold text-blue-800 uppercase tracking-wider">PTR</span>
-                  <div className="font-mono text-xs sm:text-sm font-extrabold text-blue-900 truncate">
-                    ₹{(annual.total_pathian_ram || 0).toLocaleString('en-IN')}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2 text-xs">
+                {activeCols.map(col => (
+                  <div 
+                    key={col.id} 
+                    className="p-2 sm:p-2.5 rounded-xl border flex flex-col justify-between shadow-2xs"
+                    style={{
+                      backgroundColor: `${col.color || '#6366f1'}12`,
+                      borderColor: `${col.color || '#6366f1'}35`
+                    }}
+                  >
+                    <span className="text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider truncate" style={{ color: col.color || '#1e293b' }}>
+                      {col.code}
+                    </span>
+                    <div className="font-mono text-xs sm:text-sm font-extrabold text-slate-900 truncate">
+                      ₹{(annual[col.field_key] || annual[`total_${col.field_key}`] || 0).toLocaleString('en-IN')}
+                    </div>
                   </div>
-                </div>
+                ))}
 
-                <div className="col-span-1 bg-emerald-50/80 p-2 sm:p-2.5 rounded-xl border border-emerald-200 flex flex-col justify-between shadow-2xs">
-                  <span className="text-[9px] sm:text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider">RT</span>
-                  <div className="font-mono text-xs sm:text-sm font-extrabold text-emerald-900 truncate">
-                    ₹{(annual.total_ramthar || 0).toLocaleString('en-IN')}
-                  </div>
-                </div>
-
-                <div className="col-span-1 bg-amber-50/80 p-2 sm:p-2.5 rounded-xl border border-amber-200 flex flex-col justify-between shadow-2xs">
-                  <span className="text-[9px] sm:text-[10px] font-extrabold text-amber-800 uppercase tracking-wider">Tch</span>
-                  <div className="font-mono text-xs sm:text-sm font-extrabold text-amber-900 truncate">
-                    ₹{(annual.total_tualchhung || 0).toLocaleString('en-IN')}
-                  </div>
-                </div>
-
-                {/* Row 2: BLDG (1 col) and Grand Total (2 cols) */}
-                <div className="col-span-1 bg-purple-50/80 p-2 sm:p-2.5 rounded-xl border border-purple-200 flex flex-col justify-between shadow-2xs">
-                  <span className="text-[9px] sm:text-[10px] font-extrabold text-purple-800 uppercase tracking-wider">BLDG</span>
-                  <div className="font-mono text-xs sm:text-sm font-extrabold text-purple-900 truncate">
-                    ₹{(annual.total_building || 0).toLocaleString('en-IN')}
-                  </div>
-                </div>
-
-                <div className="col-span-2 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2 sm:p-2.5 rounded-xl border border-indigo-700 text-white shadow-2xs flex items-center justify-between px-3">
+                <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2 sm:p-2.5 rounded-xl border border-indigo-700 text-white shadow-2xs flex items-center justify-between px-3">
                   <div>
                     <span className="text-[9px] sm:text-[10px] font-extrabold text-indigo-200 uppercase tracking-wider block">GRAND TOTAL</span>
                     <span className="text-[9px] text-slate-300 font-sans">Annual Total</span>
@@ -361,10 +337,11 @@ export default function MemberHistoryModal({
                       <tr className="bg-slate-100 border-b border-slate-200 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                         <th className="py-2.5 px-3">Month</th>
                         <th className="py-2.5 px-2 text-center">Status</th>
-                        <th className="py-2.5 px-2 text-right">PTR</th>
-                        <th className="py-2.5 px-2 text-right">Ramthar</th>
-                        <th className="py-2.5 px-2 text-right">Tch</th>
-                        <th className="py-2.5 px-2 text-right">Bldg</th>
+                        {activeCols.map(col => (
+                          <th key={col.id} className="py-2.5 px-2 text-right" style={{ color: col.color || undefined }}>
+                            {col.code}
+                          </th>
+                        ))}
                         <th className="py-2.5 px-3 text-right font-extrabold text-emerald-700">Total</th>
                         <th className="py-2.5 px-2 text-center w-16"></th>
                       </tr>
@@ -390,67 +367,23 @@ export default function MemberHistoryModal({
                                   <Unlock className="w-2.5 h-2.5 text-emerald-600" /> Unlocked
                                 </span>
                               </td>
-                              {/* Editable PTR */}
-                              <td className="py-1.5 px-1 text-right">
-                                <div className="relative inline-block">
-                                  <span className="absolute left-1.5 top-1.5 text-[10px] text-slate-400 font-bold pointer-events-none">₹</span>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={editDraft.pathian_ram}
-                                    onChange={(ev) => handleDraftChange('pathian_ram', ev.target.value)}
-                                    onKeyDown={(ev) => handleKeyDown(ev, e.month)}
-                                    placeholder="0"
-                                    className="w-20 pl-4 pr-1.5 py-1 bg-white border border-blue-300 rounded-lg text-xs font-mono font-bold text-blue-900 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
-                                    autoFocus
-                                  />
-                                </div>
-                              </td>
-                              {/* Editable Ramthar */}
-                              <td className="py-1.5 px-1 text-right">
-                                <div className="relative inline-block">
-                                  <span className="absolute left-1.5 top-1.5 text-[10px] text-slate-400 font-bold pointer-events-none">₹</span>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={editDraft.ramthar}
-                                    onChange={(ev) => handleDraftChange('ramthar', ev.target.value)}
-                                    onKeyDown={(ev) => handleKeyDown(ev, e.month)}
-                                    placeholder="0"
-                                    className="w-20 pl-4 pr-1.5 py-1 bg-white border border-emerald-300 rounded-lg text-xs font-mono font-bold text-emerald-900 text-right focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
-                                  />
-                                </div>
-                              </td>
-                              {/* Editable Tualchhung */}
-                              <td className="py-1.5 px-1 text-right">
-                                <div className="relative inline-block">
-                                  <span className="absolute left-1.5 top-1.5 text-[10px] text-slate-400 font-bold pointer-events-none">₹</span>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={editDraft.tualchhung}
-                                    onChange={(ev) => handleDraftChange('tualchhung', ev.target.value)}
-                                    onKeyDown={(ev) => handleKeyDown(ev, e.month)}
-                                    placeholder="0"
-                                    className="w-20 pl-4 pr-1.5 py-1 bg-white border border-amber-300 rounded-lg text-xs font-mono font-bold text-amber-900 text-right focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-                                  />
-                                </div>
-                              </td>
-                              {/* Editable Building */}
-                              <td className="py-1.5 px-1 text-right">
-                                <div className="relative inline-block">
-                                  <span className="absolute left-1.5 top-1.5 text-[10px] text-slate-400 font-bold pointer-events-none">₹</span>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={editDraft.building}
-                                    onChange={(ev) => handleDraftChange('building', ev.target.value)}
-                                    onKeyDown={(ev) => handleKeyDown(ev, e.month)}
-                                    placeholder="0"
-                                    className="w-20 pl-4 pr-1.5 py-1 bg-white border border-purple-300 rounded-lg text-xs font-mono font-bold text-purple-900 text-right focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-2xs"
-                                  />
-                                </div>
-                              </td>
+                              {/* Dynamic editable columns */}
+                              {activeCols.map(col => (
+                                <td key={col.id} className="py-1.5 px-1 text-right">
+                                  <div className="relative inline-block">
+                                    <span className="absolute left-1.5 top-1.5 text-[10px] text-slate-400 font-bold pointer-events-none">₹</span>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={editDraft[col.field_key] || ''}
+                                      onChange={(ev) => handleDraftChange(col.field_key, ev.target.value)}
+                                      onKeyDown={(ev) => handleKeyDown(ev, e.month)}
+                                      placeholder="0"
+                                      className="w-18 pl-4 pr-1.5 py-1 bg-white border border-slate-300 focus:border-indigo-500 rounded-lg text-xs font-mono font-bold text-slate-900 text-right focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-2xs"
+                                    />
+                                  </div>
+                                </td>
+                              ))}
                               {/* Live Computed Row Total */}
                               <td className="py-2 px-3 text-right font-extrabold text-emerald-800 bg-emerald-50/80">
                                 ₹{liveEditTotal.toLocaleString('en-IN')}
@@ -530,18 +463,15 @@ export default function MemberHistoryModal({
                                 </span>
                               )}
                             </td>
-                            <td className="py-2.5 px-2 text-right text-blue-700">
-                              {e.pathian_ram > 0 ? `₹${e.pathian_ram.toLocaleString('en-IN')}` : '-'}
-                            </td>
-                            <td className="py-2.5 px-2 text-right text-emerald-700">
-                              {e.ramthar > 0 ? `₹${e.ramthar.toLocaleString('en-IN')}` : '-'}
-                            </td>
-                            <td className="py-2.5 px-2 text-right text-amber-700">
-                              {e.tualchhung > 0 ? `₹${e.tualchhung.toLocaleString('en-IN')}` : '-'}
-                            </td>
-                            <td className="py-2.5 px-2 text-right text-purple-700">
-                              {e.building > 0 ? `₹${e.building.toLocaleString('en-IN')}` : '-'}
-                            </td>
+                            {/* Dynamic column display cells */}
+                            {activeCols.map(col => {
+                              const val = e[col.field_key] || 0;
+                              return (
+                                <td key={col.id} className="py-2.5 px-2 text-right" style={{ color: col.color || '#334155' }}>
+                                  {val > 0 ? `₹${val.toLocaleString('en-IN')}` : '-'}
+                                </td>
+                              );
+                            })}
                             <td className={`py-2.5 px-3 text-right font-extrabold ${e.total > 0 ? 'text-emerald-800 bg-emerald-50' : 'text-slate-400'}`}>
                               {e.total > 0 ? `₹${e.total.toLocaleString('en-IN')}` : '₹0'}
                             </td>
@@ -563,18 +493,14 @@ export default function MemberHistoryModal({
                         <td colSpan={2} className="py-2.5 px-3 font-sans uppercase text-slate-700">
                           OVERALL TOTAL
                         </td>
-                        <td className="py-2.5 px-2 text-right text-blue-700">
-                          ₹{(annual.total_pathian_ram || 0).toLocaleString('en-IN')}
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-emerald-700">
-                          ₹{(annual.total_ramthar || 0).toLocaleString('en-IN')}
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-amber-700">
-                          ₹{(annual.total_tualchhung || 0).toLocaleString('en-IN')}
-                        </td>
-                        <td className="py-2.5 px-2 text-right text-purple-700">
-                          ₹{(annual.total_building || 0).toLocaleString('en-IN')}
-                        </td>
+                        {activeCols.map(col => {
+                          const val = annual[col.field_key] || annual[`total_${col.field_key}`] || 0;
+                          return (
+                            <td key={col.id} className="py-2.5 px-2 text-right" style={{ color: col.color || '#334155' }}>
+                              ₹{val.toLocaleString('en-IN')}
+                            </td>
+                          );
+                        })}
                         <td className="py-2.5 px-3 text-right text-emerald-800 bg-emerald-100">
                           ₹{(annual.grand_total || 0).toLocaleString('en-IN')}
                         </td>
@@ -659,121 +585,53 @@ export default function MemberHistoryModal({
                           )}
                         </div>
 
-                        {/* Card Body: 4 Category Fields */}
+                        {/* Card Body: Dynamic Column Fields */}
                         {isCurrentlyEditing ? (
                           <div className="space-y-2 py-1" onClick={(ev) => ev.stopPropagation()}>
                             <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                              {/* PTR */}
-                              <div>
-                                <label className="text-[10px] font-extrabold text-blue-800 uppercase block mb-1">
-                                  PTR (Pathian Ram)
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-2 top-1.5 text-[10px] text-slate-400 font-bold pointer-events-none">₹</span>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={editDraft.pathian_ram}
-                                    onChange={(ev) => handleDraftChange('pathian_ram', ev.target.value)}
-                                    onKeyDown={(ev) => handleKeyDown(ev, e.month)}
-                                    placeholder="0"
-                                    className="w-full pl-5 pr-2 py-1.5 bg-white border border-blue-300 rounded-xl text-xs font-mono font-bold text-blue-900 text-right focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-2xs"
-                                    autoFocus
-                                  />
+                              {activeCols.map(col => (
+                                <div key={col.id}>
+                                  <label className="text-[10px] font-extrabold uppercase block mb-1 truncate" style={{ color: col.color || '#1e293b' }}>
+                                    {col.code} ({col.name})
+                                  </label>
+                                  <div className="relative">
+                                    <span className="absolute left-2 top-1.5 text-[10px] text-slate-400 font-bold pointer-events-none">₹</span>
+                                    <input
+                                      type="text"
+                                      inputMode="numeric"
+                                      value={editDraft[col.field_key] || ''}
+                                      onChange={(ev) => handleDraftChange(col.field_key, ev.target.value)}
+                                      onKeyDown={(ev) => handleKeyDown(ev, e.month)}
+                                      placeholder="0"
+                                      className="w-full pl-5 pr-2 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 text-right focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-2xs"
+                                    />
+                                  </div>
                                 </div>
-                              </div>
-
-                              {/* Ramthar */}
-                              <div>
-                                <label className="text-[10px] font-extrabold text-emerald-800 uppercase block mb-1">
-                                  RT (Ramthar)
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-2 top-1.5 text-[10px] text-slate-400 font-bold pointer-events-none">₹</span>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={editDraft.ramthar}
-                                    onChange={(ev) => handleDraftChange('ramthar', ev.target.value)}
-                                    onKeyDown={(ev) => handleKeyDown(ev, e.month)}
-                                    placeholder="0"
-                                    className="w-full pl-5 pr-2 py-1.5 bg-white border border-emerald-300 rounded-xl text-xs font-mono font-bold text-emerald-900 text-right focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-2xs"
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Tualchhung */}
-                              <div>
-                                <label className="text-[10px] font-extrabold text-amber-800 uppercase block mb-1">
-                                  Tch (Tualchhung)
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-2 top-1.5 text-[10px] text-slate-400 font-bold pointer-events-none">₹</span>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={editDraft.tualchhung}
-                                    onChange={(ev) => handleDraftChange('tualchhung', ev.target.value)}
-                                    onKeyDown={(ev) => handleKeyDown(ev, e.month)}
-                                    placeholder="0"
-                                    className="w-full pl-5 pr-2 py-1.5 bg-white border border-amber-300 rounded-xl text-xs font-mono font-bold text-amber-900 text-right focus:outline-none focus:ring-2 focus:ring-amber-500 shadow-2xs"
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Building */}
-                              <div>
-                                <label className="text-[10px] font-extrabold text-purple-800 uppercase block mb-1">
-                                  Bldg (Building)
-                                </label>
-                                <div className="relative">
-                                  <span className="absolute left-2 top-1.5 text-[10px] text-slate-400 font-bold pointer-events-none">₹</span>
-                                  <input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={editDraft.building}
-                                    onChange={(ev) => handleDraftChange('building', ev.target.value)}
-                                    onKeyDown={(ev) => handleKeyDown(ev, e.month)}
-                                    placeholder="0"
-                                    className="w-full pl-5 pr-2 py-1.5 bg-white border border-purple-300 rounded-xl text-xs font-mono font-bold text-purple-900 text-right focus:outline-none focus:ring-2 focus:ring-purple-500 shadow-2xs"
-                                  />
-                                </div>
-                              </div>
+                              ))}
                             </div>
                           </div>
                         ) : (
                           <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
-                            {/* PTR */}
-                            <div className="bg-blue-50/70 p-1.5 rounded-xl border border-blue-200/80 flex items-center justify-between">
-                              <span className="text-[9px] font-extrabold text-blue-800 uppercase">PTR</span>
-                              <span className="font-bold text-blue-950 text-xs truncate">
-                                {e.pathian_ram > 0 ? `₹${e.pathian_ram.toLocaleString('en-IN')}` : '₹0'}
-                              </span>
-                            </div>
-
-                            {/* Ramthar */}
-                            <div className="bg-emerald-50/70 p-1.5 rounded-xl border border-emerald-200/80 flex items-center justify-between">
-                              <span className="text-[9px] font-extrabold text-emerald-800 uppercase">RT</span>
-                              <span className="font-bold text-emerald-950 text-xs truncate">
-                                {e.ramthar > 0 ? `₹${e.ramthar.toLocaleString('en-IN')}` : '₹0'}
-                              </span>
-                            </div>
-
-                            {/* Tualchhung */}
-                            <div className="bg-amber-50/70 p-1.5 rounded-xl border border-amber-200/80 flex items-center justify-between">
-                              <span className="text-[9px] font-extrabold text-amber-800 uppercase">Tch</span>
-                              <span className="font-bold text-amber-950 text-xs truncate">
-                                {e.tualchhung > 0 ? `₹${e.tualchhung.toLocaleString('en-IN')}` : '₹0'}
-                              </span>
-                            </div>
-
-                            {/* Building */}
-                            <div className="bg-purple-50/70 p-1.5 rounded-xl border border-purple-200/80 flex items-center justify-between">
-                              <span className="text-[9px] font-extrabold text-purple-800 uppercase">Bldg</span>
-                              <span className="font-bold text-purple-950 text-xs truncate">
-                                {e.building > 0 ? `₹${e.building.toLocaleString('en-IN')}` : '₹0'}
-                              </span>
-                            </div>
+                            {activeCols.map(col => {
+                              const val = e[col.field_key] || 0;
+                              return (
+                                <div 
+                                  key={col.id} 
+                                  className="p-1.5 rounded-xl border flex items-center justify-between"
+                                  style={{
+                                    backgroundColor: `${col.color || '#6366f1'}10`,
+                                    borderColor: `${col.color || '#6366f1'}25`
+                                  }}
+                                >
+                                  <span className="text-[9px] font-extrabold uppercase truncate" style={{ color: col.color || '#1e293b' }}>
+                                    {col.code}
+                                  </span>
+                                  <span className="font-bold text-slate-900 text-xs truncate">
+                                    {val > 0 ? `₹${val.toLocaleString('en-IN')}` : '₹0'}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         )}
 
@@ -848,4 +706,3 @@ export default function MemberHistoryModal({
     </Modal>
   );
 }
-

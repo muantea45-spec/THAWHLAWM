@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Lock, User, ArrowRight, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { api, setAuthToken, setAuthUser } from '../utils/api';
 import churchLogo from '../assets/church_logo.jpg';
 import loginBg from '../assets/login_bg.jpg';
@@ -141,11 +141,117 @@ export default function Login({ onLoginSuccess, showToast }) {
     }
   };
 
+  // Mobile Scroll Lock & Swipe-Down-to-Refresh Controller
+  const [pullY, setPullY] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const touchStartRef = useRef({ x: 0, y: 0, active: false });
+  const PULL_THRESHOLD = 60;
+
+  // Disable root window scroll on mobile while Login screen is active
+  useEffect(() => {
+    const prevBodyOverflow = document.body.style.overflow;
+    const prevHtmlOverflow = document.documentElement.style.overflow;
+    const prevBodyTouchAction = document.body.style.touchAction;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    document.body.style.touchAction = 'manipulation';
+
+    return () => {
+      document.body.style.overflow = prevBodyOverflow;
+      document.documentElement.style.overflow = prevHtmlOverflow;
+      document.body.style.touchAction = prevBodyTouchAction;
+    };
+  }, []);
+
+  const handleTouchStart = (e) => {
+    if (isRefreshing) return;
+    // Don't intercept touches if user is interacting with text inputs or buttons
+    if (e.target.closest('input, button, a')) return;
+
+    const touch = e.touches[0];
+    touchStartRef.current = {
+      x: touch.clientX,
+      y: touch.clientY,
+      active: true
+    };
+  };
+
+  const handleTouchMove = (e) => {
+    if (!touchStartRef.current.active || isRefreshing) return;
+
+    const touch = e.touches[0];
+    const diffY = touch.clientY - touchStartRef.current.y;
+    const diffX = touch.clientX - touchStartRef.current.x;
+
+    // Only handle vertical drags
+    if (Math.abs(diffY) > Math.abs(diffX)) {
+      if (diffY > 0) {
+        // Swiping DOWN: Pull-to-refresh
+        const resistance = Math.min(95, Math.pow(diffY, 0.85) * 1.4);
+        setPullY(resistance);
+        if (e.cancelable) e.preventDefault();
+      } else {
+        // Swiping UP: Scrolling down is disabled completely
+        if (e.cancelable) e.preventDefault();
+        setPullY(0);
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartRef.current.active || isRefreshing) return;
+    touchStartRef.current.active = false;
+
+    if (pullY >= PULL_THRESHOLD) {
+      setIsRefreshing(true);
+      setPullY(50);
+      try {
+        if (navigator.vibrate) navigator.vibrate(25);
+      } catch (err) {}
+      setTimeout(() => {
+        window.location.reload();
+      }, 350);
+    } else {
+      setPullY(0);
+    }
+  };
+
   return (
     <div
-      className="h-[100dvh] max-h-[100dvh] w-full flex flex-col justify-end sm:justify-center items-center px-4 pb-10 sm:pb-6 pt-2 sm:pt-6 relative overflow-hidden bg-[#030d21] bg-no-repeat bg-[position:center_top] sm:bg-center bg-[length:100%_auto] sm:bg-contain"
+      className="fixed inset-0 h-[100dvh] max-h-[100dvh] w-full flex flex-col justify-end sm:justify-center items-center px-4 pb-8 sm:pb-6 pt-2 sm:pt-6 overflow-hidden bg-[#030d21] bg-no-repeat bg-[position:center_top] sm:bg-center bg-[length:100%_auto] sm:bg-contain select-none"
       style={{ backgroundImage: `url(${loginBg})` }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
+      {/* Mobile Swipe-Down-to-Refresh Indicator */}
+      <div
+        className="sm:hidden fixed top-0 left-0 right-0 z-50 flex flex-col items-center justify-center pointer-events-none transition-transform duration-200 ease-out"
+        style={{
+          transform: `translateY(${isRefreshing ? 24 : pullY > 5 ? Math.min(65, pullY) : -70}px)`,
+          opacity: pullY > 8 || isRefreshing ? 1 : 0
+        }}
+      >
+        <div className="bg-slate-900/90 backdrop-blur-md border border-white/20 text-white px-3.5 py-1.5 rounded-full shadow-2xl flex items-center gap-2">
+          <RefreshCw
+            className={`w-3.5 h-3.5 text-amber-300 ${
+              isRefreshing ? 'animate-spin' : ''
+            }`}
+            style={{
+              transform: !isRefreshing ? `rotate(${pullY * 4.5}deg)` : undefined
+            }}
+          />
+          <span className="text-[11px] text-slate-200 font-medium tracking-wide">
+            {isRefreshing
+              ? 'Refreshing...'
+              : pullY >= PULL_THRESHOLD
+              ? 'Release to refresh'
+              : 'Swipe down to refresh'}
+          </span>
+        </div>
+      </div>
       {/* Ambient background blur for widescreen desktop displays */}
       <div
         className="hidden sm:block absolute inset-0 bg-cover bg-center filter blur-3xl opacity-20 scale-105 pointer-events-none"
@@ -176,7 +282,7 @@ export default function Login({ onLoginSuccess, showToast }) {
         </div>
 
         {/* Quiet, Reverent Glass Login Box */}
-        <div className="w-full p-4 sm:p-5 rounded-2xl border border-white/15 shadow-xl bg-slate-950/70 backdrop-blur-xl">
+        <div className="w-full p-4 sm:p-5 rounded-2xl border border-white/15 shadow-xl bg-slate-950/70 backdrop-blur-xl select-auto">
           
           {/* ======================================================== */}
           {/* 1. UPPER PART: REGULAR LOGIN (BIAL VAWNGTU TAN)           */}

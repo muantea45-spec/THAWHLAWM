@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 import { handle } from 'hono/cloudflare-pages';
-import { cors } from 'hono/cors';
 import { sign, verify } from 'hono/jwt';
 import bcrypt from 'bcryptjs';
 
@@ -8,9 +7,86 @@ const app = new Hono().basePath('/api');
 
 const DEFAULT_JWT_SECRET = 'pathian_ram_tithe_super_secret_jwt_key_2026';
 
-app.use('*', cors());
+// ----------------------------------------------------
+// ANTI-BRUTE-FORCE LOGIN RATE LIMITER
+// ----------------------------------------------------
+const loginAttemptMap = new Map();
 
-// Authentication Middleware
+function checkLoginRateLimit(ip) {
+  const now = Date.now();
+  const record = loginAttemptMap.get(ip);
+  if (!record) return { allowed: true };
+
+  if (record.lockedUntil && now < record.lockedUntil) {
+    const remainingSecs = Math.ceil((record.lockedUntil - now) / 1000);
+    return {
+      allowed: false,
+      error: `Too many failed login attempts. Temporarily locked for security. Please try again in ${remainingSecs} seconds.`
+    };
+  }
+
+  // Reset window after 15 mins
+  if (now - record.firstAttempt > 900000) {
+    loginAttemptMap.delete(ip);
+    return { allowed: true };
+  }
+
+  return { allowed: true };
+}
+
+function recordFailedLogin(ip) {
+  const now = Date.now();
+  const record = loginAttemptMap.get(ip) || { count: 0, firstAttempt: now, lockedUntil: 0 };
+  record.count += 1;
+  if (record.count >= 5) {
+    record.lockedUntil = now + (15 * 60 * 1000); // Lock for 15 minutes after 5 failures
+  }
+  loginAttemptMap.set(ip, record);
+}
+
+function resetLoginRateLimit(ip) {
+  loginAttemptMap.delete(ip);
+}
+
+// ----------------------------------------------------
+// STRICT CORS & SECURITY HEADERS MIDDLEWARE
+// ----------------------------------------------------
+const ALLOWED_ORIGINS = [
+  'https://thawhlawmptr.pages.dev',
+  'https://thawhlawmptr.com',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:4173'
+];
+
+app.use('*', async (c, next) => {
+  const origin = c.req.header('Origin');
+  if (origin) {
+    const isAllowed = ALLOWED_ORIGINS.includes(origin) || origin.endsWith('.thawhlawmptr.pages.dev');
+    if (isAllowed) {
+      c.header('Access-Control-Allow-Origin', origin);
+      c.header('Access-Control-Allow-Credentials', 'true');
+      c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    } else {
+      return c.json({ error: 'Cross-origin request blocked by security policy' }, 403);
+    }
+  }
+
+  // Strict Security Headers on all API responses
+  c.header('X-Frame-Options', 'DENY');
+  c.header('X-Content-Type-Options', 'nosniff');
+  c.header('Referrer-Policy', 'strict-origin-when-cross-origin');
+  c.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  c.header('X-XSS-Protection', '1; mode=block');
+
+  if (c.req.method === 'OPTIONS') {
+    return c.text('', 204);
+  }
+  await next();
+});
+
+// Authentication Middleware with Session Validation & Account Lock Verification
 async function authMiddleware(c, next) {
   const authHeader = c.req.header('Authorization');
   const token = authHeader && authHeader.startsWith('Bearer ') ? authHeader.substring(7) : null;
@@ -22,7 +98,19 @@ async function authMiddleware(c, next) {
   try {
     const secret = c.env.JWT_SECRET || DEFAULT_JWT_SECRET;
     const payload = await verify(token, secret, 'HS256');
-    c.set('user', payload);
+
+    if (!payload || !payload.id) {
+      return c.json({ error: 'Malformed or invalid session token' }, 401);
+    }
+
+    // Verify account status in DB to ensure deactivated or locked accounts cannot make requests
+    const db = c.env.DB;
+    const user = await db.prepare('SELECT id, status, role FROM users WHERE id = ?').bind(payload.id).first();
+    if (!user || user.status === 'locked') {
+      return c.json({ error: 'Account has been deactivated or locked' }, 403);
+    }
+
+    c.set('user', { ...payload, role: user.role });
     await next();
   } catch (err) {
     return c.json({ error: 'Invalid or expired session token' }, 401);
@@ -168,6 +256,14 @@ async function isMonthLocked(db, bialId, year, month) {
 // ----------------------------------------------------
 app.post('/auth/login', async (c) => {
   const db = c.env.DB;
+  const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-real-ip') || c.req.header('x-forwarded-for') || 'direct-client';
+
+  // Anti-Brute-Force Rate Limiting
+  const rateLimitStatus = checkLoginRateLimit(clientIp);
+  if (!rateLimitStatus.allowed) {
+    return c.json({ error: rateLimitStatus.error }, 429);
+  }
+
   const { username, password } = await c.req.json();
 
   if (!username || !password) {
@@ -177,6 +273,7 @@ app.post('/auth/login', async (c) => {
   try {
     const user = await db.prepare('SELECT * FROM users WHERE username = ?').bind(username.trim()).first();
     if (!user) {
+      recordFailedLogin(clientIp);
       return c.json({ error: 'Invalid username or password' }, 401);
     }
 
@@ -186,8 +283,12 @@ app.post('/auth/login', async (c) => {
 
     const isMatch = bcrypt.compareSync(password, user.password_hash);
     if (!isMatch) {
+      recordFailedLogin(clientIp);
       return c.json({ error: 'Invalid username or password' }, 401);
     }
+
+    // Reset rate limiter on valid login
+    resetLoginRateLimit(clientIp);
 
     let bialDetails = null;
     if (user.role === 'BIAL') {
@@ -223,41 +324,46 @@ app.post('/auth/login', async (c) => {
   }
 });
 
-// POST /api/auth/google - Admin Google Sign-In
+// POST /api/auth/google - Admin Google Sign-In with Strict Cryptographic Verification
 app.post('/auth/google', async (c) => {
   const db = c.env.DB;
   const body = await c.req.json().catch(() => ({}));
-  const { credential, email, name, picture } = body;
+  const { credential } = body;
 
-  if (!credential && !email) {
-    return c.json({ error: 'Google credential token or email is required' }, 400);
+  if (!credential) {
+    return c.json({ error: 'Google credential ID token is required' }, 400);
   }
 
   let verifiedEmail = null;
-  let verifiedName = name || null;
-  let verifiedPicture = picture || null;
+  let verifiedName = null;
+  let verifiedPicture = null;
   let googleSub = null;
 
-  if (credential) {
-    try {
-      const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
-      if (!googleRes.ok) {
-        return c.json({ error: 'Google verification failed: Invalid or expired ID token' }, 401);
-      }
-      const tokenInfo = await googleRes.json();
-      if (!tokenInfo.email || (tokenInfo.email_verified !== 'true' && tokenInfo.email_verified !== true)) {
-        return c.json({ error: 'Google account email is not verified' }, 401);
-      }
-      verifiedEmail = tokenInfo.email.toLowerCase();
-      verifiedName = tokenInfo.name || verifiedName;
-      verifiedPicture = tokenInfo.picture || verifiedPicture;
-      googleSub = tokenInfo.sub;
-    } catch (err) {
-      console.error('Google tokeninfo fetch error:', err);
-      return c.json({ error: 'Failed to communicate with Google authentication servers' }, 500);
+  try {
+    const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+    if (!googleRes.ok) {
+      return c.json({ error: 'Google verification failed: Invalid, expired, or forged token' }, 401);
     }
-  } else if (email) {
-    verifiedEmail = String(email).trim().toLowerCase();
+    const tokenInfo = await googleRes.json();
+
+    // Verify Audience to guarantee token was issued specifically for this app
+    const expectedClientId = c.env.GOOGLE_CLIENT_ID || '407051455488-n6bieo72mu6c4v9lm5cbofapq9i81tjo.apps.googleusercontent.com';
+    if (tokenInfo.aud !== expectedClientId) {
+      return c.json({ error: 'Google token audience mismatch: token not issued for this application' }, 403);
+    }
+
+    // Verify Email Verification Status
+    if (!tokenInfo.email || (tokenInfo.email_verified !== 'true' && tokenInfo.email_verified !== true)) {
+      return c.json({ error: 'Google account email is not verified' }, 401);
+    }
+
+    verifiedEmail = tokenInfo.email.toLowerCase();
+    verifiedName = tokenInfo.name || null;
+    verifiedPicture = tokenInfo.picture || null;
+    googleSub = tokenInfo.sub;
+  } catch (err) {
+    console.error('Google tokeninfo fetch error:', err);
+    return c.json({ error: 'Failed to communicate with Google authentication servers' }, 500);
   }
 
   if (!verifiedEmail) {

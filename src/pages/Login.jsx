@@ -143,7 +143,7 @@ export default function Login({ onLoginSuccess, showToast }) {
 
   return (
     <div
-      className="min-h-[100dvh] h-[100dvh] w-full flex flex-col justify-end sm:justify-center items-center px-4 pb-14 sm:pb-6 pt-2 sm:pt-6 relative overflow-hidden bg-[#030d21] bg-no-repeat bg-[position:center_top] sm:bg-center bg-[length:100%_auto] sm:bg-contain"
+      className="h-[100dvh] max-h-[100dvh] w-full flex flex-col justify-end sm:justify-center items-center px-4 pb-10 sm:pb-6 pt-2 sm:pt-6 relative overflow-hidden bg-[#030d21] bg-no-repeat bg-[position:center_top] sm:bg-center bg-[length:100%_auto] sm:bg-contain"
       style={{ backgroundImage: `url(${loginBg})` }}
     >
       {/* Ambient background blur for widescreen desktop displays */}

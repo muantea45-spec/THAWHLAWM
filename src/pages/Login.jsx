@@ -245,10 +245,10 @@ export default function Login({ onLoginSuccess, showToast }) {
           />
           <span className="text-[11px] text-slate-200 font-medium tracking-wide">
             {isRefreshing
-              ? 'Refreshing...'
+              ? 'A ti mek e...'
               : pullY >= PULL_THRESHOLD
-              ? 'Release to refresh'
-              : 'Swipe down to refresh'}
+              ? 'Thlah rawh le'
+              : 'Pawt thla rawh le'}
           </span>
         </div>
       </div>

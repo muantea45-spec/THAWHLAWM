@@ -4,9 +4,12 @@ cd /d "%~dp0"
 
 echo ===================================================
 echo   Deploying to Cloudflare (LIVE PRODUCTION)
+echo   Account: Muantea45@gmail.com
 echo   Project Name: thawhlawmptr
 echo ===================================================
 echo.
+
+set CLOUDFLARE_ACCOUNT_ID=57ec9b48f2a231c5ed6af446774d015e
 
 echo 1. Building latest production files...
 call npm.cmd run build
@@ -24,6 +27,6 @@ call npx.cmd wrangler pages deploy dist --project-name=thawhlawmptr --branch=mai
 echo.
 echo ===================================================
 echo   Deployment completed!
-echo   Live URL: https://thawhlawmptr.pages.dev
+echo   Live URL: https://thawhlawmptr-d3g.pages.dev
 echo ===================================================
 pause

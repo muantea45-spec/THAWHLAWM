@@ -6,5 +6,4 @@ pages_build_output_dir = "dist"
 [[d1_databases]]
 binding = "DB"
 database_name = "thawhlawmptr"
-database_id = "a3d1ee85-7166-4831-9931-24252dbbe987"
-
+database_id = "e91cdd42-16e7-4cff-9321-9072ffe6a983"

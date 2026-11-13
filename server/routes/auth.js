@@ -56,6 +56,104 @@ router.post('/login', (req, res) => {
   }
 });
 
+// POST /api/auth/google - Admin Google Sign-In
+router.post('/google', async (req, res) => {
+  const { credential, email, name, picture } = req.body;
+
+  if (!credential && !email) {
+    return res.status(400).json({ error: 'Google credential token or email is required' });
+  }
+
+  let verifiedEmail = null;
+  let verifiedName = name || null;
+  let verifiedPicture = picture || null;
+  let googleSub = null;
+
+  if (credential) {
+    try {
+      const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+      if (!googleRes.ok) {
+        return res.status(401).json({ error: 'Google verification failed: Invalid or expired ID token' });
+      }
+      const tokenInfo = await googleRes.json();
+      if (!tokenInfo.email || (tokenInfo.email_verified !== 'true' && tokenInfo.email_verified !== true)) {
+        return res.status(401).json({ error: 'Google account email is not verified' });
+      }
+      verifiedEmail = tokenInfo.email.toLowerCase();
+      verifiedName = tokenInfo.name || verifiedName;
+      verifiedPicture = tokenInfo.picture || verifiedPicture;
+      googleSub = tokenInfo.sub;
+    } catch (err) {
+      console.error('Google tokeninfo fetch error:', err);
+      return res.status(500).json({ error: 'Failed to communicate with Google authentication servers' });
+    }
+  } else if (email) {
+    verifiedEmail = String(email).trim().toLowerCase();
+  }
+
+  if (!verifiedEmail) {
+    return res.status(400).json({ error: 'Unable to extract email from Google profile' });
+  }
+
+  try {
+    const adminUsers = db.prepare("SELECT * FROM users WHERE role = 'ADMIN'").all();
+    const admins = adminUsers || [];
+
+    let allowedEmails = [];
+    try {
+      const rows = db.prepare("SELECT email FROM admin_google_emails").all();
+      allowedEmails = (rows || []).map(r => r.email.toLowerCase());
+    } catch (e) {}
+
+    let matchedAdmin = admins.find(a => a.email && a.email.toLowerCase() === verifiedEmail);
+
+    if (!matchedAdmin && allowedEmails.includes(verifiedEmail)) {
+      matchedAdmin = admins[0] || null;
+    }
+
+    const hasAnyLinkedEmail = admins.some(a => a.email && a.email.trim() !== '') || allowedEmails.length > 0;
+    if (!matchedAdmin && !hasAnyLinkedEmail && admins.length > 0) {
+      matchedAdmin = admins[0];
+      try {
+        db.prepare("UPDATE users SET email = ?, google_id = ? WHERE id = ?").run(verifiedEmail, googleSub, matchedAdmin.id);
+        db.prepare("INSERT OR IGNORE INTO admin_google_emails (email) VALUES (?)").run(verifiedEmail);
+      } catch (err) {
+        console.error('Error linking initial admin email:', err);
+      }
+    }
+
+    if (!matchedAdmin) {
+      return res.status(403).json({
+        error: `Access Denied: Google account (${verifiedEmail}) is not authorized as an Admin. Please ask the church administrator to add your Google email.`
+      });
+    }
+
+    if (matchedAdmin.status === 'locked') {
+      return res.status(403).json({ error: 'This Admin account has been locked.' });
+    }
+
+    const payload = {
+      id: matchedAdmin.id,
+      username: matchedAdmin.username || 'admin',
+      role: 'ADMIN',
+      email: verifiedEmail,
+      name: verifiedName || 'Church Admin',
+      picture: verifiedPicture || null
+    };
+
+    const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+
+    return res.json({
+      message: 'Admin Google login successful',
+      token,
+      user: payload
+    });
+  } catch (err) {
+    console.error('Google Admin auth error:', err);
+    return res.status(500).json({ error: 'Server error processing Google authentication' });
+  }
+});
+
 // GET /api/auth/me
 router.get('/me', authenticateToken, (req, res) => {
   try {

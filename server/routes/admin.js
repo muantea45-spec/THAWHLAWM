@@ -824,13 +824,56 @@ router.post('/members/transfer', (req, res) => {
           previous_bial_name: sourceBial?.name,
           new_bial_id: targetBialId,
           new_bial_name: destinationBial.name,
-          sl_no: assignedSlNo,
+          sl_no: assignedSlNo
+        }
+      });
+    } catch (txErr) {
       db.exec('ROLLBACK;');
       throw txErr;
     }
   } catch (err) {
     console.error('Error transferring member:', err);
     res.status(500).json({ error: err.message || 'Failed to transfer member' });
+  }
+});
+
+// GET /api/admin/google-emails
+router.get('/google-emails', (req, res) => {
+  try {
+    const emails = db.prepare("SELECT id, email, created_at FROM admin_google_emails ORDER BY id ASC").all();
+    const primaryAdmin = db.prepare("SELECT email FROM users WHERE role = 'ADMIN' AND email IS NOT NULL LIMIT 1").get();
+    res.json({
+      emails: emails || [],
+      primaryAdminEmail: primaryAdmin ? primaryAdmin.email : null
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch admin Google emails' });
+  }
+});
+
+// POST /api/admin/google-emails
+router.post('/google-emails', (req, res) => {
+  const { email } = req.body;
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ error: 'Valid email address is required' });
+  }
+  const cleanEmail = email.trim().toLowerCase();
+  try {
+    db.prepare("INSERT INTO admin_google_emails (email) VALUES (?)").run(cleanEmail);
+    res.json({ message: 'Admin Google email authorized successfully', email: cleanEmail });
+  } catch (err) {
+    res.status(400).json({ error: 'Failed to add admin email or email already exists' });
+  }
+});
+
+// DELETE /api/admin/google-emails/:id
+router.delete('/google-emails/:id', (req, res) => {
+  const id = parseInt(req.params.id);
+  try {
+    db.prepare("DELETE FROM admin_google_emails WHERE id = ?").run(id);
+    res.json({ message: 'Authorized admin email removed' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete admin email' });
   }
 });
 

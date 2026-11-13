@@ -72,6 +72,7 @@ export async function request(endpoint, options = {}) {
 export const api = {
   // Auth
   login: (credentials) => request('/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
+  googleLogin: (data) => request('/auth/google', { method: 'POST', body: JSON.stringify(data) }),
   me: () => request('/auth/me'),
   changePassword: (data) => request('/auth/change-password', { method: 'PUT', body: JSON.stringify(data) }),
 
@@ -80,6 +81,9 @@ export const api = {
   createBial: (data) => request('/admin/bials', { method: 'POST', body: JSON.stringify(data) }),
   updateBial: (id, data) => request(`/admin/bials/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteBial: (id) => request(`/admin/bials/${id}`, { method: 'DELETE' }),
+  getAdminGoogleEmails: () => request('/admin/google-emails'),
+  addAdminGoogleEmail: (email) => request('/admin/google-emails', { method: 'POST', body: JSON.stringify({ email }) }),
+  deleteAdminGoogleEmail: (id) => request(`/admin/google-emails/${id}`, { method: 'DELETE' }),
   getMonthLocks: (year) => request(`/admin/month-locks?year=${year}`),
   toggleMonthLock: (data) => request('/admin/month-locks/toggle', { method: 'POST', body: JSON.stringify(data) }),
   getAdminDashboard: (year, filters = {}) => {

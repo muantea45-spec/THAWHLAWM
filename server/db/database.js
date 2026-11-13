@@ -103,6 +103,26 @@ export function initDatabase() {
     // Column already exists
   }
 
+  // Migrate email and google_id columns on users if missing
+  try {
+    db.exec("ALTER TABLE users ADD COLUMN email TEXT;");
+  } catch (e) {}
+
+  try {
+    db.exec("ALTER TABLE users ADD COLUMN google_id TEXT;");
+  } catch (e) {}
+
+  // Create admin_google_emails table if missing
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS admin_google_emails (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+  } catch (e) {}
+
   // Seed default tithe columns if empty
   try {
     const colCheck = db.prepare('SELECT COUNT(*) as count FROM tithe_columns').get();

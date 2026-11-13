@@ -94,6 +94,13 @@ export function initDatabase() {
       display_order INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE INDEX IF NOT EXISTS idx_members_bial_year ON members(bial_id, year);
+    CREATE INDEX IF NOT EXISTS idx_members_year ON members(year);
+    CREATE INDEX IF NOT EXISTS idx_tithes_lookup ON tithes(bial_id, year, month);
+    CREATE INDEX IF NOT EXISTS idx_tithes_year_month ON tithes(year, month);
+    CREATE INDEX IF NOT EXISTS idx_tithes_member ON tithes(member_id, year);
+    CREATE INDEX IF NOT EXISTS idx_month_locks_lookup ON month_locks(bial_id, year, month);
   `);
 
   // Migrate extra_amounts column on tithes if missing

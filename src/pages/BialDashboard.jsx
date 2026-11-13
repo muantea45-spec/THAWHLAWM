@@ -232,7 +232,7 @@ export default function BialDashboard({ user, showToast }) {
       }
     };
 
-    const pollInterval = setInterval(checkColumnsSignature, 5000);
+    const pollInterval = setInterval(checkColumnsSignature, 45000);
     window.addEventListener('storage', handleStorage);
     window.addEventListener('tithe-columns-updated', handleCustomSync);
     window.addEventListener('focus', checkColumnsSignature);

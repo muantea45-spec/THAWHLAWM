@@ -155,7 +155,7 @@ export default function BialMemberEditModal({
                   disabled={isLocked}
                   value={slNo}
                   onChange={(e) => setSlNo(e.target.value)}
-                  className="w-full text-center font-mono font-bold px-2 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-600 text-xs shadow-2xs disabled:bg-slate-50"
+                  className="w-full text-center font-mono font-bold px-2 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-600 text-base sm:text-xs shadow-2xs disabled:bg-slate-50"
                 />
               </div>
 
@@ -170,7 +170,7 @@ export default function BialMemberEditModal({
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Lalthanpuia"
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-bold focus:outline-none focus:border-indigo-600 text-xs shadow-2xs disabled:bg-slate-50"
+                  className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-slate-900 font-bold focus:outline-none focus:border-indigo-600 text-base sm:text-xs shadow-2xs disabled:bg-slate-50"
                 />
               </div>
             </div>
@@ -187,11 +187,11 @@ export default function BialMemberEditModal({
               </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 font-mono">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 font-mono">
               {activeCols.map(col => (
                 <div 
                   key={col.id} 
-                  className="p-2.5 rounded-xl border transition-all"
+                  className="p-2 sm:p-2.5 rounded-xl border transition-all"
                   style={{ 
                     backgroundColor: `${col.color || '#6366f1'}10`, 
                     borderColor: `${col.color || '#6366f1'}35` 
@@ -204,7 +204,7 @@ export default function BialMemberEditModal({
                     {col.name} ({col.code})
                   </label>
                   <div className="relative flex items-center">
-                    <span className="absolute left-2 text-xs font-bold text-slate-400 pointer-events-none">₹</span>
+                    <span className="absolute left-2.5 text-xs font-bold text-slate-400 pointer-events-none">₹</span>
                     <input
                       type="number"
                       min="0"
@@ -213,7 +213,7 @@ export default function BialMemberEditModal({
                       value={amounts[col.field_key] || ''}
                       onChange={(e) => handleAmountChange(col.field_key, e.target.value)}
                       placeholder="0"
-                      className="w-full pl-6 pr-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs shadow-2xs disabled:bg-slate-50"
+                      className="w-full pl-7 pr-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base sm:text-xs shadow-2xs disabled:bg-slate-50"
                     />
                   </div>
                 </div>

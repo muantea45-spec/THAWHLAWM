@@ -167,7 +167,7 @@ export default function AdminDashboard({ user, showToast }) {
     loadAdminData();
   }, [year, overallBialFilter, overallMonthFilter]);
 
-  // Real-time synchronization for Tithe Columns and Headers across all tabs and inspector
+  // Real-time synchronization for Tithe Columns and Headers across all tabs, inspector, and devices
   useEffect(() => {
     let bc;
     try {
@@ -200,13 +200,43 @@ export default function AdminDashboard({ user, showToast }) {
       }
     };
 
+    const checkColumnsSignature = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const res = await api.getColumns();
+        const cols = Array.isArray(res) ? res : (res?.columns || []);
+        if (cols && cols.length > 0) {
+          setTitheColumns(prev => {
+            const prevSig = (prev || []).map(c => `${c.id}_${c.name}_${c.code}_${c.color}_${c.display_order}`).join('|');
+            const newSig = cols.map(c => `${c.id}_${c.name}_${c.code}_${c.color}_${c.display_order}`).join('|');
+            if (prevSig !== newSig) {
+              loadAdminData();
+              if (activeTab === 'inspector') {
+                loadInspectorLedger();
+              }
+              return cols;
+            }
+            return prev;
+          });
+        }
+      } catch (e) {
+        // Silent catch for background polling
+      }
+    };
+
+    const pollInterval = setInterval(checkColumnsSignature, 5000);
     window.addEventListener('storage', handleStorage);
     window.addEventListener('tithe-columns-updated', handleCustom);
+    window.addEventListener('focus', checkColumnsSignature);
+    document.addEventListener('visibilitychange', checkColumnsSignature);
 
     return () => {
       if (bc) bc.close();
+      clearInterval(pollInterval);
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('tithe-columns-updated', handleCustom);
+      window.removeEventListener('focus', checkColumnsSignature);
+      document.removeEventListener('visibilitychange', checkColumnsSignature);
     };
   }, [activeTab, inspectorBialId, year, inspectorMonth]);
 
@@ -519,41 +549,25 @@ export default function AdminDashboard({ user, showToast }) {
   const returnedDiff = currReturned - prevReturned;
   const returnRateDiff = Math.round((currReturnRate - prevReturnRate) * 10) / 10;
 
-  // Comparison Bar Chart data (grouped)
+  // Comparison Bar Chart data (grouped) - fully dynamic based on active tithe columns
   const comparisonBarData = [
     {
       category: 'Total',
       [prevMonthLabel]: prevTotal,
       [currMonthLabel]: currTotal
     },
-    {
-      category: 'PTR',
-      [prevMonthLabel]: prevMonthTrend.pathian_ram || 0,
-      [currMonthLabel]: currMonthTrend.pathian_ram || 0
-    },
-    {
-      category: 'Ramthar',
-      [prevMonthLabel]: prevMonthTrend.ramthar || 0,
-      [currMonthLabel]: currMonthTrend.ramthar || 0
-    },
-    {
-      category: 'Tualchhung',
-      [prevMonthLabel]: prevMonthTrend.tualchhung || 0,
-      [currMonthLabel]: currMonthTrend.tualchhung || 0
-    },
-    {
-      category: 'Building',
-      [prevMonthLabel]: prevMonthTrend.building || 0,
-      [currMonthLabel]: currMonthTrend.building || 0
-    }
+    ...titheColumns.map(col => ({
+      category: col.code,
+      [prevMonthLabel]: prevMonthTrend[col.field_key] || 0,
+      [currMonthLabel]: currMonthTrend[col.field_key] || 0
+    }))
   ];
 
-  const pieChartData = [
-    { name: 'PTR', value: grandTotals.total_pathian_ram || 0 },
-    { name: 'RT', value: grandTotals.total_ramthar || 0 },
-    { name: 'Tch', value: grandTotals.total_tualchhung || 0 },
-    { name: 'Bldg', value: grandTotals.total_building || 0 }
-  ];
+  const pieChartData = titheColumns.map(col => ({
+    name: col.code,
+    value: grandTotals[col.field_key] || grandTotals[`total_${col.field_key}`] || 0,
+    color: col.color || '#6366f1'
+  })).filter(d => d.value > 0);
 
   // Inspector Members Filtering & Sorting
   const inspectorMembers = inspectorLedger?.members || [];
@@ -681,59 +695,44 @@ export default function AdminDashboard({ user, showToast }) {
             </div>
           </div>
 
-          {/* 5-column responsive grid layout */}
+          {/* Dynamic Tithe Category Summary Cards + Grand Total */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
-            {/* PTR */}
-            <div className="bg-blue-50/70 p-2.5 sm:p-3 rounded-xl border border-blue-200/80 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-extrabold text-blue-800 tracking-wider uppercase">PTR</span>
-                <span className="text-[9px] font-semibold text-blue-600">Pathian Ram</span>
-              </div>
-              <div className="font-mono tabular-nums font-extrabold text-blue-950 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
-                ₹{(grandTotals.total_pathian_ram || 0).toLocaleString('en-IN')}
-              </div>
-            </div>
+            {titheColumns.map((col) => {
+              const amount = grandTotals[col.field_key] || grandTotals[`total_${col.field_key}`] || 0;
+              return (
+                <div
+                  key={col.id}
+                  className="p-2 sm:p-2.5 rounded-xl border flex flex-col justify-between transition-all shadow-2xs"
+                  style={{
+                    backgroundColor: `${col.color || '#6366f1'}10`,
+                    borderColor: `${col.color || '#6366f1'}35`
+                  }}
+                >
+                  <div className="flex items-center justify-between mb-1 gap-1 min-w-0">
+                    <span
+                      className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider truncate"
+                      style={{ color: col.color || '#1e293b' }}
+                    >
+                      {col.code}
+                    </span>
+                    <span className="text-[9px] font-semibold text-slate-500 truncate text-right">
+                      {col.name}
+                    </span>
+                  </div>
+                  <div className="font-mono tabular-nums font-black text-slate-900 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                    ₹{amount.toLocaleString('en-IN')}
+                  </div>
+                </div>
+              );
+            })}
 
-            {/* RT */}
-            <div className="bg-emerald-50/70 p-2.5 sm:p-3 rounded-xl border border-emerald-200/80 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-extrabold text-emerald-800 tracking-wider uppercase">RT</span>
-                <span className="text-[9px] font-semibold text-emerald-600">Ramthar</span>
-              </div>
-              <div className="font-mono tabular-nums font-extrabold text-emerald-950 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
-                ₹{(grandTotals.total_ramthar || 0).toLocaleString('en-IN')}
-              </div>
-            </div>
-
-            {/* Tch */}
-            <div className="bg-amber-50/70 p-2.5 sm:p-3 rounded-xl border border-amber-200/80 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-extrabold text-amber-800 tracking-wider uppercase">Tch</span>
-                <span className="text-[9px] font-semibold text-amber-600">Tualchhung</span>
-              </div>
-              <div className="font-mono tabular-nums font-extrabold text-amber-950 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
-                ₹{(grandTotals.total_tualchhung || 0).toLocaleString('en-IN')}
-              </div>
-            </div>
-
-            {/* BLDG */}
-            <div className="bg-purple-50/70 p-2.5 sm:p-3 rounded-xl border border-purple-200/80 flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-extrabold text-purple-800 tracking-wider uppercase">BLDG</span>
-                <span className="text-[9px] font-semibold text-purple-600">Building</span>
-              </div>
-              <div className="font-mono tabular-nums font-extrabold text-purple-950 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
-                ₹{(grandTotals.total_building || 0).toLocaleString('en-IN')}
-              </div>
-            </div>
-
-            {/* TOTAL */}
-            <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2.5 sm:p-3 rounded-xl border border-indigo-700/60 text-white shadow-xs flex flex-col justify-between">
+            {/* GRAND TOTAL BOX */}
+            <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2 sm:p-2.5 rounded-xl border border-indigo-700/60 text-white shadow-xs flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-[10px] font-extrabold text-indigo-200 uppercase tracking-wider">TOTAL</span>
                 <span className="text-[9px] font-semibold text-indigo-300">Grand Total</span>
               </div>
-              <div className="font-mono tabular-nums font-extrabold text-emerald-300 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
+              <div className="font-mono tabular-nums font-black text-emerald-300 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
                 ₹{(grandTotals.grand_total || 0).toLocaleString('en-IN')}
               </div>
             </div>
@@ -844,10 +843,10 @@ export default function AdminDashboard({ user, showToast }) {
               </div>
             )}
 
-            {/* View Option 2: CARD VIEW - 2 Cards per line */}
+            {/* View Option 2: CARD VIEW - Mobile Friendly Grid */}
             {bialViewMode === 'card' && (
               <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {filteredBials.length === 0 ? (
                     <div className="col-span-2 py-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
                       No Bial accounts found.
@@ -1159,10 +1158,10 @@ export default function AdminDashboard({ user, showToast }) {
               </div>
             )}
 
-            {/* VIEW MODE 2: CARDS VIEW */}
+            {/* VIEW MODE 2: CARDS VIEW - Responsive Mobile Layout */}
             {inspectorViewMode === 'card' && (
               <div className="space-y-2">
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                   {inspectorLoading ? (
                     <div className="col-span-2 py-10 text-center text-xs text-indigo-600 font-semibold animate-pulse bg-white rounded-2xl border border-slate-200">
                       Loading ledger...
@@ -1558,28 +1557,27 @@ export default function AdminDashboard({ user, showToast }) {
                       </div>
                     </div>
 
-                    {[
-                      { label: 'Pathian Ram', prevVal: prevMonthTrend.pathian_ram || 0, currVal: currMonthTrend.pathian_ram || 0, color: 'bg-indigo-600' },
-                      { label: 'Ramthar', prevVal: prevMonthTrend.ramthar || 0, currVal: currMonthTrend.ramthar || 0, color: 'bg-emerald-600' },
-                      { label: 'Tualchhung', prevVal: prevMonthTrend.tualchhung || 0, currVal: currMonthTrend.tualchhung || 0, color: 'bg-amber-600' },
-                      { label: 'Building', prevVal: prevMonthTrend.building || 0, currVal: currMonthTrend.building || 0, color: 'bg-purple-600' }
-                    ].map((cat) => {
-                      const maxVal = Math.max(1, cat.prevVal, cat.currVal);
+                    {titheColumns.map((cat) => {
+                      const prevVal = prevMonthTrend[cat.field_key] || 0;
+                      const currVal = currMonthTrend[cat.field_key] || 0;
+                      const maxVal = Math.max(1, prevVal, currVal);
                       return (
-                        <div key={cat.label} className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
+                        <div key={cat.id || cat.field_key} className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
                           <div className="flex items-center justify-between font-mono font-bold text-[10px]">
-                            <span className="text-slate-700 font-sans font-semibold">{cat.label}</span>
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-slate-500">₹{cat.prevVal.toLocaleString('en-IN')}</span>
-                              <span className="text-indigo-700 font-black">₹{cat.currVal.toLocaleString('en-IN')}</span>
+                            <span className="text-slate-700 font-sans font-semibold truncate pr-2">
+                              {cat.name} ({cat.code})
+                            </span>
+                            <div className="flex items-center gap-2.5 shrink-0">
+                              <span className="text-slate-500">₹{prevVal.toLocaleString('en-IN')}</span>
+                              <span className="text-indigo-700 font-black">₹{currVal.toLocaleString('en-IN')}</span>
                             </div>
                           </div>
                           <div className="grid grid-cols-2 gap-1.5">
                             <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
-                              <div className="bg-slate-400 h-1 rounded-full" style={{ width: `${(cat.prevVal / maxVal) * 100}%` }} />
+                              <div className="bg-slate-400 h-1 rounded-full" style={{ width: `${(prevVal / maxVal) * 100}%` }} />
                             </div>
                             <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
-                              <div className={`${cat.color} h-1 rounded-full`} style={{ width: `${(cat.currVal / maxVal) * 100}%` }} />
+                              <div className="h-1 rounded-full" style={{ backgroundColor: cat.color || '#6366f1', width: `${(currVal / maxVal) * 100}%` }} />
                             </div>
                           </div>
                         </div>

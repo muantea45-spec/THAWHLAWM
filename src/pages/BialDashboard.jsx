@@ -161,6 +161,9 @@ export default function BialDashboard({ user, showToast }) {
       setAnalyticsLoading(true);
       const res = await api.getYearlySummary(targetBialId, year);
       setAnalyticsData(res);
+      if (res?.columns && Array.isArray(res.columns) && res.columns.length > 0) {
+        setTitheColumns(res.columns);
+      }
     } catch (err) {
       console.error('Failed to load analytics:', err);
     } finally {
@@ -178,7 +181,7 @@ export default function BialDashboard({ user, showToast }) {
     }
   }, [year, targetBialId]);
 
-  // Real-time synchronization for Tithe Columns and Headers across all Bial collector windows
+  // Real-time synchronization for Tithe Columns and Headers across all Bial collector windows and devices
   useEffect(() => {
     let bc;
     try {
@@ -207,23 +210,41 @@ export default function BialDashboard({ user, showToast }) {
       loadAnalytics();
     };
 
-    const handleVisibilityOrFocus = () => {
-      if (document.visibilityState === 'visible') {
-        loadLedger();
+    const checkColumnsSignature = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const res = await api.getColumns();
+        const cols = Array.isArray(res) ? res : (res?.columns || []);
+        if (cols && cols.length > 0) {
+          setTitheColumns(prev => {
+            const prevSig = (prev || []).map(c => `${c.id}_${c.name}_${c.code}_${c.color}_${c.display_order}`).join('|');
+            const newSig = cols.map(c => `${c.id}_${c.name}_${c.code}_${c.color}_${c.display_order}`).join('|');
+            if (prevSig !== newSig) {
+              loadLedger();
+              loadAnalytics();
+              return cols;
+            }
+            return prev;
+          });
+        }
+      } catch (e) {
+        // Silent catch for background polling
       }
     };
 
+    const pollInterval = setInterval(checkColumnsSignature, 5000);
     window.addEventListener('storage', handleStorage);
     window.addEventListener('tithe-columns-updated', handleCustomSync);
-    window.addEventListener('focus', handleVisibilityOrFocus);
-    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', checkColumnsSignature);
+    document.addEventListener('visibilitychange', checkColumnsSignature);
 
     return () => {
       if (bc) bc.close();
+      clearInterval(pollInterval);
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('tithe-columns-updated', handleCustomSync);
-      window.removeEventListener('focus', handleVisibilityOrFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', checkColumnsSignature);
+      document.removeEventListener('visibilitychange', checkColumnsSignature);
     };
   }, [targetBialId, year, month]);
 
@@ -641,27 +662,31 @@ export default function BialDashboard({ user, showToast }) {
                     </div>
 
                     {/* Centered Segment Boxes Grid (Dynamic Columns) */}
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs text-center">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-xs text-center">
                       {titheColumns.map(col => (
                         <div 
                           key={col.id} 
-                          className="p-2.5 rounded-xl border flex flex-col items-center justify-center text-center"
+                          className="p-2 sm:p-2.5 rounded-xl border flex flex-col items-center justify-center text-center shadow-2xs"
                           style={{ 
-                            backgroundColor: `${col.color || '#6366f1'}15`, 
+                            backgroundColor: `${col.color || '#6366f1'}12`, 
                             borderColor: `${col.color || '#6366f1'}35` 
                           }}
                         >
-                          <div className="text-[9.5px] font-extrabold uppercase tracking-wider text-center" style={{ color: col.color || '#1e293b' }}>
+                          <div className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-center truncate w-full" style={{ color: col.color || '#1e293b' }}>
+                            {col.code}
+                          </div>
+                          <div className="text-[8.5px] font-medium text-slate-500 truncate w-full mb-0.5">
                             {col.name}
                           </div>
-                          <div className="font-mono text-xs sm:text-sm font-extrabold text-slate-900 mt-0.5 text-center">
+                          <div className="font-mono text-xs sm:text-sm font-extrabold text-slate-900 text-center">
                             ₹{(disp[col.field_key] || 0).toLocaleString('en-IN')}
                           </div>
                         </div>
                       ))}
-                      <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-2.5 rounded-xl border border-indigo-700 flex flex-col items-center justify-center text-center">
-                        <div className="text-[9.5px] font-extrabold text-emerald-300 uppercase tracking-wider text-center">Total</div>
-                        <div className="font-mono text-xs sm:text-sm font-black text-emerald-300 mt-0.5 text-center">
+                      <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-2 sm:p-2.5 rounded-xl border border-indigo-700 flex flex-col items-center justify-center text-center shadow-xs">
+                        <div className="text-[10px] sm:text-[11px] font-black text-emerald-300 uppercase tracking-wider text-center">TOTAL</div>
+                        <div className="text-[8.5px] font-medium text-indigo-200 truncate w-full mb-0.5">Grand Total</div>
+                        <div className="font-mono text-xs sm:text-sm font-black text-emerald-300 text-center">
                           ₹{disp.total.toLocaleString('en-IN')}
                         </div>
                       </div>
@@ -671,7 +696,7 @@ export default function BialDashboard({ user, showToast }) {
               })()}
 
               {/* Search, Month Selector & Member Actions Line Directly Below Collection Box */}
-              <div className="flex flex-col items-center justify-center gap-2.5">
+              <div className="flex flex-col gap-2">
                 <div className="relative w-full">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -683,10 +708,13 @@ export default function BialDashboard({ user, showToast }) {
                   />
                 </div>
 
-                <div className="flex items-center justify-center gap-2 flex-wrap w-full py-0.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full py-0.5">
                   {/* Month Selection Dropdown */}
-                  <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs">
-                    <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                  <div className="flex items-center justify-between sm:justify-start gap-1.5 bg-white px-3 py-2 rounded-xl border border-slate-300 shadow-2xs">
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <span className="text-[11px] font-bold text-slate-500 uppercase">Thla:</span>
+                    </div>
                     <select
                       value={month}
                       onChange={(e) => {
@@ -694,7 +722,7 @@ export default function BialDashboard({ user, showToast }) {
                         setMonth(newM);
                         setSummaryViewMode(String(newM));
                       }}
-                      className="font-bold text-xs bg-transparent text-slate-900 focus:outline-none cursor-pointer"
+                      className="font-bold text-xs bg-transparent text-slate-900 focus:outline-none cursor-pointer flex-1 text-right sm:text-left"
                       title="Select Month"
                     >
                       {FINANCIAL_MONTHS.map((mObj) => (
@@ -707,7 +735,7 @@ export default function BialDashboard({ user, showToast }) {
                   <button
                     type="button"
                     onClick={() => { setMemberToEdit(null); setShowMemberModal(true); }}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shadow-emerald-600/20 transition-all cursor-pointer w-full"
                     title="Add New Member to Bial"
                   >
                     <UserPlus className="w-3.5 h-3.5" />
@@ -719,7 +747,7 @@ export default function BialDashboard({ user, showToast }) {
                     type="button"
                     disabled={isLocked && user.role !== 'ADMIN'}
                     onClick={handleBulkSave}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs shadow-indigo-600/20 transition-all disabled:opacity-40 cursor-pointer shrink-0"
+                    className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs shadow-indigo-600/20 transition-all disabled:opacity-40 cursor-pointer w-full"
                   >
                     <Save className="w-3.5 h-3.5" />
                     <span>{saving ? 'Saving...' : 'Save All'}</span>
@@ -728,12 +756,12 @@ export default function BialDashboard({ user, showToast }) {
               </div>
 
               {/* Unpaid Household / Follow-up Filter Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-100/90 px-3 py-1.5 rounded-2xl border border-slate-200 text-xs shadow-2xs">
-                <div className="flex items-center gap-1">
+              <div className="flex items-center justify-between gap-1.5 bg-slate-100/90 p-1 rounded-2xl border border-slate-200 text-xs shadow-2xs overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1 min-w-max">
                   <button
                     type="button"
                     onClick={() => setMemberFilter('all')}
-                    className={`px-3 py-1 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                       memberFilter === 'all' ? 'bg-white text-indigo-900 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
@@ -742,7 +770,7 @@ export default function BialDashboard({ user, showToast }) {
                   <button
                     type="button"
                     onClick={() => setMemberFilter('contributed')}
-                    className={`px-3 py-1 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                       memberFilter === 'contributed' ? 'bg-emerald-600 text-white shadow-2xs' : 'text-emerald-700 hover:bg-emerald-100'
                     }`}
                   >
@@ -751,7 +779,7 @@ export default function BialDashboard({ user, showToast }) {
                   <button
                     type="button"
                     onClick={() => setMemberFilter('unpaid')}
-                    className={`px-3 py-1 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer whitespace-nowrap ${
                       memberFilter === 'unpaid' ? 'bg-rose-600 text-white shadow-2xs' : 'text-rose-700 hover:bg-rose-100'
                     }`}
                   >
@@ -860,31 +888,29 @@ export default function BialDashboard({ user, showToast }) {
                             </div>
                           </div>
 
-                          {/* Category Breakdown (Dynamic mini grid with Fixed Sizing & Currency Alignments) */}
-                          <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
-                            {titheColumns.map(col => (
-                              <div 
-                                key={col.id} 
-                                className="p-1.5 rounded-xl border flex items-center justify-between transition-colors"
-                                style={{ 
-                                  backgroundColor: `${col.color || '#6366f1'}10`, 
-                                  borderColor: `${col.color || '#6366f1'}30` 
-                                }}
-                              >
-                                <span className="text-[10px] font-extrabold uppercase tracking-tight pl-0.5 truncate" style={{ color: col.color || '#1e293b' }}>
-                                  {col.code}
-                                </span>
-                                <div className="relative flex items-center shrink-0">
-                                  <span className="absolute left-1.5 text-[10px] font-bold text-slate-400 pointer-events-none">₹</span>
-                                  <input
-                                    type="text"
-                                    readOnly
-                                    value={rowDraft[col.field_key] || '0'}
-                                    className="w-18 sm:w-20 pl-4 pr-1.5 py-1 bg-white rounded-lg border border-slate-200 text-xs font-mono font-bold text-slate-900 text-right shadow-2xs pointer-events-none cursor-pointer"
-                                  />
+                          {/* Category Breakdown (Dynamic responsive pills with proper mobile sizing) */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-xs font-mono">
+                            {titheColumns.map(col => {
+                              const rawVal = rowDraft[col.field_key] || 0;
+                              const numVal = parseFloat(rawVal) || 0;
+                              return (
+                                <div 
+                                  key={col.id} 
+                                  className="p-1.5 sm:p-2 rounded-xl border flex items-center justify-between transition-colors bg-white shadow-2xs"
+                                  style={{ 
+                                    backgroundColor: `${col.color || '#6366f1'}08`, 
+                                    borderColor: `${col.color || '#6366f1'}30` 
+                                  }}
+                                >
+                                  <span className="text-[10px] sm:text-[10.5px] font-black uppercase tracking-tight pl-0.5 truncate" style={{ color: col.color || '#1e293b' }}>
+                                    {col.code}
+                                  </span>
+                                  <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-900 bg-white px-1.5 py-0.5 rounded-md border border-slate-200/80 shadow-2xs ml-1 shrink-0">
+                                    ₹{numVal.toLocaleString('en-IN')}
+                                  </span>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
 
                           {/* Total Row Aligned at Bottom */}

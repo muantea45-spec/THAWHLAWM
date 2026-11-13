@@ -183,14 +183,20 @@ export default function Login({ onLoginSuccess, showToast }) {
 
       <div className="w-full max-w-md relative z-10">
         {/* Slightly Transparent / Frosted Glass Login Box */}
-        <div className="p-5 sm:p-7 rounded-3xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.45)] bg-white/75 backdrop-blur-xl transition-all">
+        <div className="p-4 sm:p-5.5 rounded-3xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.45)] bg-white/75 backdrop-blur-xl transition-all">
           
           {/* ======================================================== */}
-          {/* 1. UPPER PART: USER CREDENTIALS LOGIN                     */}
+          {/* 1. UPPER PART: REGULAR LOGIN (BIAL VAWNGTU TAN)           */}
           {/* ======================================================== */}
-          <form onSubmit={handleUserLogin} className="space-y-3.5">
+          <div className="text-center mb-2">
+            <h2 className="text-xs sm:text-sm font-black text-slate-800 tracking-wider uppercase">
+              BIAL VAWNGTU TAN
+            </h2>
+          </div>
+
+          <form onSubmit={handleUserLogin} className="space-y-2.5">
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-0.5">
                 Username
               </label>
               <div className="relative">
@@ -203,14 +209,14 @@ export default function Login({ onLoginSuccess, showToast }) {
                   value={userUsername}
                   onChange={(e) => setUserUsername(e.target.value)}
                   placeholder="Enter username"
-                  className="w-full pl-10 pr-4 py-2 sm:py-2.5 rounded-xl bg-white/80 hover:bg-white focus:bg-white border border-slate-300/80 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-sm font-medium transition-all shadow-xs"
+                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-white/80 hover:bg-white focus:bg-white border border-slate-300/80 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-sm font-medium transition-all shadow-xs"
                   autoFocus
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-0.5">
                 Password
               </label>
               <div className="relative">
@@ -223,7 +229,7 @@ export default function Login({ onLoginSuccess, showToast }) {
                   value={userPassword}
                   onChange={(e) => setUserPassword(e.target.value)}
                   placeholder="Enter password"
-                  className="w-full pl-10 pr-10 py-2 sm:py-2.5 rounded-xl bg-white/80 hover:bg-white focus:bg-white border border-slate-300/80 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-sm font-medium transition-all shadow-xs"
+                  className="w-full pl-10 pr-10 py-2 rounded-xl bg-white/80 hover:bg-white focus:bg-white border border-slate-300/80 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-sm font-medium transition-all shadow-xs"
                 />
                 <button
                   type="button"
@@ -239,7 +245,7 @@ export default function Login({ onLoginSuccess, showToast }) {
             <button
               type="submit"
               disabled={userLoading}
-              className="w-full py-2.5 sm:py-3 rounded-xl font-bold text-xs bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-lg shadow-indigo-700/25 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="w-full py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-lg shadow-indigo-700/25 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {userLoading ? (
                 'Signing In...'
@@ -255,23 +261,29 @@ export default function Login({ onLoginSuccess, showToast }) {
           {/* ======================================================== */}
           {/* DIVIDER                                                  */}
           {/* ======================================================== */}
-          <div className="relative my-3.5 sm:my-4">
+          <div className="relative my-2.5 sm:my-3">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-slate-300/70"></div>
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white/80 backdrop-blur-sm px-3 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider rounded-full">
+              <span className="bg-white/80 backdrop-blur-sm px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider rounded-full">
                 OR
               </span>
             </div>
           </div>
 
           {/* ======================================================== */}
-          {/* 2. LOWER PART: GOOGLE LOGIN FOR ADMIN (JUST BELOW IT)     */}
+          {/* 2. LOWER PART: GOOGLE LOGIN FOR ADMIN (ADMIN TAN)        */}
           {/* ======================================================== */}
-          <div className="space-y-2">
+          <div className="space-y-1.5">
+            <div className="text-center mb-1">
+              <h3 className="text-xs sm:text-sm font-black text-slate-800 tracking-wider uppercase">
+                ADMIN TAN
+              </h3>
+            </div>
+
             {/* Official Google Identity Services Container if Client ID is configured */}
-            <div ref={googleBtnContainerRef} className={`flex justify-center w-full min-h-[44px] ${!configuredClientId ? 'hidden' : ''}`}></div>
+            <div ref={googleBtnContainerRef} className={`flex justify-center w-full min-h-[42px] ${!configuredClientId ? 'hidden' : ''}`}></div>
 
             {/* Custom Google Sign-In Button (shown when Client ID is not yet saved or fallback) */}
             {!configuredClientId && (
@@ -279,14 +291,14 @@ export default function Login({ onLoginSuccess, showToast }) {
                 type="button"
                 onClick={handleGoogleSignInClick}
                 disabled={googleLoading}
-                className="w-full py-2.5 sm:py-3 px-4 bg-white/90 hover:bg-white border-2 border-slate-200 hover:border-slate-300 rounded-2xl shadow-xs hover:shadow-md text-slate-800 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
+                className="w-full py-2.5 px-4 bg-white/90 hover:bg-white border-2 border-slate-200 hover:border-slate-300 rounded-2xl shadow-xs hover:shadow-md text-slate-800 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
               >
                 {googleLoading ? (
                   <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
                 ) : (
                   <GoogleLogoSvg className="w-5 h-5 shrink-0" />
                 )}
-                <span>Sign in with Google (Admin)</span>
+                <span>Sign in with Google</span>
               </button>
             )}
           </div>

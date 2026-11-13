@@ -168,12 +168,12 @@ export default function Login({ onLoginSuccess, showToast }) {
               alt="Bethlehem Kohhran Logo"
               className="w-8 h-8 sm:w-12 sm:h-12 rounded-full object-cover border border-white/85 shadow-md transform hover:scale-105 transition-transform duration-300 shrink-0"
             />
-            <div className="text-center flex flex-col items-center">
-              <h1 className="font-heading font-black text-base sm:text-xl text-white tracking-tight leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] text-center whitespace-nowrap">
-                Bethlehem Kohhran
+            <div className="text-center flex flex-col items-center justify-center">
+              <h1 className="font-heading font-black text-[14px] sm:text-lg text-white tracking-[0.04em] uppercase leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] text-center whitespace-nowrap">
+                BETHLEHEM KOHHRAN
               </h1>
-              <p className="text-[10.5px] sm:text-xs text-amber-300 font-extrabold tracking-[0.06em] sm:tracking-wider uppercase drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] text-center whitespace-nowrap">
-                Pathian Ram Khawnna
+              <p className="text-[10.5px] sm:text-[13px] text-amber-300 font-extrabold tracking-[0.20em] sm:tracking-[0.21em] uppercase drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] text-center whitespace-nowrap mt-0.5">
+                PATHIAN RAM KHAWNNA
               </p>
             </div>
           </div>

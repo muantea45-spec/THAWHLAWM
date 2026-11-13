@@ -166,7 +166,7 @@ export default function Login({ onLoginSuccess, showToast }) {
             <img
               src={churchLogo}
               alt="Bethlehem Kohhran Logo"
-              className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-white/95 border border-white/80 object-contain shadow-md p-0.5 ring-2 ring-white/20 transform hover:scale-105 transition-transform duration-300 shrink-0"
+              className="w-8 h-8 sm:w-12 sm:h-12 rounded-full object-cover border border-white/85 shadow-md transform hover:scale-105 transition-transform duration-300 shrink-0"
             />
             <div className="text-left">
               <h1 className="font-heading font-black text-sm sm:text-lg text-white tracking-tight leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">

@@ -2,7 +2,7 @@
 
 A modern, high-performance, and secure Tithe Collection & Church Accounting Management System built for **Bethlehem Kohhran**.
 
-🌐 **Live Production Site**: [https://thawhlawmptr-d3g.pages.dev](https://thawhlawmptr-d3g.pages.dev)  
+🌐 **Live Production Site**: [https://thawhlawmptr.pages.dev](https://thawhlawmptr.pages.dev)  
 📦 **GitHub Repository**: [https://github.com/muantea45-spec/THAWHLAWM](https://github.com/muantea45-spec/THAWHLAWM)
 
 ---

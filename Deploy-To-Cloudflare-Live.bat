@@ -27,6 +27,6 @@ call npx.cmd wrangler pages deploy dist --project-name=thawhlawmptr --branch=mai
 echo.
 echo ===================================================
 echo   Deployment completed!
-echo   Live URL: https://thawhlawmptr-d3g.pages.dev
+echo   Live URL: https://thawhlawmptr.pages.dev
 echo ===================================================
 pause

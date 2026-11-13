@@ -578,9 +578,9 @@ export default function BialDashboard({ user, showToast }) {
               </button>
 
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="text-xs font-black uppercase tracking-wider text-slate-800">
-                  BIAL: <span className="text-indigo-700">{bialName}</span>
+                <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0"></span>
+                <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                  Bial: <span className="text-slate-900 font-bold">{bialName}</span>
                 </span>
               </div>
             </div>
@@ -588,12 +588,12 @@ export default function BialDashboard({ user, showToast }) {
 
           {/* Lock Warning Banner if month is locked */}
           {isLocked && activeTab === 'main' && (
-            <div className="p-2.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold flex items-center justify-between shadow-2xs">
+            <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-center justify-between shadow-2xs">
               <div className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-rose-600 shrink-0" />
+                <Lock className="w-4 h-4 text-amber-700 shrink-0" />
                 <span>Month Locked by Admin. Data entry and edits for this month are restricted.</span>
               </div>
-              <span className="px-2 py-0.5 bg-rose-200/80 rounded-md text-[10px] uppercase tracking-wide shrink-0 font-bold">
+              <span className="px-2 py-0.5 bg-amber-100 rounded text-[10px] uppercase tracking-wide shrink-0 font-semibold text-amber-800">
                 Read-Only
               </span>
             </div>
@@ -637,21 +637,21 @@ export default function BialDashboard({ user, showToast }) {
                 const disp = getSummaryDisplay();
 
                 return (
-                  <div className="bg-white p-3 sm:p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
+                  <div className="bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-2.5">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <Layers className="w-4 h-4 text-indigo-600 shrink-0" />
-                        <span className="font-heading font-black text-xs text-slate-900 uppercase tracking-wider">
-                          BELHKHAWM:
+                        <Layers className="w-4 h-4 text-slate-600 shrink-0" />
+                        <span className="font-heading font-semibold text-xs text-slate-800 uppercase tracking-wider">
+                          Belhkhawm:
                         </span>
                       </div>
 
                       {/* Inline Month Selection Dropdown */}
-                      <div className="flex items-center bg-slate-100/90 px-2.5 py-1 rounded-xl border border-slate-200 text-xs font-bold shrink-0">
+                      <div className="flex items-center bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-medium shrink-0">
                         <select
                           value={summaryViewMode}
                           onChange={(e) => setSummaryViewMode(e.target.value)}
-                          className="bg-transparent font-extrabold text-indigo-900 focus:outline-none cursor-pointer text-xs"
+                          className="bg-transparent font-semibold text-slate-900 focus:outline-none cursor-pointer text-xs"
                         >
                           <option value="all">All Months</option>
                           {FINANCIAL_MONTHS.map((mObj) => (
@@ -661,32 +661,28 @@ export default function BialDashboard({ user, showToast }) {
                       </div>
                     </div>
 
-                    {/* Centered Segment Boxes Grid (Dynamic Columns) */}
+                    {/* Clean Quiet Ledger Summary Tiles */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 text-xs text-center">
                       {titheColumns.map(col => (
                         <div 
                           key={col.id} 
-                          className="p-2 sm:p-2.5 rounded-xl border flex flex-col items-center justify-center text-center shadow-2xs"
-                          style={{ 
-                            backgroundColor: `${col.color || '#6366f1'}12`, 
-                            borderColor: `${col.color || '#6366f1'}35` 
-                          }}
+                          className="p-2 sm:p-2.5 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-slate-50 flex flex-col items-center justify-center text-center shadow-2xs transition-colors"
                         >
-                          <div className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-center truncate w-full" style={{ color: col.color || '#1e293b' }}>
+                          <div className="text-[11px] font-bold uppercase tracking-wider text-slate-700 truncate w-full">
                             {col.code}
                           </div>
-                          <div className="text-[8.5px] font-medium text-slate-500 truncate w-full mb-0.5">
+                          <div className="text-[10px] text-slate-500 truncate w-full mb-1">
                             {col.name}
                           </div>
-                          <div className="font-mono text-xs sm:text-sm font-extrabold text-slate-900 text-center">
+                          <div className="font-mono text-xs sm:text-sm font-semibold text-slate-900 text-center tabular-nums">
                             ₹{(disp[col.field_key] || 0).toLocaleString('en-IN')}
                           </div>
                         </div>
                       ))}
-                      <div className="col-span-2 sm:col-span-1 bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-2 sm:p-2.5 rounded-xl border border-indigo-700 flex flex-col items-center justify-center text-center shadow-xs">
-                        <div className="text-[10px] sm:text-[11px] font-black text-emerald-300 uppercase tracking-wider text-center">TOTAL</div>
-                        <div className="text-[8.5px] font-medium text-indigo-200 truncate w-full mb-0.5">Grand Total</div>
-                        <div className="font-mono text-xs sm:text-sm font-black text-emerald-300 text-center">
+                      <div className="col-span-2 sm:col-span-1 bg-slate-900 text-white p-2 sm:p-2.5 rounded-xl border border-slate-950 flex flex-col items-center justify-center text-center shadow-2xs">
+                        <div className="text-[11px] font-bold text-slate-200 uppercase tracking-wider text-center">TOTAL</div>
+                        <div className="text-[10px] text-slate-400 truncate w-full mb-1">Grand Total</div>
+                        <div className="font-mono text-xs sm:text-sm font-bold text-white text-center tabular-nums">
                           ₹{disp.total.toLocaleString('en-IN')}
                         </div>
                       </div>

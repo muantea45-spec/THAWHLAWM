@@ -69,34 +69,34 @@ export default function DigitalReceiptModal({
             <img
               src={churchLogo}
               alt="Church Logo"
-              className="w-12 h-12 rounded-full border border-amber-600/30 object-contain bg-white p-0.5 shrink-0"
+              className="w-12 h-12 rounded-full border border-slate-200 object-cover shadow-2xs shrink-0"
             />
             <div className="min-w-0 flex-1 text-center">
-              <h2 className="font-heading font-black text-xs sm:text-sm uppercase tracking-tight text-slate-900 leading-tight">
+              <h2 className="font-heading font-bold text-xs sm:text-sm uppercase tracking-tight text-slate-900 leading-tight">
                 Bethlehem Kohhran
               </h2>
-              <p className="text-[10px] font-extrabold text-indigo-700 uppercase tracking-wider mt-0.5">
+              <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mt-0.5">
                 Pathian Ram Khawnna Receipt
               </p>
-              <p className="text-[9.5px] font-bold text-slate-500 mt-0.5">
-                FY {year}-{year + 1} &nbsp;•&nbsp; Date: {receiptDate}
+              <p className="text-[10px] font-normal text-slate-500 mt-0.5">
+                FY {year}-{year + 1} &nbsp;&bull;&nbsp; Date: {receiptDate}
               </p>
             </div>
           </div>
 
           {/* Member Details */}
-          <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/90 text-xs space-y-1.5 font-bold">
+          <div className="bg-slate-50/80 p-3 rounded-xl border border-slate-200 text-xs space-y-1.5 font-medium">
             <div className="flex justify-between items-center">
-              <span className="text-slate-500 uppercase text-[10px]">BIAL:</span>
-              <span className="text-indigo-900 font-extrabold">{bialName || 'Bial'}</span>
+              <span className="text-slate-500 uppercase text-[10px] font-semibold">Bial:</span>
+              <span className="text-slate-900 font-bold">{bialName || 'Bial'}</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-500 uppercase text-[10px]">MEMBER NAME:</span>
-              <span className="text-slate-900 font-extrabold">{member.name} ({member.sl_no})</span>
+              <span className="text-slate-500 uppercase text-[10px] font-semibold">Member Name:</span>
+              <span className="text-slate-900 font-bold">{member.name} ({member.sl_no})</span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-500 uppercase text-[10px]">MONTH:</span>
-              <span className="text-indigo-700 font-extrabold">{monthName} {year}</span>
+              <span className="text-slate-500 uppercase text-[10px] font-semibold">Month:</span>
+              <span className="text-slate-800 font-semibold">{monthName} {year}</span>
             </div>
           </div>
 

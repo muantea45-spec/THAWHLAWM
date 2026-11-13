@@ -727,12 +727,12 @@ export default function AdminDashboard({ user, showToast }) {
             })}
 
             {/* GRAND TOTAL BOX */}
-            <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2 sm:p-2.5 rounded-xl border border-indigo-700/60 text-white shadow-xs flex flex-col justify-between">
+            <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-slate-900 p-2 sm:p-2.5 rounded-xl border border-slate-950 text-white shadow-2xs flex flex-col justify-between">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-extrabold text-indigo-200 uppercase tracking-wider">TOTAL</span>
-                <span className="text-[9px] font-semibold text-indigo-300">Grand Total</span>
+                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">TOTAL</span>
+                <span className="text-[9px] font-medium text-slate-400">Grand Total</span>
               </div>
-              <div className="font-mono tabular-nums font-black text-emerald-300 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
+              <div className="font-mono tabular-nums font-bold text-white text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
                 ₹{(grandTotals.grand_total || 0).toLocaleString('en-IN')}
               </div>
             </div>
@@ -1261,22 +1261,22 @@ export default function AdminDashboard({ user, showToast }) {
 
                 {/* Monthly Ledger Summary Footer Card */}
                 {inspectorLedger?.summary && sortedInspectorMembers.length > 0 && (
-                  <div className="bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-3 rounded-2xl border border-indigo-700 text-white shadow-xs space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold border-b border-indigo-800 pb-1.5">
-                      <span className="text-indigo-200 uppercase tracking-wider text-[10px]">Monthly Bial Total</span>
-                      <span className="text-slate-300 font-sans text-[11px]">{sortedInspectorMembers.length} Members</span>
+                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-950 text-white shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between text-xs font-semibold border-b border-slate-800 pb-1.5">
+                      <span className="text-slate-300 uppercase tracking-wider text-[10px]">Monthly Bial Total</span>
+                      <span className="text-slate-400 font-sans text-[11px]">{sortedInspectorMembers.length} Members</span>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-center font-mono text-[10px] pt-0.5">
                       {titheColumns.map(col => (
-                        <div key={col.id} className="bg-indigo-950/60 p-1 rounded-lg border border-indigo-800/60">
-                          <span className="text-[9px] block" style={{ color: col.color || '#93c5fd' }}>{col.code}</span>
-                          <span className="font-bold">₹{((inspectorLedger.summary && (inspectorLedger.summary[col.field_key] ?? inspectorLedger.summary[`sum_${col.field_key}`])) || 0).toLocaleString('en-IN')}</span>
+                        <div key={col.id} className="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800">
+                          <span className="text-[9px] block text-slate-300 font-semibold">{col.code}</span>
+                          <span className="font-bold text-white">₹{((inspectorLedger.summary && (inspectorLedger.summary[col.field_key] ?? inspectorLedger.summary[`sum_${col.field_key}`])) || 0).toLocaleString('en-IN')}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="flex items-center justify-between pt-1 border-t border-indigo-800 text-xs">
-                      <span className="font-bold text-indigo-200">GRAND TOTAL:</span>
-                      <span className="font-mono font-black text-emerald-300 text-sm">₹{(inspectorLedger.summary.grand_total || 0).toLocaleString('en-IN')}</span>
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-xs">
+                      <span className="font-semibold text-slate-300">GRAND TOTAL:</span>
+                      <span className="font-mono font-bold text-white text-sm">₹{(inspectorLedger.summary.grand_total || 0).toLocaleString('en-IN')}</span>
                     </div>
                   </div>
                 )}
@@ -1308,26 +1308,26 @@ export default function AdminDashboard({ user, showToast }) {
             <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
               
               {/* Feature 1: Top Bial */}
-              <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-amber-300/70 bg-gradient-to-br from-amber-500/10 via-indigo-500/5 to-white shadow-2xs flex flex-col justify-between space-y-1">
+              <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1.5">
                 {/* Header Box */}
-                <div className="pb-1 border-b border-amber-200/60">
-                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-800 flex items-center gap-1 truncate">
+                <div className="pb-1 border-b border-slate-100">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5 truncate">
                     <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="truncate">TOP BIAL</span>
+                    <span className="truncate">Top Bial</span>
                   </span>
                 </div>
 
                 {/* Data Box 1: Bial Name & under that the amount */}
-                <div className="bg-white/90 p-1.5 sm:p-2 rounded-xl border border-amber-200/70 space-y-0.5">
-                  <span className="text-xs sm:text-xs font-bold text-slate-900 block truncate">
+                <div className="bg-slate-50/70 p-2 rounded-lg border border-slate-200/80 space-y-0.5">
+                  <span className="text-xs font-semibold text-slate-900 block truncate">
                     {topContributingBial?.name || 'N/A'}
                   </span>
                   <div className="flex items-baseline gap-1 font-mono">
-                    <span className="text-xs sm:text-xs font-black text-indigo-700">
+                    <span className="text-xs sm:text-sm font-bold text-slate-900">
                       ₹{(topContributingBial?.total || 0).toLocaleString('en-IN')}
                     </span>
                     {topContributingBial && (
-                      <span className="text-[8px] sm:text-[9px] font-bold text-slate-500">
+                      <span className="text-[9px] font-medium text-slate-500">
                         ({topContributingBial.percentage_share}%)
                       </span>
                     )}
@@ -1460,17 +1460,17 @@ export default function AdminDashboard({ user, showToast }) {
             </div>
 
             {/* MONTH-OVER-MONTH PERFORMANCE COMPARISON (Current Month vs Previous Month) */}
-            <div className="glass-panel p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-indigo-200/80 shadow-2xs space-y-3 bg-gradient-to-br from-indigo-50/40 via-white to-slate-50/60">
+            <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
               
               {/* Header & Comparison Month Selector */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-indigo-100 pb-2.5">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
                 <div>
-                  <h3 className="text-xs sm:text-sm font-black text-slate-900 flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-indigo-600" />
+                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                    <TrendingUp className="w-4 h-4 text-slate-700" />
                     <span>Month-over-Month Performance Comparison</span>
                   </h3>
-                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-medium">
-                    Comparing <strong className="text-indigo-950 font-bold">Month A ({currMonthFullName})</strong> vs <strong className="text-slate-700 font-bold">Month B ({prevMonthFullName})</strong>
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-normal">
+                    Comparing <strong className="text-slate-800 font-semibold">Month A ({currMonthFullName})</strong> vs <strong className="text-slate-700 font-semibold">Month B ({prevMonthFullName})</strong>
                   </p>
                 </div>
 

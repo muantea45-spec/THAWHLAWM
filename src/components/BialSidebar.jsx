@@ -44,7 +44,7 @@ export default function BialSidebar({
       label: 'Export Reports',
       shortLabel: 'Export',
       icon: FileSpreadsheet,
-      color: 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border-emerald-200',
+      color: 'text-slate-700 bg-white hover:bg-slate-50 border-slate-200',
       action: onOpenExport,
       tooltip: 'Export ledger to Excel or PDF'
     },
@@ -53,7 +53,7 @@ export default function BialSidebar({
       label: 'Overall Summary',
       shortLabel: 'Overall',
       icon: CalendarDays,
-      color: 'text-amber-700 bg-amber-50 hover:bg-amber-100 border-amber-200',
+      color: 'text-slate-700 bg-white hover:bg-slate-50 border-slate-200',
       action: onOpenYearlySummary,
       tooltip: 'View Bial yearly totals & monthly breakdown'
     },
@@ -62,7 +62,7 @@ export default function BialSidebar({
       label: 'Change Password',
       shortLabel: 'Credentials',
       icon: KeyRound,
-      color: 'text-purple-700 bg-purple-50 hover:bg-purple-100 border-purple-200',
+      color: 'text-slate-700 bg-white hover:bg-slate-50 border-slate-200',
       action: onOpenPasswordModal,
       tooltip: 'Update login password / credentials'
     }] : [])
@@ -179,13 +179,13 @@ export default function BialSidebar({
                   key={tool.id}
                   onClick={() => handleToolClick(tool.action)}
                   title={tool.tooltip || tool.label}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer hover:scale-[1.01] active:scale-[0.98] ${tool.color} ${
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-colors border cursor-pointer ${tool.color} ${
                     !showFull ? 'justify-center px-0' : ''
                   }`}
                 >
-                  <Icon className="w-4 h-4 shrink-0" />
+                  <Icon className="w-4 h-4 text-slate-500 shrink-0" />
                   {showFull && (
-                    <span className="truncate text-left flex-1 font-bold">
+                    <span className="truncate text-left flex-1 font-medium">
                       {tool.label}
                     </span>
                   )}

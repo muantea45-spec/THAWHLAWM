@@ -34,34 +34,34 @@ export default function Navbar({ user, onLogout, showToast, onOpenMobileMenu }) 
   return (
     <>
       {typeof window !== 'undefined' && (window.location.hostname.includes('test') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') && (
-        <div className="bg-amber-500 text-slate-950 font-black text-[11px] uppercase tracking-widest text-center py-1 px-4 shadow-inner flex items-center justify-center gap-2 select-none">
-          <span className="w-2 h-2 rounded-full bg-slate-950 animate-ping shrink-0" />
-          <span>🧪 TEST SITE / PLAYGROUND — Changes do not affect Live Production</span>
-          <span className="w-2 h-2 rounded-full bg-slate-950 animate-ping shrink-0" />
+        <div className="bg-amber-400 text-slate-950 font-semibold text-[11px] uppercase tracking-wider text-center py-1 px-4 flex items-center justify-center gap-2 select-none border-b border-amber-500/30">
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-950 shrink-0" />
+          <span>Test Site &bull; Changes do not affect Live Production</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-950 shrink-0" />
         </div>
       )}
-      <nav className="sticky top-0 z-40 glass-nav px-2.5 sm:px-4 lg:px-8 py-2 flex items-center justify-between shadow-xs">
+      <nav className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-3 sm:px-6 lg:px-8 py-2 flex items-center justify-between shadow-2xs">
         {/* Left: Logo */}
         <div className="flex items-center shrink-0">
           <img
             src={churchLogo}
             alt="Church Logo"
-            className="w-10 h-10 sm:w-13 sm:h-13 rounded-full bg-white border border-amber-600/30 object-contain shadow-xs p-0.5 shrink-0"
+            className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-slate-200 object-cover shadow-2xs shrink-0"
           />
         </div>
 
         {/* Center: Title & Centered Pathian Ram Khawnna */}
         <div className="min-w-0 flex-1 text-center px-1">
-          <h1 className="font-heading font-black text-sm sm:text-xl md:text-2xl lg:text-3xl leading-tight text-slate-900 tracking-tight text-center">
+          <h1 className="font-heading font-bold text-sm sm:text-xl md:text-2xl text-slate-900 tracking-tight text-center leading-tight">
             Bethlehem Kohhran
           </h1>
-          <p className="text-[11px] sm:text-sm text-indigo-700 font-extrabold tracking-wider uppercase text-center mt-0.5">
+          <p className="text-[10px] sm:text-xs text-slate-600 font-semibold tracking-wider uppercase text-center mt-0.5">
             Pathian Ram Khawnna
           </p>
         </div>
 
         {/* Right Balance Spacer for True Center Alignment */}
-        <div className="w-10 sm:w-13 shrink-0"></div>
+        <div className="w-10 sm:w-12 shrink-0"></div>
       </nav>
 
       {/* Change Password Modal using Compound Modal */}

@@ -60,7 +60,7 @@ export default function Login({ onLoginSuccess, showToast }) {
           if (googleBtnContainerRef.current) {
             googleBtnContainerRef.current.innerHTML = '';
             window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
-              theme: 'outline',
+              theme: 'filled_black',
               size: 'large',
               type: 'standard',
               shape: 'pill',
@@ -143,7 +143,7 @@ export default function Login({ onLoginSuccess, showToast }) {
 
   return (
     <div
-      className="min-h-screen sm:h-screen w-full flex flex-col justify-start sm:justify-center items-center px-4 py-4 sm:py-6 relative overflow-x-hidden overflow-y-auto sm:overflow-hidden bg-[#030d21] bg-no-repeat bg-[position:center_top] sm:bg-center bg-[length:100%_auto] sm:bg-contain"
+      className="h-[100dvh] w-full flex flex-col justify-end sm:justify-center items-center px-4 pb-2 sm:pb-6 pt-2 sm:pt-6 relative overflow-hidden bg-[#030d21] bg-no-repeat bg-[position:center_top] sm:bg-center bg-[length:100%_auto] sm:bg-contain"
       style={{ backgroundImage: `url(${loginBg})` }}
     >
       {/* Ambient background blur for widescreen desktop displays */}
@@ -153,50 +153,47 @@ export default function Login({ onLoginSuccess, showToast }) {
       />
 
       {/* Subtle Vignette / Contrast Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#030d21]/60 via-[#030d21]/20 to-[#030d21]/75 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-gradient-to-b from-[#030d21]/40 via-transparent to-[#030d21]/75 pointer-events-none"></div>
 
       {/* Subtle Warm Amber & Cool Indigo Ambient Highlights */}
       <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-[140px] pointer-events-none"></div>
       <div className="absolute bottom-10 left-1/4 w-[400px] h-[400px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none"></div>
 
-      {/* Brand Header */}
-      <div className="text-center sm:mb-5 mb-2 relative z-10 w-full max-w-md">
-        <div className="inline-flex sm:flex-col items-center justify-center gap-2.5 sm:gap-2">
-          <img
-            src={churchLogo}
-            alt="Bethlehem Kohhran Logo"
-            className="w-10 h-10 sm:w-16 sm:h-16 rounded-full bg-white/95 border-2 border-white/80 object-contain shadow-2xl p-0.5 ring-2 ring-white/20 transform hover:scale-105 transition-transform duration-300 shrink-0"
-          />
-          <div className="text-left sm:text-center">
-            <h1 className="font-heading font-black text-lg sm:text-2xl text-white tracking-tight leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
-              Bethlehem Kohhran
-            </h1>
-            <p className="text-[11px] sm:text-xs text-amber-300 font-extrabold tracking-wider uppercase drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
-              Pathian Ram Khawnna
-            </p>
+      <div className="w-full max-w-sm sm:max-w-md relative z-10 flex flex-col items-center">
+        {/* Brand Header: Logo and Bethlehem Kohhran Pathian Ram Khawnna Just above the Login template */}
+        <div className="text-center mb-2 sm:mb-3 w-full">
+          <div className="inline-flex items-center justify-center gap-2.5 sm:gap-3 bg-[#030d21]/50 sm:bg-transparent px-3 py-1.5 sm:p-0 rounded-2xl border border-white/15 sm:border-0 backdrop-blur-md sm:backdrop-blur-none shadow-lg sm:shadow-none">
+            <img
+              src={churchLogo}
+              alt="Bethlehem Kohhran Logo"
+              className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-white/95 border border-white/80 object-contain shadow-md p-0.5 ring-2 ring-white/20 transform hover:scale-105 transition-transform duration-300 shrink-0"
+            />
+            <div className="text-left">
+              <h1 className="font-heading font-black text-sm sm:text-lg text-white tracking-tight leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
+                Bethlehem Kohhran
+              </h1>
+              <p className="text-[10px] sm:text-xs text-amber-300 font-extrabold tracking-wider uppercase drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)]">
+                Pathian Ram Khawnna
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Spacer on mobile to display the zoomed-out Church building completely unobstructed */}
-      <div className="h-[46vw] max-h-[220px] sm:hidden w-full pointer-events-none shrink-0" aria-hidden="true" />
-
-      <div className="w-full max-w-md relative z-10">
-        {/* Slightly Transparent / Frosted Glass Login Box */}
-        <div className="p-4 sm:p-5.5 rounded-3xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.45)] bg-white/75 backdrop-blur-xl transition-all">
+        {/* Glass Type Login Box that blends with the dark background picture and can be seen through */}
+        <div className="w-full p-4 sm:p-5.5 rounded-3xl border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.6)] bg-slate-900/40 backdrop-blur-2xl transition-all">
           
           {/* ======================================================== */}
           {/* 1. UPPER PART: REGULAR LOGIN (BIAL VAWNGTU TAN)           */}
           {/* ======================================================== */}
           <div className="text-center mb-2">
-            <h2 className="text-xs sm:text-sm font-black text-slate-800 tracking-wider uppercase">
+            <span className="inline-block px-3 py-0.5 rounded-full bg-indigo-500/20 border border-indigo-400/30 text-indigo-300 text-[11px] sm:text-xs font-black tracking-wider uppercase backdrop-blur-md shadow-xs">
               BIAL VAWNGTU TAN
-            </h2>
+            </span>
           </div>
 
-          <form onSubmit={handleUserLogin} className="space-y-2.5">
+          <form onSubmit={handleUserLogin} className="space-y-2 sm:space-y-2.5">
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-0.5">
+              <label className="block text-[11px] font-bold text-slate-200 uppercase tracking-wider mb-0.5">
                 Username
               </label>
               <div className="relative">
@@ -209,14 +206,14 @@ export default function Login({ onLoginSuccess, showToast }) {
                   value={userUsername}
                   onChange={(e) => setUserUsername(e.target.value)}
                   placeholder="Enter username"
-                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-white/80 hover:bg-white focus:bg-white border border-slate-300/80 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-sm font-medium transition-all shadow-xs"
+                  className="w-full pl-10 pr-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 focus:bg-white/20 border border-white/20 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 text-white placeholder-slate-400 text-sm font-medium transition-all shadow-inner backdrop-blur-md"
                   autoFocus
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider mb-0.5">
+              <label className="block text-[11px] font-bold text-slate-200 uppercase tracking-wider mb-0.5">
                 Password
               </label>
               <div className="relative">
@@ -229,12 +226,12 @@ export default function Login({ onLoginSuccess, showToast }) {
                   value={userPassword}
                   onChange={(e) => setUserPassword(e.target.value)}
                   placeholder="Enter password"
-                  className="w-full pl-10 pr-10 py-2 rounded-xl bg-white/80 hover:bg-white focus:bg-white border border-slate-300/80 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-sm font-medium transition-all shadow-xs"
+                  className="w-full pl-10 pr-10 py-2 rounded-xl bg-white/10 hover:bg-white/15 focus:bg-white/20 border border-white/20 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 text-white placeholder-slate-400 text-sm font-medium transition-all shadow-inner backdrop-blur-md"
                 />
                 <button
                   type="button"
                   onClick={() => setShowUserPassword(p => !p)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-white cursor-pointer"
                   title={showUserPassword ? "Hide password" : "Show password"}
                 >
                   {showUserPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -245,7 +242,7 @@ export default function Login({ onLoginSuccess, showToast }) {
             <button
               type="submit"
               disabled={userLoading}
-              className="w-full py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-lg shadow-indigo-700/25 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="w-full py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white shadow-lg shadow-indigo-900/40 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer border border-indigo-400/30"
             >
               {userLoading ? (
                 'Signing In...'
@@ -261,12 +258,12 @@ export default function Login({ onLoginSuccess, showToast }) {
           {/* ======================================================== */}
           {/* DIVIDER                                                  */}
           {/* ======================================================== */}
-          <div className="relative my-2.5 sm:my-3">
+          <div className="relative my-2 sm:my-2.5">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-300/70"></div>
+              <div className="w-full border-t border-white/15"></div>
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white/80 backdrop-blur-sm px-3 text-[10px] font-extrabold text-slate-500 uppercase tracking-wider rounded-full">
+              <span className="bg-slate-900/80 border border-white/15 backdrop-blur-md px-3 text-[10px] font-extrabold text-slate-300 uppercase tracking-wider rounded-full">
                 OR
               </span>
             </div>
@@ -277,9 +274,9 @@ export default function Login({ onLoginSuccess, showToast }) {
           {/* ======================================================== */}
           <div className="space-y-1.5">
             <div className="text-center mb-1">
-              <h3 className="text-xs sm:text-sm font-black text-slate-800 tracking-wider uppercase">
+              <span className="inline-block px-3 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-[11px] sm:text-xs font-black tracking-wider uppercase backdrop-blur-md shadow-xs">
                 ADMIN TAN
-              </h3>
+              </span>
             </div>
 
             {/* Official Google Identity Services Container if Client ID is configured */}
@@ -291,10 +288,10 @@ export default function Login({ onLoginSuccess, showToast }) {
                 type="button"
                 onClick={handleGoogleSignInClick}
                 disabled={googleLoading}
-                className="w-full py-2.5 px-4 bg-white/90 hover:bg-white border-2 border-slate-200 hover:border-slate-300 rounded-2xl shadow-xs hover:shadow-md text-slate-800 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
+                className="w-full py-2.5 px-4 bg-white/10 hover:bg-white/15 border border-white/25 hover:border-white/40 rounded-2xl shadow-lg text-white font-extrabold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50 backdrop-blur-md"
               >
                 {googleLoading ? (
-                  <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                  <div className="w-4 h-4 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin"></div>
                 ) : (
                   <GoogleLogoSvg className="w-5 h-5 shrink-0" />
                 )}
@@ -306,8 +303,8 @@ export default function Login({ onLoginSuccess, showToast }) {
         </div>
 
         {/* Footer info */}
-        <div className="text-center mt-3 sm:mt-4">
-          <p className="text-[11px] sm:text-xs text-slate-300/80 drop-shadow font-medium">
+        <div className="text-center mt-2 sm:mt-3">
+          <p className="text-[10px] sm:text-xs text-slate-300/80 drop-shadow font-medium">
             Bethlehem Kohhran &bull; Thawhlawm Management System
           </p>
         </div>

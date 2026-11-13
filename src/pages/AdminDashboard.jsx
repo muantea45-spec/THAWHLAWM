@@ -201,7 +201,7 @@ export default function AdminDashboard({ user, showToast }) {
     };
 
     const checkColumnsSignature = async () => {
-      if (document.visibilityState !== 'visible') return;
+      if (typeof document !== 'undefined' && (document.visibilityState !== 'visible' || document.hidden)) return;
       try {
         const res = await api.getColumns();
         const cols = Array.isArray(res) ? res : (res?.columns || []);
@@ -224,7 +224,7 @@ export default function AdminDashboard({ user, showToast }) {
       }
     };
 
-    const pollInterval = setInterval(checkColumnsSignature, 45000);
+    const pollInterval = setInterval(checkColumnsSignature, 300000); // 5 minutes fallback (real-time sync via BroadcastChannel)
     window.addEventListener('storage', handleStorage);
     window.addEventListener('tithe-columns-updated', handleCustom);
     window.addEventListener('focus', checkColumnsSignature);

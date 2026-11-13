@@ -60,12 +60,28 @@ const DEFAULT_COLUMNS = [
   { id: 4, name: 'Building', code: 'Bldg', field_key: 'building', color: '#a855f7', display_order: 4 }
 ];
 
+let _memTitheColumns = null;
+let _memTitheColumnsExpiry = 0;
+
+function invalidateTitheColumnsCache() {
+  _memTitheColumns = null;
+  _memTitheColumnsExpiry = 0;
+}
+
 async function getTitheColumns(db) {
+  const now = Date.now();
+  if (_memTitheColumns && now < _memTitheColumnsExpiry) {
+    return _memTitheColumns;
+  }
   try {
     const { results } = await db.prepare(
       'SELECT id, name, code, field_key, color, display_order FROM tithe_columns ORDER BY display_order ASC, id ASC'
     ).all();
-    if (results && results.length > 0) return results;
+    if (results && results.length > 0) {
+      _memTitheColumns = results;
+      _memTitheColumnsExpiry = now + 180000;
+      return results;
+    }
   } catch (e) {
     try {
       await db.prepare(`
@@ -89,16 +105,35 @@ async function getTitheColumns(db) {
       const { results } = await db.prepare(
         'SELECT id, name, code, field_key, color, display_order FROM tithe_columns ORDER BY display_order ASC, id ASC'
       ).all();
-      if (results && results.length > 0) return results;
+      if (results && results.length > 0) {
+        _memTitheColumns = results;
+        _memTitheColumnsExpiry = now + 180000;
+        return results;
+      }
     } catch (err) {}
   }
   return DEFAULT_COLUMNS;
 }
 
+let _memActiveYear = null;
+let _memActiveYearExpiry = 0;
+
+function invalidateActiveYearCache() {
+  _memActiveYear = null;
+  _memActiveYearExpiry = 0;
+}
+
 async function getActiveYear(db) {
+  const now = Date.now();
+  if (_memActiveYear && now < _memActiveYearExpiry) {
+    return _memActiveYear;
+  }
   try {
     const row = await db.prepare('SELECT year FROM financial_years WHERE is_active = 1 LIMIT 1').first();
-    return row ? row.year : new Date().getFullYear();
+    const yr = row ? row.year : new Date().getFullYear();
+    _memActiveYear = yr;
+    _memActiveYearExpiry = now + 180000;
+    return yr;
   } catch (e) {
     return new Date().getFullYear();
   }
@@ -119,8 +154,8 @@ async function isMonthLocked(db, bialId, year, month) {
   }
 
   try {
-    const activeYearRow = await db.prepare('SELECT year FROM financial_years WHERE is_active = 1 LIMIT 1').first();
-    if (activeYearRow && targetYear !== activeYearRow.year) {
+    const actYear = await getActiveYear(db);
+    if (targetYear !== actYear) {
       return true;
     }
   } catch (e) {}
@@ -609,31 +644,59 @@ app.get('/admin/dashboard', authMiddleware, requireAdmin, async (c) => {
   try {
     const columns = await getTitheColumns(db);
 
-    let whereClause = 'WHERE year = ?';
-    const params = [year];
-
+    // 1. Fetch Bials
+    let bialQuery = 'SELECT id, name, code FROM bials';
+    const bialParams = [];
     if (bialId) {
-      whereClause += ' AND bial_id = ?';
-      params.push(bialId);
+      bialQuery += ' WHERE id = ?';
+      bialParams.push(bialId);
     }
-    if (month) {
-      whereClause += ' AND month = ?';
-      params.push(month);
-    }
+    bialQuery += ' ORDER BY id ASC';
+    const { results: bialsList } = await db.prepare(bialQuery).bind(...bialParams).all();
 
-    const { results: allMatchingTithes } = await db.prepare(`
-      SELECT pathian_ram, ramthar, tualchhung, building, extra_amounts, total
+    // 2. Member counts per Bial and overall system members count
+    let memberQuery = 'SELECT bial_id, COUNT(*) as count FROM members WHERE year = ?';
+    const memberParams = [year];
+    if (bialId) {
+      memberQuery += ' AND bial_id = ?';
+      memberParams.push(bialId);
+    }
+    memberQuery += ' GROUP BY bial_id';
+    const { results: memberCountRows } = await db.prepare(memberQuery).bind(...memberParams).all();
+    const bialMemberCountMap = new Map();
+    let total_system_members = 0;
+    (memberCountRows || []).forEach(r => {
+      bialMemberCountMap.set(r.bial_id, r.count);
+      total_system_members += r.count;
+    });
+
+    // 3. Fetch all tithes for the year (and bialId if filtered) in ONE single query
+    let tithesQuery = `
+      SELECT bial_id, member_id, month, pathian_ram, ramthar, tualchhung, building, extra_amounts, total
       FROM tithes
-      ${whereClause}
-    `).bind(...params).all();
+      WHERE year = ?
+    `;
+    const tithesParams = [year];
+    if (bialId) {
+      tithesQuery += ' AND bial_id = ?';
+      tithesParams.push(bialId);
+    }
+    const { results: allYearTithes } = await db.prepare(tithesQuery).bind(...tithesParams).all();
+    const titheList = allYearTithes || [];
 
+    // Filter matching tithes by month if specified
+    const matchingTithes = month ? titheList.filter(t => t.month === month) : titheList;
+
+    // Grand totals calculation
     const grandTotals = { grand_total: 0 };
     columns.forEach(col => {
       grandTotals[col.field_key] = 0;
       grandTotals[`total_${col.field_key}`] = 0;
     });
 
-    (allMatchingTithes || []).forEach(t => {
+    const returnedMemberSet = new Set();
+
+    matchingTithes.forEach(t => {
       const extra = t.extra_amounts ? (typeof t.extra_amounts === 'string' ? JSON.parse(t.extra_amounts || '{}') : t.extra_amounts) : {};
       columns.forEach(col => {
         const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(col.field_key)
@@ -643,6 +706,9 @@ app.get('/admin/dashboard', authMiddleware, requireAdmin, async (c) => {
         grandTotals[`total_${col.field_key}`] += v;
       });
       grandTotals.grand_total += (t.total || 0);
+      if ((t.total || 0) > 0) {
+        returnedMemberSet.add(t.member_id);
+      }
     });
 
     // Backward-compat keys:
@@ -651,55 +717,21 @@ app.get('/admin/dashboard', authMiddleware, requireAdmin, async (c) => {
     grandTotals.total_tualchhung = grandTotals.tualchhung || 0;
     grandTotals.total_building = grandTotals.building || 0;
 
-    let bialWhere = '';
-    const subParams = [year];
-    if (month) subParams.push(month);
+    const total_returned_members = returnedMemberSet.size;
+    const grandTotalVal = grandTotals.grand_total || 0;
 
-    const mainParams = [year];
-    if (month) mainParams.push(month);
-
-    if (bialId) {
-      bialWhere = 'WHERE b.id = ?';
-    }
-
-    const monthFilterTithe = month ? 'AND t.month = ?' : '';
-    const monthFilterT2 = month ? 'AND t2.month = ?' : '';
-
-    const queryParams = [...subParams, ...mainParams];
-    if (bialId) queryParams.push(bialId);
-
-    const { results: rawBialBreakdown } = await db.prepare(`
-      SELECT
-        b.id,
-        b.name,
-        b.code,
-        COALESCE(SUM(t.pathian_ram), 0) as pathian_ram,
-        COALESCE(SUM(t.ramthar), 0) as ramthar,
-        COALESCE(SUM(t.tualchhung), 0) as tualchhung,
-        COALESCE(SUM(building), 0) as building,
-        COALESCE(SUM(t.total), 0) as total,
-        (SELECT COUNT(*) FROM members m WHERE m.bial_id = b.id AND m.year = ${year}) as total_members,
-        (SELECT COUNT(DISTINCT t2.member_id) FROM tithes t2 WHERE t2.bial_id = b.id AND t2.year = ? ${monthFilterT2} AND t2.total > 0) as returned_members
-      FROM bials b
-      LEFT JOIN tithes t ON b.id = t.bial_id AND t.year = ? ${monthFilterTithe}
-      ${bialWhere}
-      GROUP BY b.id
-      ORDER BY total DESC, b.name ASC
-    `).bind(...queryParams).all();
-
-    // Query extra amounts per bial to enrich breakdown
-    const { results: rawBialTithes } = await db.prepare(`
-      SELECT t.bial_id, t.pathian_ram, t.ramthar, t.tualchhung, t.building, t.extra_amounts, t.total
-      FROM tithes t
-      WHERE t.year = ? ${month ? 'AND t.month = ' + month : ''}
-    `).bind(year).all();
-
+    // Bial breakdown calculation
     const bialTotalsMap = new Map();
-    (rawBialTithes || []).forEach(t => {
+    const bialReturnedMembersMap = new Map();
+
+    matchingTithes.forEach(t => {
       if (!bialTotalsMap.has(t.bial_id)) {
         const init = { total: 0 };
         columns.forEach(c => { init[c.field_key] = 0; });
         bialTotalsMap.set(t.bial_id, init);
+      }
+      if (!bialReturnedMembersMap.has(t.bial_id)) {
+        bialReturnedMembersMap.set(t.bial_id, new Set());
       }
       const bObj = bialTotalsMap.get(t.bial_id);
       const extra = t.extra_amounts ? (typeof t.extra_amounts === 'string' ? JSON.parse(t.extra_amounts || '{}') : t.extra_amounts) : {};
@@ -710,26 +742,33 @@ app.get('/admin/dashboard', authMiddleware, requireAdmin, async (c) => {
         bObj[c.field_key] += v;
       });
       bObj.total += (t.total || 0);
+      if ((t.total || 0) > 0) {
+        bialReturnedMembersMap.get(t.bial_id).add(t.member_id);
+      }
     });
 
-    const grandTotalVal = grandTotals?.grand_total || 0;
-
-    const bialBreakdown = rawBialBreakdown.map(b => {
+    const bialBreakdown = (bialsList || []).map(b => {
       const bSums = bialTotalsMap.get(b.id) || {};
-      const return_rate = b.total_members > 0 ? Math.round((b.returned_members / b.total_members) * 1000) / 10 : 0;
-      const bTotal = bSums.total !== undefined ? bSums.total : b.total;
+      const total_members = bialMemberCountMap.get(b.id) || 0;
+      const returned_members = bialReturnedMembersMap.has(b.id) ? bialReturnedMembersMap.get(b.id).size : 0;
+      const return_rate = total_members > 0 ? Math.round((returned_members / total_members) * 1000) / 10 : 0;
+      const bTotal = bSums.total || 0;
       const percentage_share = grandTotalVal > 0 ? Math.round((bTotal / grandTotalVal) * 1000) / 10 : 0;
-      const avg_per_member = b.returned_members > 0 ? Math.round(bTotal / b.returned_members) : 0;
+      const avg_per_member = returned_members > 0 ? Math.round(bTotal / returned_members) : 0;
 
       const resB = {
-        ...b,
+        id: b.id,
+        name: b.name,
+        code: b.code,
         total: bTotal,
+        total_members,
+        returned_members,
         return_rate,
         percentage_share,
         avg_per_member
       };
       columns.forEach(c => {
-        resB[c.field_key] = bSums[c.field_key] || b[c.field_key] || 0;
+        resB[c.field_key] = bSums[c.field_key] || 0;
         resB[`total_${c.field_key}`] = resB[c.field_key];
       });
       return resB;
@@ -740,22 +779,6 @@ app.get('/admin/dashboard', authMiddleware, requireAdmin, async (c) => {
       const numB = parseInt(b.code?.replace(/\D/g, '') || b.id) || 0;
       return numA - numB;
     });
-
-    let memberCountWhere = 'WHERE year = ?';
-    const memberCountParams = [year];
-    if (bialId) {
-      memberCountWhere += ' AND bial_id = ?';
-      memberCountParams.push(bialId);
-    }
-    const systemMembersRes = await db.prepare(`SELECT COUNT(*) as count FROM members ${memberCountWhere}`).bind(...memberCountParams).first();
-    const total_system_members = systemMembersRes?.count || 0;
-
-    const returnedMembersRes = await db.prepare(`
-      SELECT COUNT(DISTINCT member_id) as count
-      FROM tithes
-      ${whereClause} AND total > 0
-    `).bind(...params).first();
-    const total_returned_members = returnedMembersRes?.count || 0;
 
     const overall_return_rate = total_system_members > 0 
       ? Math.round((total_returned_members / total_system_members) * 1000) / 10 
@@ -788,27 +811,17 @@ app.get('/admin/dashboard', authMiddleware, requireAdmin, async (c) => {
       top_contributing_bial: topContributingBial
     };
 
+    // Monthly trends (1 to 12) computed in memory from titheList in a single pass
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const monthlyTrends = [];
 
     for (let m = 1; m <= 12; m++) {
-      let mWhere = 'WHERE year = ? AND month = ?';
-      const mParams = [year, m];
-      if (bialId) {
-        mWhere += ' AND bial_id = ?';
-        mParams.push(bialId);
-      }
-
-      const { results: mTithes } = await db.prepare(`
-        SELECT pathian_ram, ramthar, tualchhung, building, extra_amounts, total, member_id
-        FROM tithes
-        ${mWhere}
-      `).bind(...mParams).all();
-
+      const mTithes = titheList.filter(t => t.month === m);
       const mSums = { total: 0 };
       columns.forEach(c => { mSums[c.field_key] = 0; });
-      const returnedMemberSet = new Set();
-      (mTithes || []).forEach(r => {
+      const mReturnedSet = new Set();
+
+      mTithes.forEach(r => {
         const extra = r.extra_amounts ? (typeof r.extra_amounts === 'string' ? JSON.parse(r.extra_amounts || '{}') : r.extra_amounts) : {};
         let rTotal = 0;
         columns.forEach(c => {
@@ -819,7 +832,7 @@ app.get('/admin/dashboard', authMiddleware, requireAdmin, async (c) => {
           rTotal += v;
         });
         mSums.total += (r.total || rTotal);
-        if ((r.total || rTotal) > 0) returnedMemberSet.add(r.member_id);
+        if ((r.total || rTotal) > 0) mReturnedSet.add(r.member_id);
       });
 
       // Backward-compat keys:
@@ -828,7 +841,7 @@ app.get('/admin/dashboard', authMiddleware, requireAdmin, async (c) => {
       mSums.tualchhung = mSums.tualchhung || 0;
       mSums.building = mSums.building || 0;
 
-      const returnedCount = returnedMemberSet.size;
+      const returnedCount = mReturnedSet.size;
       const mReturnRate = total_system_members > 0 
         ? Math.round((returnedCount / total_system_members) * 1000) / 10 
         : 0;
@@ -891,6 +904,7 @@ app.put('/admin/years/active', authMiddleware, requireAdmin, async (c) => {
     }
 
     await db.prepare('UPDATE financial_years SET is_active = CASE WHEN year = ? THEN 1 ELSE 0 END').bind(numYear).run();
+    invalidateActiveYearCache();
     return c.json({ message: `Financial Year ${numYear} is now the active financial year`, activeYear: numYear });
   } catch (err) {
     return c.json({ error: 'Failed to set active financial year' }, 500);
@@ -918,6 +932,7 @@ app.post('/admin/years', authMiddleware, requireAdmin, async (c) => {
     }
 
     await db.prepare('INSERT INTO financial_years (year, is_active) VALUES (?, ?)').bind(numYear, isActiveVal).run();
+    invalidateActiveYearCache();
     return c.json({ message: `Financial Year ${numYear} added successfully`, year: numYear, is_active: isActiveVal }, 201);
   } catch (err) {
     return c.json({ error: 'Failed to add financial year' }, 500);
@@ -945,6 +960,7 @@ app.delete('/admin/years/:year', authMiddleware, requireAdmin, async (c) => {
       }
     }
 
+    invalidateActiveYearCache();
     return c.json({ message: `Financial Year ${numYear} deleted successfully` });
   } catch (err) {
     return c.json({ error: 'Failed to delete financial year' }, 500);
@@ -964,6 +980,49 @@ app.get('/admin/overall-member-contributions', authMiddleware, requireAdmin, asy
       return numA - numB;
     });
 
+    // Fetch all members for the year in ONE batch query
+    const { results: allYearMembers } = await db.prepare(`
+      SELECT m.id as member_id, m.bial_id, m.sl_no, m.name as member_name
+      FROM members m
+      WHERE m.year = ?
+      ORDER BY m.bial_id ASC, m.sl_no ASC, m.id ASC
+    `).bind(year).all();
+
+    // Fetch all tithes for the year in ONE batch query
+    const { results: allYearTithes } = await db.prepare(`
+      SELECT t.bial_id, t.member_id, t.pathian_ram, t.ramthar, t.tualchhung, t.building, t.extra_amounts, t.total
+      FROM tithes t
+      WHERE t.year = ?
+    `).bind(year).all();
+
+    // Group members by bial_id
+    const bialMembersMap = new Map();
+    (allYearMembers || []).forEach(m => {
+      if (!bialMembersMap.has(m.bial_id)) {
+        bialMembersMap.set(m.bial_id, []);
+      }
+      bialMembersMap.get(m.bial_id).push(m);
+    });
+
+    // Group tithes by member_id
+    const memberTithesMap = new Map();
+    (allYearTithes || []).forEach(t => {
+      if (!memberTithesMap.has(t.member_id)) {
+        const init = { grand_total: 0 };
+        columns.forEach(c => { init[c.field_key] = 0; });
+        memberTithesMap.set(t.member_id, init);
+      }
+      const mObj = memberTithesMap.get(t.member_id);
+      const extra = t.extra_amounts ? (typeof t.extra_amounts === 'string' ? JSON.parse(t.extra_amounts || '{}') : t.extra_amounts) : {};
+      columns.forEach(c => {
+        const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(c.field_key)
+          ? (t[c.field_key] || 0)
+          : (extra[c.field_key] || 0);
+        mObj[c.field_key] += v;
+        mObj.grand_total += v;
+      });
+    });
+
     const data = [];
     const churchGrandTotal = { grand_total: 0 };
     columns.forEach(col => {
@@ -973,36 +1032,7 @@ app.get('/admin/overall-member-contributions', authMiddleware, requireAdmin, asy
     let totalMemberCount = 0;
 
     for (const b of bials) {
-      const { results: rawMembers } = await db.prepare(`
-        SELECT m.id as member_id, m.sl_no, m.name as member_name
-        FROM members m
-        WHERE m.bial_id = ? AND m.year = ?
-        ORDER BY m.sl_no ASC, m.id ASC
-      `).bind(b.id, year).all();
-
-      const { results: allBialYearTithes } = await db.prepare(`
-        SELECT t.member_id, t.pathian_ram, t.ramthar, t.tualchhung, t.building, t.extra_amounts, t.total
-        FROM tithes t
-        WHERE t.bial_id = ? AND t.year = ?
-      `).bind(b.id, year).all();
-
-      const memberTithesMap = new Map();
-      (allBialYearTithes || []).forEach(t => {
-        if (!memberTithesMap.has(t.member_id)) {
-          const init = { grand_total: 0 };
-          columns.forEach(c => { init[c.field_key] = 0; });
-          memberTithesMap.set(t.member_id, init);
-        }
-        const mObj = memberTithesMap.get(t.member_id);
-        const extra = t.extra_amounts ? (typeof t.extra_amounts === 'string' ? JSON.parse(t.extra_amounts || '{}') : t.extra_amounts) : {};
-        columns.forEach(c => {
-          const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(c.field_key)
-            ? (t[c.field_key] || 0)
-            : (extra[c.field_key] || 0);
-          mObj[c.field_key] += v;
-          mObj.grand_total += v;
-        });
-      });
+      const rawMembers = bialMembersMap.get(b.id) || [];
 
       const bialSubtotal = { grand_total: 0 };
       columns.forEach(c => {
@@ -1010,7 +1040,7 @@ app.get('/admin/overall-member-contributions', authMiddleware, requireAdmin, asy
         bialSubtotal[`total_${c.field_key}`] = 0;
       });
 
-      const processedMembers = (rawMembers || []).map(m => {
+      const processedMembers = rawMembers.map(m => {
         const tData = memberTithesMap.get(m.member_id) || {};
         const resMem = {
           member_id: m.member_id,
@@ -1081,10 +1111,15 @@ app.get('/admin/members/all', authMiddleware, requireAdmin, async (c) => {
         m.name, 
         b.name as bial_name, 
         b.code as bial_code,
-        (SELECT COUNT(*) FROM tithes t WHERE t.member_id = m.id) as tithe_records_count,
-        (SELECT COALESCE(SUM(total), 0) FROM tithes t WHERE t.member_id = m.id) as total_contributed
+        COALESCE(ts.tithe_records_count, 0) as tithe_records_count,
+        COALESCE(ts.total_contributed, 0) as total_contributed
       FROM members m
       JOIN bials b ON m.bial_id = b.id
+      LEFT JOIN (
+        SELECT member_id, COUNT(*) as tithe_records_count, SUM(total) as total_contributed
+        FROM tithes
+        GROUP BY member_id
+      ) ts ON ts.member_id = m.id
     `;
     const params = [];
     if (year && !isNaN(year)) {
@@ -1392,6 +1427,7 @@ app.delete('/members/:id', authMiddleware, requireBialUser, async (c) => {
 app.get('/columns', async (c) => {
   const db = c.env.DB;
   const columns = await getTitheColumns(db);
+  c.header('Cache-Control', 'public, max-age=60, s-maxage=300');
   return c.json({ columns });
 });
 
@@ -1416,6 +1452,8 @@ app.post('/columns', authMiddleware, requireAdmin, async (c) => {
     const res = await db.prepare(
       'INSERT INTO tithe_columns (name, code, field_key, color, display_order) VALUES (?, ?, ?, ?, ?)'
     ).bind(name, code, fieldKey, color, nextOrder).run();
+
+    invalidateTitheColumnsCache();
 
     const newCol = {
       id: res.meta.last_row_id,
@@ -1461,6 +1499,7 @@ app.put('/columns/:id', authMiddleware, requireAdmin, async (c) => {
       ).bind(name, code, colId).run();
     }
 
+    invalidateTitheColumnsCache();
     const columns = await getTitheColumns(db);
     return c.json({ message: 'Column updated successfully', columns });
   } catch (err) {
@@ -1479,6 +1518,7 @@ app.delete('/columns/:id', authMiddleware, requireAdmin, async (c) => {
     }
 
     await db.prepare('DELETE FROM tithe_columns WHERE id = ?').bind(colId).run();
+    invalidateTitheColumnsCache();
     const columns = await getTitheColumns(db);
     return c.json({ message: 'Column deleted successfully', columns });
   } catch (err) {
@@ -1500,6 +1540,7 @@ app.put('/columns/reorder', authMiddleware, requireAdmin, async (c) => {
         await db.prepare('UPDATE tithe_columns SET display_order = ? WHERE id = ?').bind(item.display_order, item.id).run();
       }
     }
+    invalidateTitheColumnsCache();
     const columns = await getTitheColumns(db);
     return c.json({ message: 'Columns reordered successfully', columns });
   } catch (err) {
@@ -1792,24 +1833,45 @@ app.get('/tithes/yearly-summary', authMiddleware, requireBialUser, async (c) => 
     if (!bial) return c.json({ error: 'Bial not found' }, 404);
 
     const columns = await getTitheColumns(db);
+    const activeYear = await getActiveYear(db);
     const financialMonthOrder = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
     const monthNames = {
       1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June',
       7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'
     };
 
+    // 1. Fetch month locks in ONE single query
+    const { results: rawLocks } = await db.prepare(
+      'SELECT month, is_locked FROM month_locks WHERE bial_id = ? AND year = ?'
+    ).bind(bialId, year).all();
+    const lockMap = new Map((rawLocks || []).map(l => [l.month, l.is_locked]));
+
+    // 2. Fetch all members in ONE query
+    const { results: memberList } = await db.prepare(`
+      SELECT m.id as member_id, m.sl_no, m.name
+      FROM members m
+      WHERE m.bial_id = ? AND m.year = ?
+      ORDER BY m.sl_no ASC, m.id ASC
+    `).bind(bialId, year).all();
+
+    // 3. Fetch ALL year tithes for this bial in ONE single query
+    const { results: allYearTithes } = await db.prepare(`
+      SELECT t.month, t.member_id, t.pathian_ram, t.ramthar, t.tualchhung, t.building, t.extra_amounts, t.total
+      FROM tithes t
+      WHERE t.bial_id = ? AND t.year = ?
+    `).bind(bialId, year).all();
+
+    const tithesList = allYearTithes || [];
+
+    // Group by month in memory
     const monthlyBreakdown = [];
     for (const m of financialMonthOrder) {
-      const locked = await isMonthLocked(db, bialId, year, m);
-      const { results: mRows } = await db.prepare(`
-        SELECT pathian_ram, ramthar, tualchhung, building, extra_amounts, total
-        FROM tithes
-        WHERE bial_id = ? AND year = ? AND month = ?
-      `).bind(bialId, year, m).all();
+      const locked = lockMap.has(m) ? lockMap.get(m) === 1 : (year !== activeYear);
+      const mRows = tithesList.filter(t => t.month === m);
 
       const mSums = { total: 0 };
       columns.forEach(c => { mSums[c.field_key] = 0; });
-      (mRows || []).forEach(r => {
+      mRows.forEach(r => {
         const extra = r.extra_amounts ? (typeof r.extra_amounts === 'string' ? JSON.parse(r.extra_amounts || '{}') : r.extra_amounts) : {};
         columns.forEach(c => {
           const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(c.field_key)
@@ -1833,21 +1895,8 @@ app.get('/tithes/yearly-summary', authMiddleware, requireBialUser, async (c) => 
       });
     }
 
-    const { results: memberList } = await db.prepare(`
-      SELECT m.id as member_id, m.sl_no, m.name
-      FROM members m
-      WHERE m.bial_id = ? AND m.year = ?
-      ORDER BY m.sl_no ASC, m.id ASC
-    `).bind(bialId, year).all();
-
-    const { results: allYearTithes } = await db.prepare(`
-      SELECT t.member_id, t.pathian_ram, t.ramthar, t.tualchhung, t.building, t.extra_amounts, t.total
-      FROM tithes t
-      WHERE t.bial_id = ? AND t.year = ?
-    `).bind(bialId, year).all();
-
     const memberMap = new Map();
-    (allYearTithes || []).forEach(t => {
+    tithesList.forEach(t => {
       if (!memberMap.has(t.member_id)) {
         const initial = { grand_total: 0 };
         columns.forEach(c => { initial[c.field_key] = 0; });
@@ -1930,11 +1979,26 @@ app.get('/tithes/member-history', authMiddleware, requireBialUser, async (c) => 
     }
 
     const columns = await getTitheColumns(db);
+    const activeYear = await getActiveYear(db);
     const financialMonthOrder = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
     const monthNames = {
       1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June',
       7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'
     };
+
+    // 1. Fetch month locks for this bial/year in ONE query
+    const { results: rawLocks } = await db.prepare(
+      'SELECT month, is_locked FROM month_locks WHERE bial_id = ? AND year = ?'
+    ).bind(member.bial_id, year).all();
+    const lockMap = new Map((rawLocks || []).map(l => [l.month, l.is_locked]));
+
+    // 2. Fetch member tithes for the entire year in ONE query
+    const { results: memberTithes } = await db.prepare(`
+      SELECT month, pathian_ram, ramthar, tualchhung, building, extra_amounts, total
+      FROM tithes
+      WHERE member_id = ? AND year = ?
+    `).bind(memberId, year).all();
+    const tithesByMonth = new Map((memberTithes || []).map(t => [t.month, t]));
 
     const monthlyEntries = [];
     const annualSummary = { grand_total: 0 };
@@ -1944,12 +2008,8 @@ app.get('/tithes/member-history', authMiddleware, requireBialUser, async (c) => 
     });
 
     for (const m of financialMonthOrder) {
-      const isLocked = await isMonthLocked(db, member.bial_id, year, m);
-      const entry = await db.prepare(`
-        SELECT pathian_ram, ramthar, tualchhung, building, extra_amounts, total
-        FROM tithes
-        WHERE member_id = ? AND year = ? AND month = ?
-      `).bind(memberId, year, m).first();
+      const isLocked = lockMap.has(m) ? lockMap.get(m) === 1 : (year !== activeYear);
+      const entry = tithesByMonth.get(m);
 
       const extra = entry?.extra_amounts ? (typeof entry.extra_amounts === 'string' ? JSON.parse(entry.extra_amounts || '{}') : entry.extra_amounts) : {};
       const mObj = {

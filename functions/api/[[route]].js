@@ -5,47 +5,76 @@ import bcrypt from 'bcryptjs';
 
 const app = new Hono().basePath('/api');
 
-const DEFAULT_JWT_SECRET = 'pathian_ram_tithe_super_secret_jwt_key_2026';
-
 // ----------------------------------------------------
-// ANTI-BRUTE-FORCE LOGIN RATE LIMITER
+// GLOBAL D1-BACKED ANTI-BRUTE-FORCE LOGIN RATE LIMITER
 // ----------------------------------------------------
-const loginAttemptMap = new Map();
-
-function checkLoginRateLimit(ip) {
+async function checkLoginRateLimit(db, ip) {
   const now = Date.now();
-  const record = loginAttemptMap.get(ip);
-  if (!record) return { allowed: true };
+  try {
+    const record = await db.prepare('SELECT attempts, first_attempt, locked_until FROM login_rate_limits WHERE ip = ?')
+      .bind(ip).first();
+    if (!record) return { allowed: true };
 
-  if (record.lockedUntil && now < record.lockedUntil) {
-    const remainingSecs = Math.ceil((record.lockedUntil - now) / 1000);
-    return {
-      allowed: false,
-      error: `Too many failed login attempts. Temporarily locked for security. Please try again in ${remainingSecs} seconds.`
-    };
+    if (record.locked_until && now < record.locked_until) {
+      const remainingSecs = Math.ceil((record.locked_until - now) / 1000);
+      return {
+        allowed: false,
+        error: `Too many failed login attempts. Temporarily locked for security. Please try again in ${remainingSecs} seconds.`
+      };
+    }
+
+    // Reset window after 15 mins (900,000 ms)
+    if (now - record.first_attempt > 900000) {
+      await db.prepare('DELETE FROM login_rate_limits WHERE ip = ?').bind(ip).run();
+      return { allowed: true };
+    }
+  } catch (e) {
+    // If table doesn't exist yet, it will be created on first failed login
   }
-
-  // Reset window after 15 mins
-  if (now - record.firstAttempt > 900000) {
-    loginAttemptMap.delete(ip);
-    return { allowed: true };
-  }
-
   return { allowed: true };
 }
 
-function recordFailedLogin(ip) {
+async function recordFailedLogin(db, ip) {
   const now = Date.now();
-  const record = loginAttemptMap.get(ip) || { count: 0, firstAttempt: now, lockedUntil: 0 };
-  record.count += 1;
-  if (record.count >= 5) {
-    record.lockedUntil = now + (15 * 60 * 1000); // Lock for 15 minutes after 5 failures
+  try {
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS login_rate_limits (
+        ip TEXT PRIMARY KEY,
+        attempts INTEGER DEFAULT 1,
+        first_attempt INTEGER,
+        locked_until INTEGER
+      )
+    `).run();
+
+    const record = await db.prepare('SELECT attempts FROM login_rate_limits WHERE ip = ?').bind(ip).first();
+    if (!record) {
+      await db.prepare(
+        'INSERT INTO login_rate_limits (ip, attempts, first_attempt, locked_until) VALUES (?, 1, ?, 0)'
+      ).bind(ip, now).run();
+    } else {
+      const newAttempts = (record.attempts || 0) + 1;
+      const lockedUntil = newAttempts >= 5 ? now + (15 * 60 * 1000) : 0;
+      await db.prepare(
+        'UPDATE login_rate_limits SET attempts = ?, locked_until = ? WHERE ip = ?'
+      ).bind(newAttempts, lockedUntil, ip).run();
+    }
+  } catch (e) {
+    console.error('Failed to record login attempt:', e);
   }
-  loginAttemptMap.set(ip, record);
 }
 
-function resetLoginRateLimit(ip) {
-  loginAttemptMap.delete(ip);
+async function resetLoginRateLimit(db, ip) {
+  try {
+    await db.prepare('DELETE FROM login_rate_limits WHERE ip = ?').bind(ip).run();
+  } catch (e) {}
+}
+
+function getJwtSecret(c) {
+  const secret = c.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('SECURITY_CRITICAL: Missing JWT_SECRET environment configuration.');
+  }
+  return secret;
 }
 
 // ----------------------------------------------------
@@ -96,7 +125,7 @@ async function authMiddleware(c, next) {
   }
 
   try {
-    const secret = c.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+    const secret = getJwtSecret(c);
     const payload = await verify(token, secret, 'HS256');
 
     if (!payload || !payload.id) {
@@ -105,9 +134,14 @@ async function authMiddleware(c, next) {
 
     // Verify account status in DB to ensure deactivated or locked accounts cannot make requests
     const db = c.env.DB;
-    const user = await db.prepare('SELECT id, status, role FROM users WHERE id = ?').bind(payload.id).first();
+    const user = await db.prepare('SELECT id, status, role, token_version FROM users WHERE id = ?').bind(payload.id).first();
     if (!user || user.status === 'locked') {
       return c.json({ error: 'Account has been deactivated or locked' }, 403);
+    }
+
+    // Invalidate session if password was changed
+    if (payload.token_version && user.token_version && payload.token_version !== user.token_version) {
+      return c.json({ error: 'Session invalidated due to password change. Please log in again.' }, 401);
     }
 
     c.set('user', { ...payload, role: user.role });
@@ -258,8 +292,8 @@ app.post('/auth/login', async (c) => {
   const db = c.env.DB;
   const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-real-ip') || c.req.header('x-forwarded-for') || 'direct-client';
 
-  // Anti-Brute-Force Rate Limiting
-  const rateLimitStatus = checkLoginRateLimit(clientIp);
+  // Anti-Brute-Force Rate Limiting (D1-backed)
+  const rateLimitStatus = await checkLoginRateLimit(db, clientIp);
   if (!rateLimitStatus.allowed) {
     return c.json({ error: rateLimitStatus.error }, 429);
   }
@@ -273,7 +307,7 @@ app.post('/auth/login', async (c) => {
   try {
     const user = await db.prepare('SELECT * FROM users WHERE username = ?').bind(username.trim()).first();
     if (!user) {
-      recordFailedLogin(clientIp);
+      await recordFailedLogin(db, clientIp);
       return c.json({ error: 'Invalid username or password' }, 401);
     }
 
@@ -283,12 +317,12 @@ app.post('/auth/login', async (c) => {
 
     const isMatch = bcrypt.compareSync(password, user.password_hash);
     if (!isMatch) {
-      recordFailedLogin(clientIp);
+      await recordFailedLogin(db, clientIp);
       return c.json({ error: 'Invalid username or password' }, 401);
     }
 
     // Reset rate limiter on valid login
-    resetLoginRateLimit(clientIp);
+    await resetLoginRateLimit(db, clientIp);
 
     let bialDetails = null;
     if (user.role === 'BIAL') {
@@ -301,10 +335,11 @@ app.post('/auth/login', async (c) => {
       role: user.role,
       bial_name: user.bial_name,
       bial_id: bialDetails ? bialDetails.id : null,
+      token_version: user.token_version || 1,
       exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
     };
 
-    const secret = c.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+    const secret = getJwtSecret(c);
     const token = await sign(payload, secret, 'HS256');
 
     return c.json({
@@ -416,10 +451,11 @@ app.post('/auth/google', async (c) => {
       email: verifiedEmail,
       name: verifiedName || 'Church Admin',
       picture: verifiedPicture || null,
+      token_version: matchedAdmin.token_version || 1,
       exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
     };
 
-    const secret = c.env.JWT_SECRET || DEFAULT_JWT_SECRET;
+    const secret = getJwtSecret(c);
     const token = await sign(payload, secret, 'HS256');
 
     return c.json({
@@ -515,6 +551,10 @@ app.put('/auth/change-password', authMiddleware, async (c) => {
   const currentUser = c.get('user');
   const { currentPassword, newPassword } = await c.req.json();
 
+  if (!currentPassword) {
+    return c.json({ error: 'Current password is required to verify identity' }, 400);
+  }
+
   if (!newPassword || newPassword.length < 4) {
     return c.json({ error: 'New password must be at least 4 characters long' }, 400);
   }
@@ -523,16 +563,20 @@ app.put('/auth/change-password', authMiddleware, async (c) => {
     const user = await db.prepare('SELECT * FROM users WHERE id = ?').bind(currentUser.id).first();
     if (!user) return c.json({ error: 'User not found' }, 404);
 
-    if (currentPassword) {
-      const match = bcrypt.compareSync(currentPassword, user.password_hash);
-      if (!match) return c.json({ error: 'Incorrect current password' }, 400);
-    }
+    const match = bcrypt.compareSync(currentPassword, user.password_hash);
+    if (!match) return c.json({ error: 'Incorrect current password' }, 400);
 
     const salt = bcrypt.genSaltSync(10);
     const hash = bcrypt.hashSync(newPassword, salt);
 
-    await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').bind(hash, currentUser.id).run();
-    return c.json({ message: 'Password changed successfully' });
+    try {
+      await db.prepare('ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1').run();
+    } catch (e) {}
+
+    await db.prepare('UPDATE users SET password_hash = ?, token_version = COALESCE(token_version, 1) + 1 WHERE id = ?')
+      .bind(hash, currentUser.id).run();
+
+    return c.json({ message: 'Password changed successfully. All active sessions have been secured.' });
   } catch (err) {
     return c.json({ error: 'Error changing password' }, 500);
   }
@@ -1811,6 +1855,14 @@ app.post('/tithes/upsert', authMiddleware, requireBialUser, async (c) => {
     return c.json({ error: 'Missing required parameters' }, 400);
   }
 
+  // IDOR Protection: Verify member belongs to this Bial
+  if (user.role !== 'ADMIN') {
+    const targetMember = await db.prepare('SELECT id, bial_id FROM members WHERE id = ?').bind(member_id).first();
+    if (!targetMember || targetMember.bial_id !== bialId) {
+      return c.json({ error: 'Access Denied: Member does not belong to your Bial' }, 403);
+    }
+  }
+
   const locked = await isMonthLocked(db, bialId, year, month);
   if (locked && user.role !== 'ADMIN') {
     return c.json({ error: 'Month Locked by Admin. Data entry and edits are restricted.' }, 403);
@@ -1871,6 +1923,25 @@ app.post('/tithes/bulk-upsert', authMiddleware, requireBialUser, async (c) => {
 
   if (!bialId || !year || !month || !Array.isArray(entries)) {
     return c.json({ error: 'Invalid payload for bulk save' }, 400);
+  }
+
+  // IDOR Protection: Verify all members belong to this Bial
+  if (user.role !== 'ADMIN' && entries.length > 0) {
+    const memberIds = [...new Set(entries.map(item => item.member_id).filter(Boolean))];
+    const chunkSize = 80;
+    for (let i = 0; i < memberIds.length; i += chunkSize) {
+      const slice = memberIds.slice(i, i + chunkSize);
+      const placeholders = slice.map(() => '?').join(',');
+      const { results: verifiedRows } = await db.prepare(
+        `SELECT id FROM members WHERE bial_id = ? AND id IN (${placeholders})`
+      ).bind(bialId, ...slice).all();
+
+      const validSet = new Set((verifiedRows || []).map(r => r.id));
+      const invalid = slice.find(id => !validSet.has(id));
+      if (invalid) {
+        return c.json({ error: `Access Denied: Member ID ${invalid} does not belong to your Bial` }, 403);
+      }
+    }
   }
 
   const locked = await isMonthLocked(db, bialId, year, month);

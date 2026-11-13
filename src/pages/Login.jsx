@@ -337,23 +337,25 @@ export default function Login({ onLoginSuccess, showToast }) {
           {/* 2. LOWER PART: GOOGLE LOGIN FOR ADMIN (JUST BELOW IT)     */}
           {/* ======================================================== */}
           <div className="space-y-2.5">
-            {/* Official Google Identity Services Container if initialized */}
-            <div ref={googleBtnContainerRef} className="flex justify-center w-full min-h-[44px]"></div>
+            {/* Official Google Identity Services Container if Client ID is configured */}
+            <div ref={googleBtnContainerRef} className={`flex justify-center w-full min-h-[44px] ${!configuredClientId ? 'hidden' : ''}`}></div>
 
-            {/* Custom Google Sign-In Button */}
-            <button
-              type="button"
-              onClick={handleGoogleSignInClick}
-              disabled={googleLoading}
-              className="w-full py-3 px-4 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-slate-300 rounded-2xl shadow-xs hover:shadow-md text-slate-800 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
-            >
-              {googleLoading ? (
-                <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                <GoogleLogoSvg className="w-5 h-5 shrink-0" />
-              )}
-              <span>Sign in with Google (Admin)</span>
-            </button>
+            {/* Custom Google Sign-In Button (shown when Client ID is not yet saved or fallback) */}
+            {!configuredClientId && (
+              <button
+                type="button"
+                onClick={handleGoogleSignInClick}
+                disabled={googleLoading}
+                className="w-full py-3 px-4 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-slate-300 rounded-2xl shadow-xs hover:shadow-md text-slate-800 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
+              >
+                {googleLoading ? (
+                  <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <GoogleLogoSvg className="w-5 h-5 shrink-0" />
+                )}
+                <span>Sign in with Google (Admin)</span>
+              </button>
+            )}
 
             <div className="flex items-center justify-between px-1 text-[11px] text-slate-400 pt-1">
               <button
@@ -455,10 +457,10 @@ export default function Login({ onLoginSuccess, showToast }) {
             <div className="p-3.5 bg-indigo-50/70 rounded-2xl border border-indigo-200/80 space-y-2.5">
               <span className="text-[11px] font-extrabold uppercase text-indigo-900 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                Quick Admin Google Verification
+                Authorized Admin Google Sign-In
               </span>
               <p className="text-xs text-indigo-950/80 leading-relaxed">
-                Sign in with your Admin Google email. The first admin email used will automatically become the church’s Primary Google Admin account.
+                Authorized administrators: <span className="font-bold text-indigo-900 font-mono">muantea45@gmail.com</span> and <span className="font-bold text-indigo-900 font-mono">sakadarkim@gmail.com</span>.
               </p>
 
               <form onSubmit={handleDirectEmailSignIn} className="space-y-2">
@@ -466,7 +468,7 @@ export default function Login({ onLoginSuccess, showToast }) {
                   type="email"
                   value={directAdminEmail}
                   onChange={(e) => setDirectAdminEmail(e.target.value)}
-                  placeholder="e.g. pastor@gmail.com or admin@church.org"
+                  placeholder="Enter muantea45@gmail.com or sakadarkim@gmail.com"
                   className="w-full px-3 py-2 bg-white rounded-xl border border-indigo-300 text-xs font-mono font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
                 <button

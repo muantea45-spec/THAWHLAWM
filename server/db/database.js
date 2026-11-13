@@ -121,6 +121,7 @@ export function initDatabase() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
     `);
+    db.prepare("INSERT OR IGNORE INTO admin_google_emails (email) VALUES ('muantea45@gmail.com'), ('sakadarkim@gmail.com');").run();
   } catch (e) {}
 
   // Seed default tithe columns if empty

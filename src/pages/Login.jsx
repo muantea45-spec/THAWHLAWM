@@ -41,10 +41,11 @@ export default function Login({ onLoginSuccess, showToast }) {
   const [adminCredLoading, setAdminCredLoading] = useState(false);
 
   // Google Login State
+  const DEFAULT_GOOGLE_CLIENT_ID = '407051455488-n6bieo72mu6c4v9lm5cbofapq9i81tjo.apps.googleusercontent.com';
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showGoogleConfigModal, setShowGoogleConfigModal] = useState(false);
   const [configuredClientId, setConfiguredClientId] = useState(() => {
-    return import.meta.env.VITE_GOOGLE_CLIENT_ID || localStorage.getItem('pathian_ram_google_client_id') || '';
+    return import.meta.env.VITE_GOOGLE_CLIENT_ID || localStorage.getItem('pathian_ram_google_client_id') || DEFAULT_GOOGLE_CLIENT_ID;
   });
   const [inputClientId, setInputClientId] = useState(configuredClientId);
   const [directAdminEmail, setDirectAdminEmail] = useState('');

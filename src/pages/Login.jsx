@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, User, ArrowRight, ShieldCheck, Users, Eye, EyeOff, KeyRound, Sparkles, AlertCircle, CheckCircle2, Settings, ExternalLink, X } from 'lucide-react';
+import { Lock, User, ArrowRight, Eye, EyeOff, Sparkles, Settings, ExternalLink, X } from 'lucide-react';
 import { api, setAuthToken, setAuthUser } from '../utils/api';
 import churchLogo from '../assets/church_logo.jpg';
 
@@ -27,9 +27,6 @@ function GoogleLogoSvg({ className = "w-5 h-5" }) {
 }
 
 export default function Login({ onLoginSuccess, showToast }) {
-  // Tab state: 'user' for Bial credentials, 'admin' for Google login
-  const [activeTab, setActiveTab] = useState('user'); // 'user' | 'admin'
-
   // User Credentials Login State
   const [userUsername, setUserUsername] = useState('');
   const [userPassword, setUserPassword] = useState('');
@@ -54,7 +51,7 @@ export default function Login({ onLoginSuccess, showToast }) {
 
   const googleBtnContainerRef = useRef(null);
 
-  // 1. Initialize Google Identity Services when Client ID is available
+  // Initialize Google Identity Services when Client ID is available
   useEffect(() => {
     if (!configuredClientId) return;
 
@@ -92,9 +89,9 @@ export default function Login({ onLoginSuccess, showToast }) {
       const timer = setTimeout(initGoogle, 800);
       return () => clearTimeout(timer);
     }
-  }, [configuredClientId, activeTab]);
+  }, [configuredClientId]);
 
-  // 2. Handle Google Credential Response from Google Identity Services
+  // Handle Google Credential Response from Google Identity Services
   const handleGoogleCredentialResponse = async (response) => {
     if (!response || !response.credential) {
       showToast('Google did not return credentials. Please try again.', 'error');
@@ -117,13 +114,12 @@ export default function Login({ onLoginSuccess, showToast }) {
     }
   };
 
-  // 3. Trigger Google Sign-In button click
+  // Trigger Google Sign-In click
   const handleGoogleSignInClick = () => {
     if (configuredClientId && window.google?.accounts?.id) {
       try {
         window.google.accounts.id.prompt((notification) => {
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            // If prompt was dismissed or not displayed, open config/help modal
             setShowGoogleConfigModal(true);
           }
         });
@@ -131,12 +127,11 @@ export default function Login({ onLoginSuccess, showToast }) {
         setShowGoogleConfigModal(true);
       }
     } else {
-      // If client ID is not yet configured, show helper modal
       setShowGoogleConfigModal(true);
     }
   };
 
-  // 4. Handle Direct Admin Email Sign-in (for instant testing or pre-configured email)
+  // Handle Direct Admin Email Sign-in (for initial admin setup or instant testing)
   const handleDirectEmailSignIn = async (e) => {
     e.preventDefault();
     if (!directAdminEmail.trim() || !directAdminEmail.includes('@')) {
@@ -163,7 +158,7 @@ export default function Login({ onLoginSuccess, showToast }) {
     }
   };
 
-  // 5. Save Client ID from config modal
+  // Save Client ID from config modal
   const handleSaveClientId = () => {
     const cleanId = inputClientId.trim();
     if (cleanId) {
@@ -178,7 +173,7 @@ export default function Login({ onLoginSuccess, showToast }) {
     setShowGoogleConfigModal(false);
   };
 
-  // 6. Handle User (Bial Credentials) Login
+  // Handle User (Credentials) Login
   const handleUserLogin = async (e) => {
     e.preventDefault();
     if (!userUsername.trim() || !userPassword) return;
@@ -196,13 +191,13 @@ export default function Login({ onLoginSuccess, showToast }) {
       showToast(`Welcome back, ${res.user.bial_name || res.user.username}!`, 'success');
       onLoginSuccess(res.user);
     } catch (err) {
-      showToast(err.message || 'User login failed. Please check credentials.', 'error');
+      showToast(err.message || 'Login failed. Please check credentials.', 'error');
     } finally {
       setUserLoading(false);
     }
   };
 
-  // 7. Handle Admin Credentials Fallback Login
+  // Handle Admin Credentials Fallback Login
   const handleAdminCredLogin = async (e) => {
     e.preventDefault();
     if (!adminUsername.trim() || !adminPassword) return;
@@ -215,7 +210,7 @@ export default function Login({ onLoginSuccess, showToast }) {
       });
 
       if (res.user.role !== 'ADMIN') {
-        showToast('These credentials do not have Admin privileges. Please use User Login.', 'error');
+        showToast('These credentials do not have Admin privileges.', 'error');
         return;
       }
 
@@ -244,7 +239,7 @@ export default function Login({ onLoginSuccess, showToast }) {
           <img
             src={churchLogo}
             alt="Bethlehem Kohhran Logo"
-            className="w-22 h-22 sm:w-24 sm:h-24 rounded-full bg-white border-2 border-amber-600/30 object-contain shadow-xl mx-auto mb-3 p-1 transform hover:scale-105 transition-transform duration-300"
+            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white border-2 border-amber-600/30 object-contain shadow-xl mx-auto mb-3 p-1 transform hover:scale-105 transition-transform duration-300"
           />
           <h1 className="font-heading font-black text-2xl sm:text-3xl text-slate-900 tracking-tight leading-tight">
             Bethlehem Kohhran
@@ -254,240 +249,181 @@ export default function Login({ onLoginSuccess, showToast }) {
           </p>
         </div>
 
-        {/* Login Container Box */}
-        <div className="glass-panel-elevated p-5 sm:p-7 rounded-3xl border border-slate-200 shadow-2xl bg-white/90 backdrop-blur-md">
+        {/* Unified Login Box */}
+        <div className="glass-panel-elevated p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xl bg-white/95 backdrop-blur-md">
           
-          {/* SEPARATE LOGIN OPTION TABS */}
-          <div className="flex items-center p-1 bg-slate-100 rounded-2xl border border-slate-200/90 mb-6">
-            <button
-              type="button"
-              onClick={() => setActiveTab('user')}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                activeTab === 'user'
-                  ? 'bg-white text-indigo-900 shadow-md border border-slate-200/80 scale-[1.01]'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              <Users className={`w-4 h-4 ${activeTab === 'user' ? 'text-indigo-600' : 'text-slate-400'}`} />
-              <span>User Login</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${activeTab === 'user' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-200 text-slate-500'}`}>
-                Credentials
-              </span>
-            </button>
+          {/* ======================================================== */}
+          {/* 1. UPPER PART: USER CREDENTIALS LOGIN                     */}
+          {/* ======================================================== */}
+          <form onSubmit={handleUserLogin} className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Username
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <User className="w-4 h-4" />
+                </div>
+                <input
+                  type="text"
+                  required
+                  value={userUsername}
+                  onChange={(e) => setUserUsername(e.target.value)}
+                  placeholder="Enter username"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-sm font-medium transition-all shadow-xs"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <input
+                  type={showUserPassword ? "text" : "password"}
+                  required
+                  value={userPassword}
+                  onChange={(e) => setUserPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-sm font-medium transition-all shadow-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowUserPassword(p => !p)}
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title={showUserPassword ? "Hide password" : "Show password"}
+                >
+                  {showUserPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
 
             <button
-              type="button"
-              onClick={() => setActiveTab('admin')}
-              className={`flex-1 py-2.5 px-3 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                activeTab === 'admin'
-                  ? 'bg-white text-indigo-900 shadow-md border border-slate-200/80 scale-[1.01]'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
+              type="submit"
+              disabled={userLoading}
+              className="w-full py-3 rounded-xl font-bold text-xs bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-md shadow-indigo-600/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
-              <ShieldCheck className={`w-4 h-4 ${activeTab === 'admin' ? 'text-indigo-600' : 'text-slate-400'}`} />
-              <span>Admin Login</span>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold flex items-center gap-1 ${activeTab === 'admin' ? 'bg-blue-50 text-blue-700' : 'bg-slate-200 text-slate-500'}`}>
-                <GoogleLogoSvg className="w-2.5 h-2.5" /> Google
-              </span>
+              {userLoading ? (
+                'Signing In...'
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
             </button>
+          </form>
+
+          {/* ======================================================== */}
+          {/* DIVIDER                                                  */}
+          {/* ======================================================== */}
+          <div className="relative my-5">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-slate-200"></div>
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-white px-3 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+                OR
+              </span>
+            </div>
           </div>
 
           {/* ======================================================== */}
-          {/* TAB 1: USER / BIAL IN-CHARGE CREDENTIALS LOGIN            */}
+          {/* 2. LOWER PART: GOOGLE LOGIN FOR ADMIN (JUST BELOW IT)     */}
           {/* ======================================================== */}
-          {activeTab === 'user' && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="border-b border-slate-100 pb-3">
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-50 text-blue-800 border border-blue-200 uppercase tracking-wider mb-1">
-                  <KeyRound className="w-3 h-3 text-blue-600" /> Bial In-Charge Credentials
-                </span>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  Sign in with the username & password created for your Bial by Kohhran Admin.
-                </p>
-              </div>
+          <div className="space-y-2.5">
+            {/* Official Google Identity Services Container if initialized */}
+            <div ref={googleBtnContainerRef} className="flex justify-center w-full min-h-[44px]"></div>
 
-              <form onSubmit={handleUserLogin} className="space-y-4">
+            {/* Custom Google Sign-In Button */}
+            <button
+              type="button"
+              onClick={handleGoogleSignInClick}
+              disabled={googleLoading}
+              className="w-full py-3 px-4 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-slate-300 rounded-2xl shadow-xs hover:shadow-md text-slate-800 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
+            >
+              {googleLoading ? (
+                <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <GoogleLogoSvg className="w-5 h-5 shrink-0" />
+              )}
+              <span>Sign in with Google (Admin)</span>
+            </button>
+
+            <div className="flex items-center justify-between px-1 text-[11px] text-slate-400 pt-1">
+              <button
+                type="button"
+                onClick={() => setShowAdminCredFallback(prev => !prev)}
+                className="hover:text-slate-600 font-medium transition-colors cursor-pointer"
+              >
+                {showAdminCredFallback ? 'Hide admin password' : 'Admin password login'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowGoogleConfigModal(true)}
+                className="hover:text-indigo-600 font-medium transition-colors cursor-pointer flex items-center gap-1"
+              >
+                <Settings className="w-3 h-3" />
+                <span>Google Setup</span>
+              </button>
+            </div>
+
+            {/* Admin Credentials Fallback (if needed) */}
+            {showAdminCredFallback && (
+              <form onSubmit={handleAdminCredLogin} className="space-y-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-200 animate-in fade-in duration-150 mt-2">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Username
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Admin Username
                   </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <User className="w-4 h-4" />
-                    </div>
-                    <input
-                      type="text"
-                      required
-                      value={userUsername}
-                      onChange={(e) => setUserUsername(e.target.value)}
-                      placeholder="e.g. bial1, Puia, Ruatsaka"
-                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-sm font-medium transition-all shadow-xs"
-                      autoFocus
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={adminUsername}
+                    onChange={(e) => setAdminUsername(e.target.value)}
+                    placeholder="admin"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Password
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                    Admin Password
                   </label>
                   <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                      <Lock className="w-4 h-4" />
-                    </div>
                     <input
-                      type={showUserPassword ? "text" : "password"}
+                      type={showAdminPassword ? "text" : "password"}
                       required
-                      value={userPassword}
-                      onChange={(e) => setUserPassword(e.target.value)}
-                      placeholder="Enter your Bial password"
-                      className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-sm font-medium transition-all shadow-xs"
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="Enter admin password"
+                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-indigo-600 pr-9"
                     />
                     <button
                       type="button"
-                      onClick={() => setShowUserPassword(p => !p)}
-                      className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
-                      title={showUserPassword ? "Hide password" : "Show password"}
+                      onClick={() => setShowAdminPassword(p => !p)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
-                      {showUserPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      {showAdminPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
                 </div>
 
                 <button
                   type="submit"
-                  disabled={userLoading}
-                  className="w-full py-3 rounded-xl font-bold text-xs bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-md shadow-indigo-600/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                  disabled={adminCredLoading}
+                  className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-900 text-white transition-all cursor-pointer"
                 >
-                  {userLoading ? (
-                    'Verifying Credentials...'
-                  ) : (
-                    <>
-                      <span>Sign In with Credentials</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
+                  {adminCredLoading ? 'Authenticating...' : 'Sign In as Admin'}
                 </button>
               </form>
-
-              <div className="pt-2 text-center border-t border-slate-100">
-                <p className="text-[11px] text-slate-500">
-                  New collector or forgot password? Contact <span className="font-bold text-slate-700">Kohhran Admin</span>.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* ======================================================== */}
-          {/* TAB 2: ADMIN GOOGLE LOGIN OPTION                         */}
-          {/* ======================================================== */}
-          {activeTab === 'admin' && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              <div className="border-b border-slate-100 pb-3">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-800 border border-indigo-200 uppercase tracking-wider mb-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" /> Kohhran Admin Portal
-                </span>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                  Protected administrative access. Sign in securely using your authorized Google Account.
-                </p>
-              </div>
-
-              {/* PRIMARY OPTION: GOOGLE SIGN-IN BUTTON */}
-              <div className="space-y-3">
-                {/* Official Google Identity Services Container if initialized */}
-                <div ref={googleBtnContainerRef} className="flex justify-center w-full min-h-[44px]"></div>
-
-                {/* Primary Fallback/Custom Styled Google Sign-In Button */}
-                <button
-                  type="button"
-                  onClick={handleGoogleSignInClick}
-                  disabled={googleLoading}
-                  className="w-full py-3 px-4 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-slate-300 rounded-2xl shadow-sm hover:shadow-md text-slate-800 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
-                >
-                  {googleLoading ? (
-                    <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                  ) : (
-                    <GoogleLogoSvg className="w-5 h-5 shrink-0" />
-                  )}
-                  <span>Sign in with Google</span>
-                </button>
-
-                <div className="flex items-center justify-between px-1 text-[11px]">
-                  <span className="text-slate-400">Authorized Admin Accounts only</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowGoogleConfigModal(true)}
-                    className="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Settings className="w-3 h-3" />
-                    <span>Setup / Test</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* SECONDARY OPTION: ADMIN CREDENTIALS FALLBACK (Password failsafe) */}
-              <div className="pt-2 border-t border-slate-100">
-                <div className="text-center mb-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAdminCredFallback(prev => !prev)}
-                    className="text-[11px] font-bold text-slate-500 hover:text-indigo-600 transition-colors inline-flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>{showAdminCredFallback ? 'Hide password sign-in' : 'Or sign in with Admin password fallback'}</span>
-                  </button>
-                </div>
-
-                {showAdminCredFallback && (
-                  <form onSubmit={handleAdminCredLogin} className="space-y-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-200 animate-in fade-in duration-150">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                        Admin Username
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={adminUsername}
-                        onChange={(e) => setAdminUsername(e.target.value)}
-                        placeholder="admin"
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                        Admin Password
-                      </label>
-                      <div className="relative">
-                        <input
-                          type={showAdminPassword ? "text" : "password"}
-                          required
-                          value={adminPassword}
-                          onChange={(e) => setAdminPassword(e.target.value)}
-                          placeholder="Enter admin password"
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-indigo-600 pr-9"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowAdminPassword(p => !p)}
-                          className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
-                        >
-                          {showAdminPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={adminCredLoading}
-                      className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-900 text-white transition-all cursor-pointer"
-                    >
-                      {adminCredLoading ? 'Authenticating...' : 'Sign In as Admin'}
-                    </button>
-                  </form>
-                )}
-              </div>
-            </div>
-          )}
+            )}
+          </div>
 
         </div>
 
@@ -515,7 +451,7 @@ export default function Login({ onLoginSuccess, showToast }) {
               </button>
             </div>
 
-            {/* Quick Email Direct Sign-In (Great for initial admin setup & instant testing) */}
+            {/* Quick Email Direct Sign-In (For instant admin verification/testing) */}
             <div className="p-3.5 bg-indigo-50/70 rounded-2xl border border-indigo-200/80 space-y-2.5">
               <span className="text-[11px] font-extrabold uppercase text-indigo-900 flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />

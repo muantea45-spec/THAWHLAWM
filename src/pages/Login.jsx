@@ -169,10 +169,10 @@ export default function Login({ onLoginSuccess, showToast }) {
               className="w-8 h-8 sm:w-12 sm:h-12 rounded-full object-cover border border-white/85 shadow-md transform hover:scale-105 transition-transform duration-300 shrink-0"
             />
             <div className="text-center flex flex-col items-center">
-              <h1 className="font-heading font-black text-sm sm:text-lg text-white tracking-tight leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] text-center">
+              <h1 className="font-heading font-black text-base sm:text-xl text-white tracking-tight leading-tight drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)] text-center whitespace-nowrap">
                 Bethlehem Kohhran
               </h1>
-              <p className="text-[10px] sm:text-xs text-amber-300 font-extrabold tracking-wider uppercase drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] text-center">
+              <p className="text-[10.5px] sm:text-xs text-amber-300 font-extrabold tracking-[0.06em] sm:tracking-wider uppercase drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] text-center whitespace-nowrap">
                 Pathian Ram Khawnna
               </p>
             </div>

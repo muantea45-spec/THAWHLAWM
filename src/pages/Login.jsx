@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Lock, User, ArrowRight, Eye, EyeOff, Sparkles, Settings, ExternalLink, X } from 'lucide-react';
+import { Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { api, setAuthToken, setAuthUser } from '../utils/api';
 import churchLogo from '../assets/church_logo.jpg';
 
@@ -33,22 +33,12 @@ export default function Login({ onLoginSuccess, showToast }) {
   const [showUserPassword, setShowUserPassword] = useState(false);
   const [userLoading, setUserLoading] = useState(false);
 
-  // Admin Credentials Fallback State (if offline or during setup)
-  const [showAdminCredFallback, setShowAdminCredFallback] = useState(false);
-  const [adminUsername, setAdminUsername] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [showAdminPassword, setShowAdminPassword] = useState(false);
-  const [adminCredLoading, setAdminCredLoading] = useState(false);
-
   // Google Login State
   const DEFAULT_GOOGLE_CLIENT_ID = '407051455488-n6bieo72mu6c4v9lm5cbofapq9i81tjo.apps.googleusercontent.com';
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [showGoogleConfigModal, setShowGoogleConfigModal] = useState(false);
-  const [configuredClientId, setConfiguredClientId] = useState(() => {
-    return import.meta.env.VITE_GOOGLE_CLIENT_ID || localStorage.getItem('pathian_ram_google_client_id') || DEFAULT_GOOGLE_CLIENT_ID;
+  const [configuredClientId] = useState(() => {
+    return import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
   });
-  const [inputClientId, setInputClientId] = useState(configuredClientId);
-  const [directAdminEmail, setDirectAdminEmail] = useState('');
 
   const googleBtnContainerRef = useRef(null);
 
@@ -117,61 +107,13 @@ export default function Login({ onLoginSuccess, showToast }) {
 
   // Trigger Google Sign-In click
   const handleGoogleSignInClick = () => {
-    if (configuredClientId && window.google?.accounts?.id) {
+    if (window.google?.accounts?.id) {
       try {
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
-            setShowGoogleConfigModal(true);
-          }
-        });
+        window.google.accounts.id.prompt();
       } catch (err) {
-        setShowGoogleConfigModal(true);
+        console.error('Google Sign-In prompt error:', err);
       }
-    } else {
-      setShowGoogleConfigModal(true);
     }
-  };
-
-  // Handle Direct Admin Email Sign-in (for initial admin setup or instant testing)
-  const handleDirectEmailSignIn = async (e) => {
-    e.preventDefault();
-    if (!directAdminEmail.trim() || !directAdminEmail.includes('@')) {
-      showToast('Please enter a valid Google email address', 'error');
-      return;
-    }
-
-    try {
-      setGoogleLoading(true);
-      const res = await api.googleLogin({
-        email: directAdminEmail.trim().toLowerCase()
-      });
-
-      setAuthToken(res.token);
-      setAuthUser(res.user);
-
-      setShowGoogleConfigModal(false);
-      showToast(`Welcome Admin! Signed in as ${res.user.email || res.user.username}`, 'success');
-      onLoginSuccess(res.user);
-    } catch (err) {
-      showToast(err.message || 'Google Admin authentication failed', 'error');
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
-  // Save Client ID from config modal
-  const handleSaveClientId = () => {
-    const cleanId = inputClientId.trim();
-    if (cleanId) {
-      localStorage.setItem('pathian_ram_google_client_id', cleanId);
-      setConfiguredClientId(cleanId);
-      showToast('Google Client ID saved! Google Sign-in is now active.', 'success');
-    } else {
-      localStorage.removeItem('pathian_ram_google_client_id');
-      setConfiguredClientId('');
-      showToast('Google Client ID cleared.', 'info');
-    }
-    setShowGoogleConfigModal(false);
   };
 
   // Handle User (Credentials) Login
@@ -195,35 +137,6 @@ export default function Login({ onLoginSuccess, showToast }) {
       showToast(err.message || 'Login failed. Please check credentials.', 'error');
     } finally {
       setUserLoading(false);
-    }
-  };
-
-  // Handle Admin Credentials Fallback Login
-  const handleAdminCredLogin = async (e) => {
-    e.preventDefault();
-    if (!adminUsername.trim() || !adminPassword) return;
-
-    try {
-      setAdminCredLoading(true);
-      const res = await api.login({
-        username: adminUsername.trim(),
-        password: adminPassword
-      });
-
-      if (res.user.role !== 'ADMIN') {
-        showToast('These credentials do not have Admin privileges.', 'error');
-        return;
-      }
-
-      setAuthToken(res.token);
-      setAuthUser(res.user);
-
-      showToast('Welcome Admin!', 'success');
-      onLoginSuccess(res.user);
-    } catch (err) {
-      showToast(err.message || 'Admin login failed. Check credentials.', 'error');
-    } finally {
-      setAdminCredLoading(false);
     }
   };
 
@@ -357,178 +270,11 @@ export default function Login({ onLoginSuccess, showToast }) {
                 <span>Sign in with Google (Admin)</span>
               </button>
             )}
-
-            <div className="flex items-center justify-between px-1 text-[11px] text-slate-400 pt-1">
-              <button
-                type="button"
-                onClick={() => setShowAdminCredFallback(prev => !prev)}
-                className="hover:text-slate-600 font-medium transition-colors cursor-pointer"
-              >
-                {showAdminCredFallback ? 'Hide admin password' : 'Admin password login'}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setShowGoogleConfigModal(true)}
-                className="hover:text-indigo-600 font-medium transition-colors cursor-pointer flex items-center gap-1"
-              >
-                <Settings className="w-3 h-3" />
-                <span>Google Setup</span>
-              </button>
-            </div>
-
-            {/* Admin Credentials Fallback (if needed) */}
-            {showAdminCredFallback && (
-              <form onSubmit={handleAdminCredLogin} className="space-y-3 p-3.5 bg-slate-50 rounded-2xl border border-slate-200 animate-in fade-in duration-150 mt-2">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                    Admin Username
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={adminUsername}
-                    onChange={(e) => setAdminUsername(e.target.value)}
-                    placeholder="admin"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-indigo-600"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
-                    Admin Password
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showAdminPassword ? "text" : "password"}
-                      required
-                      value={adminPassword}
-                      onChange={(e) => setAdminPassword(e.target.value)}
-                      placeholder="Enter admin password"
-                      className="w-full px-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 focus:outline-none focus:border-indigo-600 pr-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowAdminPassword(p => !p)}
-                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
-                    >
-                      {showAdminPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={adminCredLoading}
-                  className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-900 text-white transition-all cursor-pointer"
-                >
-                  {adminCredLoading ? 'Authenticating...' : 'Sign In as Admin'}
-                </button>
-              </form>
-            )}
           </div>
 
         </div>
 
       </div>
-
-      {/* ======================================================== */}
-      {/* GOOGLE SIGN-IN SETUP & DIRECT EMAIL VERIFICATION MODAL    */}
-      {/* ======================================================== */}
-      {showGoogleConfigModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <GoogleLogoSvg className="w-5 h-5" />
-                <h3 className="font-heading font-black text-sm sm:text-base text-slate-900">
-                  Google Admin Authentication
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowGoogleConfigModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Quick Email Direct Sign-In (For instant admin verification/testing) */}
-            <div className="p-3.5 bg-indigo-50/70 rounded-2xl border border-indigo-200/80 space-y-2.5">
-              <span className="text-[11px] font-extrabold uppercase text-indigo-900 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                Authorized Admin Google Sign-In
-              </span>
-              <p className="text-xs text-indigo-950/80 leading-relaxed">
-                Authorized administrators: <span className="font-bold text-indigo-900 font-mono">muantea45@gmail.com</span> and <span className="font-bold text-indigo-900 font-mono">sakadarkim@gmail.com</span>.
-              </p>
-
-              <form onSubmit={handleDirectEmailSignIn} className="space-y-2">
-                <input
-                  type="email"
-                  value={directAdminEmail}
-                  onChange={(e) => setDirectAdminEmail(e.target.value)}
-                  placeholder="Enter muantea45@gmail.com or sakadarkim@gmail.com"
-                  className="w-full px-3 py-2 bg-white rounded-xl border border-indigo-300 text-xs font-mono font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-                <button
-                  type="submit"
-                  disabled={googleLoading}
-                  className="w-full py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors shadow-xs"
-                >
-                  {googleLoading ? 'Verifying...' : 'Authenticate Google Admin Email'}
-                </button>
-              </form>
-            </div>
-
-            {/* OAuth Client ID Configuration */}
-            <div className="space-y-2 pt-2 border-t border-slate-100">
-              <span className="text-[11px] font-extrabold uppercase text-slate-600 block">
-                Google OAuth Client ID (Optional / Production)
-              </span>
-              <p className="text-[11px] text-slate-500 leading-relaxed">
-                For Google's official one-click popup button, paste your Google Cloud OAuth Client ID below:
-              </p>
-              <input
-                type="text"
-                value={inputClientId}
-                onChange={(e) => setInputClientId(e.target.value)}
-                placeholder="xxxxxx.apps.googleusercontent.com"
-                className="w-full px-3 py-2 rounded-xl bg-slate-50 border border-slate-300 text-xs font-mono text-slate-900 focus:outline-none focus:border-indigo-600"
-              />
-              <div className="flex justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={() => setShowGoogleConfigModal(false)}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold cursor-pointer"
-                >
-                  Close
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveClientId}
-                  className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold cursor-pointer shadow-xs"
-                >
-                  Save Client ID
-                </button>
-              </div>
-            </div>
-
-            <div className="pt-2 text-[10px] text-slate-400 border-t border-slate-100 flex items-center justify-between">
-              <span>Google Cloud Console → Credentials</span>
-              <a
-                href="https://console.cloud.google.com/apis/credentials"
-                target="_blank"
-                rel="noreferrer"
-                className="text-indigo-600 hover:underline flex items-center gap-0.5"
-              >
-                Open Console <ExternalLink className="w-2.5 h-2.5" />
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

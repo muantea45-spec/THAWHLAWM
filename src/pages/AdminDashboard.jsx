@@ -24,6 +24,7 @@ import MemberTransferModal from '../components/MemberTransferModal';
 import MemberRolloverModal from '../components/MemberRolloverModal';
 import OfficialReportModal from '../components/OfficialReportModal';
 import ManageColumnsModal from '../components/ManageColumnsModal';
+import TitheColumnsTab from '../components/TitheColumnsTab';
 import churchLogo from '../assets/church_logo.jpg';
 import {
   exportAdminConsolidatedPDF,
@@ -38,7 +39,7 @@ import { FINANCIAL_MONTHS, DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 const CATEGORY_COLORS = ['#6366f1', '#10b981', '#f59e0b', '#a855f7'];
 
 export default function AdminDashboard({ user, showToast }) {
-  const [activeTab, setActiveTab] = useState('bials'); // 'bials' | 'inspector' | 'analytics' | 'backups'
+  const [activeTab, setActiveTab] = useState('bials'); // 'bials' | 'inspector' | 'columns' | 'analytics' | 'backups'
   const [financialYears, setFinancialYears] = useState([2024, 2025, 2026, 2027]);
   const [activeYear, setActiveYear] = useState(new Date().getFullYear());
   const [year, setYear] = useState(new Date().getFullYear());
@@ -165,6 +166,49 @@ export default function AdminDashboard({ user, showToast }) {
   useEffect(() => {
     loadAdminData();
   }, [year, overallBialFilter, overallMonthFilter]);
+
+  // Real-time synchronization for Tithe Columns and Headers across all tabs and inspector
+  useEffect(() => {
+    let bc;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('tithe_columns_sync');
+        bc.onmessage = () => {
+          loadAdminData();
+          if (activeTab === 'inspector') {
+            loadInspectorLedger();
+          }
+        };
+      }
+    } catch (e) {
+      console.warn('BroadcastChannel error:', e);
+    }
+
+    const handleStorage = (e) => {
+      if (e.key === 'tithe_columns_updated') {
+        loadAdminData();
+        if (activeTab === 'inspector') {
+          loadInspectorLedger();
+        }
+      }
+    };
+
+    const handleCustom = () => {
+      loadAdminData();
+      if (activeTab === 'inspector') {
+        loadInspectorLedger();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('tithe-columns-updated', handleCustom);
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('tithe-columns-updated', handleCustom);
+    };
+  }, [activeTab, inspectorBialId, year, inspectorMonth]);
 
   const loadInspectorLedger = async () => {
     if (!inspectorBialId) return;
@@ -568,7 +612,7 @@ export default function AdminDashboard({ user, showToast }) {
           onOpenMatrix={() => setShowMatrixModal(true)}
           onOpenCredentials={() => setShowCredentialsModal(true)}
           onOpenYears={() => setShowYearModal(true)}
-          onOpenColumns={() => setShowColumnsModal(true)}
+          onOpenColumns={() => setActiveTab('columns')}
           year={year}
           setYear={setYear}
           financialYears={financialYears}
@@ -1242,7 +1286,22 @@ export default function AdminDashboard({ user, showToast }) {
           </div>
         )}
 
-        {/* TAB 3: CROSS-BIAL ANALYTICS & RETURN STATS */}
+        {/* TAB 3: TITHE HEADERS & COLUMNS */}
+        {activeTab === 'columns' && (
+          <div className="animate-in fade-in duration-150">
+            <TitheColumnsTab
+              onColumnsChanged={async (updatedCols) => {
+                if (Array.isArray(updatedCols)) {
+                  setTitheColumns(updatedCols);
+                }
+                await loadAdminData();
+              }}
+              showToast={showToast}
+            />
+          </div>
+        )}
+
+        {/* TAB 4: CROSS-BIAL ANALYTICS & RETURN STATS */}
         {activeTab === 'analytics' && stats && (
           <div className="space-y-3 animate-in fade-in duration-150">
             

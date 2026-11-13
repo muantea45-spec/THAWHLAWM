@@ -40,6 +40,13 @@ export default function AdminSidebar({
       desc: 'Member tithes ledger'
     },
     {
+      id: 'columns',
+      label: 'Tithe Headers & Columns',
+      shortLabel: 'Columns',
+      icon: SlidersHorizontal,
+      desc: 'PTR, RT, Bldg & custom'
+    },
+    {
       id: 'analytics',
       label: 'Stats & Analytics',
       shortLabel: 'Stats',
@@ -116,7 +123,7 @@ export default function AdminSidebar({
       shortLabel: 'Headers',
       icon: SlidersHorizontal,
       color: 'text-teal-700 bg-teal-50 hover:bg-teal-100 border-teal-200',
-      action: onOpenColumns,
+      action: () => onSelectTab('columns'),
       tooltip: 'Add, rename, edit or delete tithe columns'
     }
   ];

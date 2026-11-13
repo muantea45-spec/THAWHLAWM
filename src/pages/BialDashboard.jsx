@@ -178,6 +178,55 @@ export default function BialDashboard({ user, showToast }) {
     }
   }, [year, targetBialId]);
 
+  // Real-time synchronization for Tithe Columns and Headers across all Bial collector windows
+  useEffect(() => {
+    let bc;
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('tithe_columns_sync');
+        bc.onmessage = (event) => {
+          if (event?.data?.type === 'COLUMNS_UPDATED' || event?.data?.type === 'TITHE_UPDATED') {
+            loadLedger();
+            loadAnalytics();
+          }
+        };
+      }
+    } catch (e) {
+      console.warn('BroadcastChannel error:', e);
+    }
+
+    const handleStorage = (e) => {
+      if (e.key === 'tithe_columns_updated') {
+        loadLedger();
+        loadAnalytics();
+      }
+    };
+
+    const handleCustomSync = () => {
+      loadLedger();
+      loadAnalytics();
+    };
+
+    const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadLedger();
+      }
+    };
+
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('tithe-columns-updated', handleCustomSync);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+
+    return () => {
+      if (bc) bc.close();
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('tithe-columns-updated', handleCustomSync);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+    };
+  }, [targetBialId, year, month]);
+
   // Column Sorting Handler
   const handleSort = (field) => {
     if (sortField === field) {
@@ -737,7 +786,11 @@ export default function BialDashboard({ user, showToast }) {
                       ? processedMembers.slice(0, 4)
                       : processedMembers
                     ).map((m, idx) => {
-                      const rowDraft = drafts[m.member_id] || { pathian_ram: '', ramthar: '', tualchhung: '', building: '', total: 0 };
+                      const rowDraft = drafts[m.member_id] || (() => {
+                        const fallbackDraft = { total: 0 };
+                        titheColumns.forEach(c => { fallbackDraft[c.field_key] = ''; });
+                        return fallbackDraft;
+                      })();
 
                       return (
                         <div

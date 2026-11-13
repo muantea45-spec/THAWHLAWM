@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { api, setAuthToken, setAuthUser } from '../utils/api';
 import churchLogo from '../assets/church_logo.jpg';
+import loginBg from '../assets/login_bg.jpg';
 
 function GoogleLogoSvg({ className = "w-5 h-5" }) {
   return (
@@ -141,10 +142,16 @@ export default function Login({ onLoginSuccess, showToast }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden text-slate-900">
-      {/* Ambient Glowing Background Orbs */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/4 w-[450px] h-[450px] bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+    <div
+      className="min-h-screen flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${loginBg})` }}
+    >
+      {/* Background Dark Vignette / Overlay to enhance contrast while keeping church glow vivid */}
+      <div className="absolute inset-0 bg-gradient-to-b from-slate-950/70 via-slate-950/40 to-slate-950/80 backdrop-blur-[1px] pointer-events-none"></div>
+
+      {/* Subtle Warm Amber & Cool Indigo Ambient Highlights */}
+      <div className="absolute top-1/4 right-1/4 w-[500px] h-[500px] bg-amber-500/10 rounded-full blur-[140px] pointer-events-none"></div>
+      <div className="absolute bottom-10 left-1/4 w-[400px] h-[400px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="w-full max-w-md relative z-10">
         
@@ -153,18 +160,18 @@ export default function Login({ onLoginSuccess, showToast }) {
           <img
             src={churchLogo}
             alt="Bethlehem Kohhran Logo"
-            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white border-2 border-amber-600/30 object-contain shadow-xl mx-auto mb-3 p-1 transform hover:scale-105 transition-transform duration-300"
+            className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/95 border-2 border-white/80 object-contain shadow-2xl mx-auto mb-3 p-1 ring-4 ring-white/20 transform hover:scale-105 transition-transform duration-300"
           />
-          <h1 className="font-heading font-black text-2xl sm:text-3xl text-slate-900 tracking-tight leading-tight">
+          <h1 className="font-heading font-black text-2xl sm:text-3xl text-white tracking-tight leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)]">
             Bethlehem Kohhran
           </h1>
-          <p className="text-sm sm:text-base text-indigo-700 font-extrabold tracking-wider uppercase mt-1">
+          <p className="text-sm sm:text-base text-amber-300 font-extrabold tracking-wider uppercase mt-1 drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]">
             Pathian Ram Khawnna
           </p>
         </div>
 
-        {/* Unified Login Box */}
-        <div className="glass-panel-elevated p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xl bg-white/95 backdrop-blur-md">
+        {/* Slightly Transparent / Frosted Glass Login Box */}
+        <div className="p-6 sm:p-8 rounded-3xl border border-white/40 shadow-[0_20px_60px_rgba(0,0,0,0.45)] bg-white/75 backdrop-blur-xl transition-all">
           
           {/* ======================================================== */}
           {/* 1. UPPER PART: USER CREDENTIALS LOGIN                     */}
@@ -184,7 +191,7 @@ export default function Login({ onLoginSuccess, showToast }) {
                   value={userUsername}
                   onChange={(e) => setUserUsername(e.target.value)}
                   placeholder="Enter username"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-sm font-medium transition-all shadow-xs"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white/80 hover:bg-white focus:bg-white border border-slate-300/80 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-sm font-medium transition-all shadow-xs"
                   autoFocus
                 />
               </div>
@@ -204,7 +211,7 @@ export default function Login({ onLoginSuccess, showToast }) {
                   value={userPassword}
                   onChange={(e) => setUserPassword(e.target.value)}
                   placeholder="Enter password"
-                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-50 border border-slate-300 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 text-sm font-medium transition-all shadow-xs"
+                  className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-white/80 hover:bg-white focus:bg-white border border-slate-300/80 text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-200 text-sm font-medium transition-all shadow-xs"
                 />
                 <button
                   type="button"
@@ -220,7 +227,7 @@ export default function Login({ onLoginSuccess, showToast }) {
             <button
               type="submit"
               disabled={userLoading}
-              className="w-full py-3 rounded-xl font-bold text-xs bg-gradient-to-r from-blue-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-md shadow-indigo-600/20 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="w-full py-3 rounded-xl font-bold text-xs bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-700 hover:to-indigo-800 text-white shadow-lg shadow-indigo-700/25 active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {userLoading ? (
                 'Signing In...'
@@ -238,10 +245,10 @@ export default function Login({ onLoginSuccess, showToast }) {
           {/* ======================================================== */}
           <div className="relative my-5">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200"></div>
+              <div className="w-full border-t border-slate-300/70"></div>
             </div>
             <div className="relative flex justify-center text-xs">
-              <span className="bg-white px-3 text-[11px] font-extrabold text-slate-400 uppercase tracking-wider">
+              <span className="bg-white/80 backdrop-blur-sm px-3 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider rounded-full">
                 OR
               </span>
             </div>
@@ -260,7 +267,7 @@ export default function Login({ onLoginSuccess, showToast }) {
                 type="button"
                 onClick={handleGoogleSignInClick}
                 disabled={googleLoading}
-                className="w-full py-3 px-4 bg-white hover:bg-slate-50 border-2 border-slate-200 hover:border-slate-300 rounded-2xl shadow-xs hover:shadow-md text-slate-800 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
+                className="w-full py-3 px-4 bg-white/90 hover:bg-white border-2 border-slate-200 hover:border-slate-300 rounded-2xl shadow-xs hover:shadow-md text-slate-800 font-extrabold text-xs sm:text-sm flex items-center justify-center gap-3 transition-all cursor-pointer active:scale-[0.99] disabled:opacity-50"
               >
                 {googleLoading ? (
                   <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
@@ -272,6 +279,13 @@ export default function Login({ onLoginSuccess, showToast }) {
             )}
           </div>
 
+        </div>
+
+        {/* Footer info */}
+        <div className="text-center mt-5">
+          <p className="text-xs text-slate-300/80 drop-shadow font-medium">
+            Bethlehem Kohhran &bull; Thawhlawm Management System
+          </p>
         </div>
 
       </div>

@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { getAuthUser, getAuthToken, setAuthToken, setAuthUser, api } from './utils/api';
 import Navbar from './components/Navbar';
 import Toast from './components/Toast';
-import Login from './pages/Login';
-import AdminDashboard from './pages/AdminDashboard';
-import BialDashboard from './pages/BialDashboard';
+
+const Login = React.lazy(() => import('./pages/Login'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const BialDashboard = React.lazy(() => import('./pages/BialDashboard'));
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -124,14 +125,20 @@ function MainApp() {
 
   if (!user) {
     return (
-      <>
+      <React.Suspense
+        fallback={
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+            <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        }
+      >
         <Login onLoginSuccess={(u) => updateUserWithTransition(u)} showToast={showToast} />
         <Toast
           message={toast.message}
           type={toast.type}
           onClose={() => setToast({ message: '', type: 'info' })}
         />
-      </>
+      </React.Suspense>
     );
   }
 
@@ -144,11 +151,19 @@ function MainApp() {
       />
 
       <main className="flex-1">
-        {user.role === 'ADMIN' ? (
-          <AdminDashboard user={user} showToast={showToast} />
-        ) : (
-          <BialDashboard user={user} showToast={showToast} />
-        )}
+        <React.Suspense
+          fallback={
+            <div className="min-h-[50vh] flex items-center justify-center">
+              <div className="w-10 h-10 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+            </div>
+          }
+        >
+          {user.role === 'ADMIN' ? (
+            <AdminDashboard user={user} showToast={showToast} />
+          ) : (
+            <BialDashboard user={user} showToast={showToast} />
+          )}
+        </React.Suspense>
       </main>
 
       <Toast

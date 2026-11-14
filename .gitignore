@@ -21,6 +21,7 @@ data/
 *.sqlite
 *.sqlite3
 *.db
+*.sql
 
 # Executable binaries & build artifacts
 *.exe

@@ -86,7 +86,7 @@ async function logAudit(db, user, action, details, c = null) {
       )
     `).run();
 
-    const ip = c ? (c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'local') : 'unknown';
+    const ip = c ? getClientIp(c) : 'unknown';
     const userId = user?.id || null;
     const username = user?.username || (user?.email ? user.email.split('@')[0] : 'admin');
     const email = user?.email || null;
@@ -101,10 +101,60 @@ async function logAudit(db, user, action, details, c = null) {
   }
 }
 
-const CRYPTO_FALLBACK_JWT_SECRET = 'ee28c9e5da1c504ffc652e15314c3fa50bb57fed68caadf018093a29d89a399a';
+// ----------------------------------------------------
+// SECURITY: CLIENT IP & CRYPTOGRAPHIC KEY RESOLVER
+// ----------------------------------------------------
+function getClientIp(c) {
+  if (!c) return 'direct-client';
+  const cfIp = c.req.header('cf-connecting-ip');
+  if (cfIp) return cfIp.trim();
+  const forwarded = c.req.header('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return c.req.header('x-real-ip') || 'direct-client';
+}
 
-function getJwtSecret(c) {
-  return c?.env?.JWT_SECRET || CRYPTO_FALLBACK_JWT_SECRET;
+let _memJwtSecret = null;
+
+async function getJwtSecret(c) {
+  if (c?.env?.JWT_SECRET) {
+    return c.env.JWT_SECRET;
+  }
+  if (_memJwtSecret) {
+    return _memJwtSecret;
+  }
+  const db = c?.env?.DB;
+  if (!db) {
+    throw new Error('Server configuration error: Neither JWT_SECRET nor DB binding is available.');
+  }
+  try {
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS app_security_keys (
+        key_name TEXT PRIMARY KEY,
+        key_val TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    const row = await db.prepare('SELECT key_val FROM app_security_keys WHERE key_name = ?').bind('jwt_secret').first();
+    if (row && row.key_val) {
+      _memJwtSecret = row.key_val;
+      return _memJwtSecret;
+    }
+
+    // Generate a cryptographically strong 256-bit random key
+    const randomBytes = new Uint8Array(32);
+    crypto.getRandomValues(randomBytes);
+    const generatedSecret = Array.from(randomBytes, b => b.toString(16).padStart(2, '0')).join('');
+
+    await db.prepare('INSERT OR REPLACE INTO app_security_keys (key_name, key_val) VALUES (?, ?)').bind('jwt_secret', generatedSecret).run();
+    _memJwtSecret = generatedSecret;
+    return _memJwtSecret;
+  } catch (err) {
+    console.error('Error resolving dynamic JWT secret:', err);
+    throw new Error('Critical security error: Unable to resolve JWT signing secret.');
+  }
 }
 
 // ----------------------------------------------------
@@ -155,7 +205,7 @@ async function authMiddleware(c, next) {
   }
 
   try {
-    const secret = getJwtSecret(c);
+    const secret = await getJwtSecret(c);
     const payload = await verify(token, secret, 'HS256');
 
     if (!payload || !payload.id) {
@@ -326,7 +376,7 @@ async function isMonthLocked(db, bialId, year, month) {
 // ----------------------------------------------------
 app.post('/auth/login', async (c) => {
   const db = c.env.DB;
-  const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-real-ip') || c.req.header('x-forwarded-for') || 'direct-client';
+  const clientIp = getClientIp(c);
 
   // Anti-Brute-Force Rate Limiting (D1-backed)
   const rateLimitStatus = await checkLoginRateLimit(db, clientIp);
@@ -387,7 +437,7 @@ app.post('/auth/login', async (c) => {
       exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
     };
 
-    const secret = getJwtSecret(c);
+    const secret = await getJwtSecret(c);
     const token = await sign(payload, secret, 'HS256');
 
     return c.json({
@@ -548,7 +598,7 @@ app.post('/auth/google', async (c) => {
       exp: Math.floor(Date.now() / 1000) + (7 * 24 * 60 * 60)
     };
 
-    const secret = getJwtSecret(c);
+    const secret = await getJwtSecret(c);
     const token = await sign(payload, secret, 'HS256');
 
     return c.json({
@@ -668,6 +718,17 @@ app.put('/admin/primary-owner', authMiddleware, requireAdmin, async (c) => {
     const currentPrimary = await db.prepare("SELECT id, email FROM users WHERE role = 'ADMIN' ORDER BY id ASC LIMIT 1").first();
     if (!currentPrimary) {
       return c.json({ error: 'Primary admin user account not found in database' }, 404);
+    }
+
+    // Security Check: Only the current Primary Account Owner can initiate an ownership transfer
+    const requester = c.get('user');
+    const isPrimaryOwner = (requester?.id === currentPrimary.id) ||
+      (currentPrimary.email && requester?.email && requester.email.toLowerCase() === currentPrimary.email.toLowerCase());
+
+    if (!isPrimaryOwner) {
+      return c.json({
+        error: 'Permission Denied: Only the current Primary Account Owner has authority to transfer primary account ownership.'
+      }, 403);
     }
 
     const previousPrimaryEmail = currentPrimary.email ? currentPrimary.email.toLowerCase() : null;
@@ -2598,6 +2659,14 @@ app.post('/backup/restore', authMiddleware, requireAdmin, async (c) => {
     for (let i = 0; i < titheStmts.length; i += 80) {
       await db.batch(titheStmts.slice(i, i + 80));
     }
+
+    await logAudit(
+      db,
+      c.get('user'),
+      'DATABASE_RESTORE',
+      `Restored cloud database snapshot containing ${members?.length || 0} members, ${tithes?.length || 0} tithes, and ${bials?.length || 0} bials`,
+      c
+    );
 
     return c.json({
       message: 'Cloud database restored successfully from snapshot',

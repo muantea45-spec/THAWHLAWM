@@ -1677,7 +1677,7 @@ export default function AdminDashboard({ user, showToast }) {
                     </div>
                   </div>
 
-                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-normal mt-0.5 whitespace-nowrap overflow-x-auto no-scrollbar">
+                  <p className="text-[11px] sm:text-xs text-slate-500 font-normal mt-0.5 whitespace-nowrap overflow-x-auto no-scrollbar">
                     {compareMode === 'month' ? (
                       <>Comparing <strong className="text-slate-800 font-semibold">{currMonthFullName}</strong> vs <strong className="text-slate-700 font-semibold">{prevMonthFullName}</strong> (FY {year})</>
                     ) : (
@@ -1688,13 +1688,13 @@ export default function AdminDashboard({ user, showToast }) {
 
                 {/* Dropdown Selectors for Month or Year */}
                 {compareMode === 'month' ? (
-                  <div className="flex items-center gap-2 text-xs font-bold shrink-0 bg-white px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs flex-wrap self-end sm:self-center">
+                  <div className="flex items-center gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs flex-wrap self-end sm:self-center">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-indigo-900 text-[10.5px] uppercase font-black tracking-tight">Month A :</span>
+                      <span className="text-indigo-900 text-[11px] uppercase font-black tracking-tight">Month A :</span>
                       <select
                         value={compareMonthTarget}
                         onChange={(e) => setCompareMonthTarget(parseInt(e.target.value))}
-                        className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs"
+                        className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs sm:text-sm"
                       >
                         {FINANCIAL_MONTH_ORDER.map(mNum => (
                           <option key={mNum} value={mNum}>{FINANCIAL_FULL_NAMES[mNum]}</option>
@@ -1702,14 +1702,14 @@ export default function AdminDashboard({ user, showToast }) {
                       </select>
                     </div>
 
-                    <span className="text-slate-400 text-xs font-black px-1">VS</span>
+                    <span className="text-slate-400 text-xs sm:text-sm font-black px-1">VS</span>
 
                     <div className="flex items-center gap-1.5">
-                      <span className="text-slate-600 text-[10.5px] uppercase font-black tracking-tight">Month B :</span>
+                      <span className="text-slate-600 text-[11px] uppercase font-black tracking-tight">Month B :</span>
                       <select
                         value={compareMonthBase}
                         onChange={(e) => setCompareMonthBase(parseInt(e.target.value))}
-                        className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs"
+                        className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs sm:text-sm"
                       >
                         {FINANCIAL_MONTH_ORDER.map(mNum => (
                           <option key={mNum} value={mNum}>{FINANCIAL_FULL_NAMES[mNum]}</option>
@@ -1718,12 +1718,12 @@ export default function AdminDashboard({ user, showToast }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-bold shrink-0 bg-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs whitespace-nowrap self-start sm:self-center">
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs whitespace-nowrap self-start sm:self-center">
                     <div className="flex items-center gap-1">
                       <select
                         value={compareYearTarget}
                         onChange={(e) => setCompareYearTarget(parseInt(e.target.value))}
-                        className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs"
+                        className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs sm:text-sm"
                       >
                         {financialYears.map(y => (
                           <option key={y} value={y}>FY {y}-{y + 1}</option>
@@ -1731,13 +1731,13 @@ export default function AdminDashboard({ user, showToast }) {
                       </select>
                     </div>
 
-                    <span className="text-slate-400 text-xs font-black px-1 sm:px-1.5">VS</span>
+                    <span className="text-slate-400 text-xs sm:text-sm font-black px-1 sm:px-1.5">VS</span>
 
                     <div className="flex items-center gap-1">
                       <select
                         value={compareYearBase}
                         onChange={(e) => setCompareYearBase(parseInt(e.target.value))}
-                        className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs"
+                        className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs sm:text-sm"
                       >
                         {financialYears.map(y => (
                           <option key={y} value={y}>FY {y}-{y + 1}</option>
@@ -1757,12 +1757,12 @@ export default function AdminDashboard({ user, showToast }) {
                     {/* 1. Monetary Comparison Card */}
                     <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
                           <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
                           <span>Monetary Contribution</span>
                         </span>
                         {/* Growth Indicator */}
-                        <span className={`px-2 py-0.5 rounded-lg text-[9.5px] font-mono font-bold border flex items-center gap-1 ${
+                        <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${
                           monetaryDiff >= 0 
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                             : 'bg-rose-50 text-rose-700 border-rose-200'
@@ -1774,19 +1774,19 @@ export default function AdminDashboard({ user, showToast }) {
 
                       {/* Previous vs Current Boxes */}
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5">
-                          <span className="text-[8.5px] font-bold text-slate-500 uppercase block font-sans">
-                            {prevMonthLabel} (Previous)
+                        <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
+                          <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                            {prevMonthLabel}
                           </span>
-                          <span className="text-xs sm:text-sm font-black text-slate-700 block">
+                          <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
                             ₹{prevTotal.toLocaleString('en-IN')}
                           </span>
                         </div>
-                        <div className="p-2 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5">
-                          <span className="text-[8.5px] font-bold text-indigo-700 uppercase block font-sans">
-                            {currMonthLabel} (Current)
+                        <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5 min-w-0">
+                          <span className="text-[10px] sm:text-[11px] font-black text-indigo-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                            {currMonthLabel}
                           </span>
-                          <span className="text-xs sm:text-sm font-black text-indigo-900 block">
+                          <span className="text-xs sm:text-sm font-black text-indigo-950 block truncate">
                             ₹{currTotal.toLocaleString('en-IN')}
                           </span>
                         </div>
@@ -1834,12 +1834,12 @@ export default function AdminDashboard({ user, showToast }) {
                     {/* 2. Household Return Comparison Card */}
                     <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
                           <Users className="w-3.5 h-3.5 text-indigo-600" />
                           <span>Household Return Rate</span>
                         </span>
                         {/* Compliance Change Indicator */}
-                        <span className={`px-2 py-0.5 rounded-lg text-[9.5px] font-mono font-bold border flex items-center gap-1 ${
+                        <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${
                           returnedDiff >= 0 
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                             : 'bg-rose-50 text-rose-700 border-rose-200'
@@ -1851,25 +1851,25 @@ export default function AdminDashboard({ user, showToast }) {
 
                       {/* Previous vs Current Boxes */}
                       <div className="grid grid-cols-2 gap-2">
-                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5">
-                          <span className="text-[8.5px] font-bold text-slate-500 uppercase block font-sans">
-                            {prevMonthLabel} (Previous)
+                        <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
+                          <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                            {prevMonthLabel}
                           </span>
-                          <span className="text-xs sm:text-sm font-black text-slate-700 block">
-                            {prevReturned} <span className="text-[9px] font-sans text-slate-500 font-normal">/ {totalSystemMembers} HH</span>
+                          <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
+                            {prevReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-slate-500 font-normal">/ {totalSystemMembers} HH</span>
                           </span>
-                          <span className="text-[9.5px] font-bold text-slate-600 block">
+                          <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-700 block truncate">
                             {prevReturnRate}% compliance
                           </span>
                         </div>
-                        <div className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5">
-                          <span className="text-[8.5px] font-bold text-emerald-700 uppercase block font-sans">
-                            {currMonthLabel} (Current)
+                        <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5 min-w-0">
+                          <span className="text-[10px] sm:text-[11px] font-black text-emerald-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                            {currMonthLabel}
                           </span>
-                          <span className="text-xs sm:text-sm font-black text-emerald-900 block">
-                            {currReturned} <span className="text-[9px] font-sans text-emerald-600 font-normal">/ {totalSystemMembers} HH</span>
+                          <span className="text-xs sm:text-sm font-black text-emerald-950 block truncate">
+                            {currReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-emerald-600 font-normal">/ {totalSystemMembers} HH</span>
                           </span>
-                          <span className="text-[9.5px] font-bold text-emerald-700 block">
+                          <span className="text-[10px] sm:text-[10.5px] font-bold text-emerald-800 block truncate">
                             {currReturnRate}% compliance
                           </span>
                         </div>
@@ -1971,12 +1971,12 @@ export default function AdminDashboard({ user, showToast }) {
                         {/* 1. Annual Monetary Comparison Card */}
                         <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                            <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
                               <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
                               <span>Annual Monetary Contribution</span>
                             </span>
                             {/* Growth Indicator */}
-                            <span className={`px-2 py-0.5 rounded-lg text-[9.5px] font-mono font-bold border flex items-center gap-1 ${
+                            <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${
                               fyMonetaryDiff >= 0 
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                                 : 'bg-rose-50 text-rose-700 border-rose-200'
@@ -1988,27 +1988,27 @@ export default function AdminDashboard({ user, showToast }) {
 
                           {/* Base Year vs Target Year Boxes */}
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
-                              <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase block font-sans whitespace-nowrap truncate">
+                            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
+                              <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
                                 FY {compareYearBase}-{compareYearBase + 1}
                               </span>
-                              <span className="text-xs sm:text-sm font-black text-slate-700 block truncate">
+                              <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
                                 ₹{fyBaseTotal.toLocaleString('en-IN')}
                               </span>
                             </div>
-                            <div className="p-2 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5 min-w-0">
-                              <span className="text-[9px] sm:text-[10px] font-bold text-indigo-700 uppercase block font-sans whitespace-nowrap truncate">
+                            <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5 min-w-0">
+                              <span className="text-[10px] sm:text-[11px] font-black text-indigo-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
                                 FY {compareYearTarget}-{compareYearTarget + 1}
                               </span>
-                              <span className="text-xs sm:text-sm font-black text-indigo-900 block truncate">
+                              <span className="text-xs sm:text-sm font-black text-indigo-950 block truncate">
                                 ₹{fyTargetTotal.toLocaleString('en-IN')}
                               </span>
                             </div>
                           </div>
 
                           {/* Category Breakdown Comparison Bars */}
-                          <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[10px]">
-                            <div className="flex items-center justify-between text-slate-500 font-bold text-[9px] uppercase tracking-wider">
+                          <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[10.5px]">
+                            <div className="flex items-center justify-between text-slate-500 font-bold text-[9.5px] sm:text-[10px] uppercase tracking-wider">
                               <span>Category</span>
                               <div className="flex items-center gap-3 font-mono">
                                 <span className="text-slate-600">FY {compareYearBase}</span>
@@ -2022,7 +2022,7 @@ export default function AdminDashboard({ user, showToast }) {
                               const maxVal = Math.max(1, prevVal, currVal);
                               return (
                                 <div key={cat.id || cat.field_key} className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
-                                  <div className="flex items-center justify-between font-mono font-bold text-[10px]">
+                                  <div className="flex items-center justify-between font-mono font-bold text-[10.5px] sm:text-[11px]">
                                     <span className="text-slate-700 font-sans font-semibold truncate pr-2">
                                       {cat.name} ({cat.code})
                                     </span>
@@ -2048,12 +2048,12 @@ export default function AdminDashboard({ user, showToast }) {
                         {/* 2. Annual Household Return & Participation Card */}
                         <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                            <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
                               <Users className="w-3.5 h-3.5 text-indigo-600" />
-                              <span>Household Participation & Rates</span>
+                              <span>Household Participation</span>
                             </span>
                             {/* Compliance Change Indicator */}
-                            <span className={`px-2 py-0.5 rounded-lg text-[9.5px] font-mono font-bold border flex items-center gap-1 ${
+                            <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${
                               fyReturnedDiff >= 0 
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
                                 : 'bg-rose-50 text-rose-700 border-rose-200'
@@ -2065,31 +2065,31 @@ export default function AdminDashboard({ user, showToast }) {
 
                           {/* Base vs Target Household Boxes */}
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
-                              <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase block font-sans whitespace-nowrap truncate">
+                            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
+                              <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
                                 FY {compareYearBase}
                               </span>
-                              <span className="text-xs sm:text-sm font-black text-slate-700 block truncate">
-                                {fyBaseReturned} <span className="text-[9px] font-sans text-slate-500 font-normal">/ {fyBaseHH} HH</span>
+                              <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
+                                {fyBaseReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-slate-500 font-normal">/ {fyBaseHH} HH</span>
                               </span>
-                              <span className="text-[9.5px] font-bold text-slate-600 block truncate">
+                              <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-700 block truncate">
                                 {fyBaseReturnRate}% return rate
                               </span>
-                              <span className="text-[9px] text-slate-500 block truncate">
+                              <span className="text-[9.5px] sm:text-[10px] text-slate-500 block truncate">
                                 Avg: ₹{fyBaseAvg.toLocaleString('en-IN')}/HH
                               </span>
                             </div>
-                            <div className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5 min-w-0">
-                              <span className="text-[9px] sm:text-[10px] font-bold text-emerald-700 uppercase block font-sans whitespace-nowrap truncate">
+                            <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5 min-w-0">
+                              <span className="text-[10px] sm:text-[11px] font-black text-emerald-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
                                 FY {compareYearTarget}
                               </span>
-                              <span className="text-xs sm:text-sm font-black text-emerald-900 block truncate">
-                                {fyTargetReturned} <span className="text-[9px] font-sans text-emerald-600 font-normal">/ {fyTargetHH} HH</span>
+                              <span className="text-xs sm:text-sm font-black text-emerald-950 block truncate">
+                                {fyTargetReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-emerald-600 font-normal">/ {fyTargetHH} HH</span>
                               </span>
-                              <span className="text-[9.5px] font-bold text-emerald-700 block truncate">
+                              <span className="text-[10px] sm:text-[10.5px] font-bold text-emerald-800 block truncate">
                                 {fyTargetReturnRate}% return rate
                               </span>
-                              <span className="text-[9px] text-emerald-800 font-semibold block truncate">
+                              <span className="text-[9.5px] sm:text-[10px] text-emerald-800 font-semibold block truncate">
                                 Avg: ₹{fyTargetAvg.toLocaleString('en-IN')}/HH
                               </span>
                             </div>

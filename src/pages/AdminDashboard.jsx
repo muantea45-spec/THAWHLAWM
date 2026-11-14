@@ -1642,11 +1642,11 @@ export default function AdminDashboard({ user, showToast }) {
             <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
               
               {/* Header & Comparison Selector */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 border-b border-slate-100 pb-3">
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                      <TrendingUp className="w-4 h-4 text-indigo-600" />
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 border-b border-slate-100 pb-3">
+                <div className="w-full sm:w-auto flex flex-col items-center sm:items-start text-center sm:text-left">
+                  <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap w-full">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center justify-center gap-1.5 text-center">
+                      <TrendingUp className="w-4 h-4 text-indigo-600 shrink-0" />
                       <span>{compareMode === 'month' ? 'Month-over-Month Performance Comparison' : 'Financial Year Comparison'}</span>
                     </h3>
                     
@@ -1655,7 +1655,7 @@ export default function AdminDashboard({ user, showToast }) {
                       <button
                         type="button"
                         onClick={() => setCompareMode('month')}
-                        className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                        className={`px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                           compareMode === 'month'
                             ? 'bg-white text-indigo-700 shadow-2xs'
                             : 'text-slate-600 hover:text-slate-900'
@@ -1666,7 +1666,7 @@ export default function AdminDashboard({ user, showToast }) {
                       <button
                         type="button"
                         onClick={() => setCompareMode('year')}
-                        className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                        className={`px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
                           compareMode === 'year'
                             ? 'bg-white text-indigo-700 shadow-2xs'
                             : 'text-slate-600 hover:text-slate-900'
@@ -1677,7 +1677,7 @@ export default function AdminDashboard({ user, showToast }) {
                     </div>
                   </div>
 
-                  <p className="text-[11px] sm:text-xs text-slate-500 font-normal mt-0.5 whitespace-nowrap overflow-x-auto no-scrollbar">
+                  <p className="text-[11px] sm:text-xs text-slate-500 font-normal mt-0.5 whitespace-nowrap overflow-x-auto no-scrollbar w-full text-center sm:text-left">
                     {compareMode === 'month' ? (
                       <>Comparing <strong className="text-slate-800 font-semibold">{currMonthFullName}</strong> vs <strong className="text-slate-700 font-semibold">{prevMonthFullName}</strong> (FY {year})</>
                     ) : (
@@ -1688,7 +1688,7 @@ export default function AdminDashboard({ user, showToast }) {
 
                 {/* Dropdown Selectors for Month or Year */}
                 {compareMode === 'month' ? (
-                  <div className="flex items-center gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs flex-wrap self-end sm:self-center">
+                  <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs flex-wrap self-center sm:self-center">
                     <div className="flex items-center gap-1.5">
                       <span className="text-indigo-900 text-[11px] uppercase font-black tracking-tight">Month A :</span>
                       <select
@@ -1718,7 +1718,7 @@ export default function AdminDashboard({ user, showToast }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs whitespace-nowrap self-start sm:self-center">
+                  <div className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs whitespace-nowrap self-center sm:self-center">
                     <div className="flex items-center gap-1">
                       <select
                         value={compareYearTarget}
@@ -2146,12 +2146,12 @@ export default function AdminDashboard({ user, showToast }) {
 
                       {/* Grouped Comparison Bar Chart for FY */}
                       <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                            <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 text-center sm:text-left">
+                          <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-1.5 text-center">
+                            <BarChart3 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                             <span>Financial Year Category Breakdown Comparison (₹)</span>
                           </h4>
-                          <div className="flex items-center gap-3 text-[10px] font-bold">
+                          <div className="flex items-center justify-center gap-3 text-[10px] font-bold">
                             <div className="flex items-center gap-1">
                               <span className="w-2.5 h-2.5 rounded bg-slate-400 inline-block" />
                               <span className="text-slate-600">FY {compareYearBase}</span>
@@ -2183,12 +2183,12 @@ export default function AdminDashboard({ user, showToast }) {
                       {/* Bial Year-over-Year Performance Breakdown */}
                       {fyBialComparison.length > 0 && (
                         <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
-                          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                            <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                              <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                          <div className="flex flex-col sm:flex-row items-center justify-between border-b border-slate-100 pb-1.5 gap-1 text-center sm:text-left">
+                            <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-1.5 text-center">
+                              <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
                               <span>Bial-by-Bial Annual Performance Growth</span>
                             </h4>
-                            <span className="text-[10px] text-slate-500 font-mono">
+                            <span className="text-[10px] text-slate-500 font-mono text-center">
                               {fyBialComparison.length} Bials
                             </span>
                           </div>

@@ -43,12 +43,16 @@ export default function Login({ onLoginSuccess, showToast }) {
 
   const googleBtnContainerRef = useRef(null);
 
-  // Initialize Google Identity Services when Client ID is available
+  // Initialize Google Identity Services reliably with polling retry
   useEffect(() => {
     if (!configuredClientId) return;
 
+    let timer = null;
+    let attempts = 0;
+
     const initGoogle = () => {
-      if (window.google?.accounts?.id) {
+      attempts++;
+      if (window.google?.accounts?.id && googleBtnContainerRef.current) {
         try {
           window.google.accounts.id.initialize({
             client_id: configuredClientId,
@@ -57,30 +61,34 @@ export default function Login({ onLoginSuccess, showToast }) {
             cancel_on_tap_outside: true
           });
 
-          if (googleBtnContainerRef.current) {
-            googleBtnContainerRef.current.innerHTML = '';
-            window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
-              theme: 'filled_black',
-              size: 'large',
-              type: 'standard',
-              shape: 'pill',
-              text: 'signin_with',
-              logo_alignment: 'left',
-              width: 320
-            });
-          }
+          googleBtnContainerRef.current.innerHTML = '';
+          const btnWidth = Math.min(320, Math.max(240, (window.innerWidth || 360) - 64));
+          window.google.accounts.id.renderButton(googleBtnContainerRef.current, {
+            theme: 'filled_black',
+            size: 'large',
+            type: 'standard',
+            shape: 'pill',
+            text: 'signin_with',
+            logo_alignment: 'left',
+            width: btnWidth
+          });
+          return true;
         } catch (e) {
           console.warn('Google Sign-In initialization note:', e);
         }
       }
+
+      if (attempts < 30) {
+        timer = setTimeout(initGoogle, 300);
+      }
+      return false;
     };
 
-    if (window.google?.accounts?.id) {
-      initGoogle();
-    } else {
-      const timer = setTimeout(initGoogle, 800);
-      return () => clearTimeout(timer);
-    }
+    initGoogle();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [configuredClientId]);
 
   // Handle Google Credential Response from Google Identity Services
@@ -166,8 +174,8 @@ export default function Login({ onLoginSuccess, showToast }) {
 
   const handleTouchStart = (e) => {
     if (isRefreshing) return;
-    // Don't intercept touches if user is interacting with text inputs or buttons
-    if (e.target.closest('input, button, a')) return;
+    // Don't intercept touches if user is interacting with text inputs, buttons, or Google button container
+    if (e.target.closest('input, button, a, select, textarea, [role="button"], #google-signin-wrapper, iframe')) return;
 
     const touch = e.touches[0];
     touchStartRef.current = {
@@ -296,7 +304,7 @@ export default function Login({ onLoginSuccess, showToast }) {
           <form onSubmit={handleUserLogin} className="space-y-2.5">
             <div>
               <label className="block text-[11px] font-medium text-slate-300 mb-1">
-                Username
+                Username or Email
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -307,7 +315,7 @@ export default function Login({ onLoginSuccess, showToast }) {
                   required
                   value={userUsername}
                   onChange={(e) => setUserUsername(e.target.value)}
-                  placeholder="Enter username"
+                  placeholder="Enter username or email"
                   className="w-full pl-9 pr-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 focus:bg-white/10 border border-white/15 focus:border-slate-300 focus:ring-1 focus:ring-slate-300 text-white placeholder-slate-400 text-xs sm:text-sm transition-colors"
                   autoFocus
                 />
@@ -382,7 +390,12 @@ export default function Login({ onLoginSuccess, showToast }) {
             </div>
 
             {/* Official Google Identity Services Container if Client ID is configured */}
-            <div ref={googleBtnContainerRef} className={`flex justify-center w-full min-h-[40px] ${!configuredClientId ? 'hidden' : ''}`}></div>
+            <div
+              id="google-signin-wrapper"
+              className={`flex justify-center w-full min-h-[44px] touch-auto select-auto ${!configuredClientId ? 'hidden' : ''}`}
+            >
+              <div ref={googleBtnContainerRef} className="flex justify-center w-full min-h-[40px]"></div>
+            </div>
 
             {/* Custom Google Sign-In Button (shown when Client ID is not yet saved or fallback) */}
             {!configuredClientId && (

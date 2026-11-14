@@ -52,7 +52,8 @@ export async function request(endpoint, options = {}) {
     headers
   });
 
-  if (response.status === 401) {
+  const isAuthEndpoint = endpoint.startsWith('/auth/login') || endpoint.startsWith('/auth/google');
+  if (response.status === 401 && !isAuthEndpoint) {
     setAuthToken(null);
     setAuthUser(null);
     window.location.href = '/';

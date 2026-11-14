@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Key, Plus, Lock, Unlock, Trash2, Edit, Search, ShieldCheck, Check, X, RefreshCw, Mail, Users, Sparkles } from 'lucide-react';
+import { Key, Plus, Lock, Unlock, Trash2, Edit, Search, ShieldCheck, Check, X, RefreshCw, Mail, Users, Sparkles, Crown, ArrowRightLeft } from 'lucide-react';
 import Modal from './common/Modal';
 import { api } from '../utils/api';
 
@@ -36,6 +36,9 @@ export default function BialCredentialsModal({
   const [loadingGoogleEmails, setLoadingGoogleEmails] = useState(false);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [addingEmail, setAddingEmail] = useState(false);
+  const [showTransferOwnerBox, setShowTransferOwnerBox] = useState(false);
+  const [targetOwnerEmail, setTargetOwnerEmail] = useState('');
+  const [transferringOwner, setTransferringOwner] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -91,6 +94,38 @@ export default function BialCredentialsModal({
       fetchGoogleEmails();
     } catch (err) {
       if (showToast) showToast(err.message || 'Failed to remove admin email', 'error');
+    }
+  };
+
+  const handleTransferOwner = async (emailToSet) => {
+    const targetEmail = (emailToSet || targetOwnerEmail).trim().toLowerCase();
+    if (!targetEmail || !targetEmail.includes('@')) {
+      if (showToast) showToast('Please enter or select a valid email address', 'error');
+      return;
+    }
+
+    if (targetEmail === primaryAdminEmail?.toLowerCase()) {
+      if (showToast) showToast(`${targetEmail} is already the Primary Account Owner`, 'info');
+      setShowTransferOwnerBox(false);
+      return;
+    }
+
+    if (!window.confirm(`Transfer Primary Account Ownership to ${targetEmail}?\n\nThe current owner (${primaryAdminEmail}) will remain an authorized administrator.`)) {
+      return;
+    }
+
+    try {
+      setTransferringOwner(true);
+      const res = await api.setPrimaryAdminOwner(targetEmail);
+      if (showToast) showToast(res?.message || `Primary Account Owner changed to ${targetEmail}`, 'success');
+      setShowTransferOwnerBox(false);
+      setTargetOwnerEmail('');
+      await fetchGoogleEmails();
+      onRefresh();
+    } catch (err) {
+      if (showToast) showToast(err.message || 'Failed to change primary owner', 'error');
+    } finally {
+      setTransferringOwner(false);
     }
   };
 
@@ -398,19 +433,109 @@ export default function BialCredentialsModal({
 
               {/* Primary Admin account if linked */}
               {primaryAdminEmail && (
-                <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-200/90 flex items-center justify-between shadow-2xs">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-7 h-7 rounded-lg bg-white border border-indigo-100 flex items-center justify-center shrink-0">
-                      <GoogleIcon className="w-4 h-4" />
+                <div className="space-y-2">
+                  <div className="p-2.5 sm:p-3 rounded-xl bg-indigo-50/80 border border-indigo-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-lg bg-white border border-indigo-100 flex items-center justify-center shrink-0 shadow-2xs">
+                        <GoogleIcon className="w-4.5 h-4.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-mono font-bold text-xs sm:text-sm text-indigo-950 block truncate">{primaryAdminEmail}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black uppercase tracking-tight bg-indigo-600 text-white shrink-0">
+                            Primary Owner
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-indigo-700/90 font-medium">Root church administrator account</span>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <span className="font-mono font-bold text-xs text-indigo-950 block truncate">{primaryAdminEmail}</span>
-                      <span className="text-[10px] text-indigo-700 font-bold uppercase tracking-tight">Primary Account Owner</span>
-                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowTransferOwnerBox(prev => !prev);
+                        setTargetOwnerEmail('');
+                      }}
+                      className="px-2.5 py-1.5 rounded-lg text-xs font-bold text-indigo-700 bg-white hover:bg-indigo-100/70 border border-indigo-200 transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs shrink-0 self-end sm:self-center"
+                      title="Change or transfer primary account ownership"
+                    >
+                      <ArrowRightLeft className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Change Owner</span>
+                    </button>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
-                    Owner
-                  </span>
+
+                  {/* Transfer Ownership Box */}
+                  {showTransferOwnerBox && (
+                    <div className="p-3 rounded-xl bg-amber-50/90 border border-amber-200/90 space-y-2.5 shadow-2xs animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                          <Crown className="w-4 h-4 text-amber-600" />
+                          <span>Change Primary Account Owner</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setShowTransferOwnerBox(false)}
+                          className="p-1 rounded text-amber-700 hover:text-amber-950 hover:bg-amber-100/60 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <p className="text-[11px] text-amber-900 leading-relaxed">
+                        Select an existing authorized admin or enter a new Google email address. The current owner (<strong className="font-mono">{primaryAdminEmail}</strong>) will stay as an authorized administrator.
+                      </p>
+
+                      <div className="space-y-2">
+                        {googleEmails.filter(i => i.email !== primaryAdminEmail).length > 0 && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold text-amber-900/80 uppercase block">
+                              Option A: Choose from Authorized Admins:
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {googleEmails
+                                .filter(i => i.email !== primaryAdminEmail)
+                                .map(item => (
+                                  <button
+                                    key={item.id}
+                                    type="button"
+                                    onClick={() => handleTransferOwner(item.email)}
+                                    disabled={transferringOwner}
+                                    className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-white hover:bg-amber-100 text-amber-950 border border-amber-300 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                  >
+                                    <Crown className="w-3 h-3 text-amber-500" />
+                                    <span>{item.email}</span>
+                                  </button>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-bold text-amber-900/80 uppercase block">
+                            {googleEmails.filter(i => i.email !== primaryAdminEmail).length > 0 ? 'Option B: Or Enter Another Gmail:' : 'Enter New Owner Gmail:'}
+                          </span>
+                          <div className="flex gap-2">
+                            <input
+                              type="email"
+                              value={targetOwnerEmail}
+                              onChange={(e) => setTargetOwnerEmail(e.target.value)}
+                              placeholder="e.g. newpastor@gmail.com"
+                              className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-amber-300 text-xs text-slate-900 placeholder-amber-400 focus:outline-none focus:border-amber-600 shadow-2xs font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleTransferOwner(targetOwnerEmail)}
+                              disabled={transferringOwner || !targetOwnerEmail}
+                              className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs shadow-amber-600/20 shrink-0"
+                            >
+                              <Check className="w-3.5 h-3.5" />
+                              <span>{transferringOwner ? 'Transferring...' : 'Confirm Transfer'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -446,14 +571,27 @@ export default function BialCredentialsModal({
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAdminEmail(item.id, item.email)}
-                        className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
-                        title="Revoke Admin Access"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleTransferOwner(item.email)}
+                          disabled={transferringOwner}
+                          className="px-2 py-1 rounded-lg text-[10.5px] font-bold text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                          title="Transfer Primary Account Ownership to this email"
+                        >
+                          <Crown className="w-3 h-3 text-amber-600" />
+                          <span>Make Owner</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAdminEmail(item.id, item.email)}
+                          className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Revoke Admin Access"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))
               )}

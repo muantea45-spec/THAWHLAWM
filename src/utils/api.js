@@ -85,6 +85,7 @@ export const api = {
   getAdminGoogleEmails: () => request('/admin/google-emails'),
   addAdminGoogleEmail: (email) => request('/admin/google-emails', { method: 'POST', body: JSON.stringify({ email }) }),
   deleteAdminGoogleEmail: (id) => request(`/admin/google-emails/${id}`, { method: 'DELETE' }),
+  setPrimaryAdminOwner: (email) => request('/admin/primary-owner', { method: 'PUT', body: JSON.stringify({ email }) }),
   getMonthLocks: (year) => request(`/admin/month-locks?year=${year}`),
   toggleMonthLock: (data) => request('/admin/month-locks/toggle', { method: 'POST', body: JSON.stringify(data) }),
   getAdminDashboard: (year, filters = {}) => {

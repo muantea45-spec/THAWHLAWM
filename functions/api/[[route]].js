@@ -545,7 +545,7 @@ app.get('/admin/google-emails', authMiddleware, requireAdmin, async (c) => {
       await db.prepare("CREATE TABLE IF NOT EXISTS admin_google_emails (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").run();
     } catch (e) {}
     const { results: emails } = await db.prepare("SELECT id, email, created_at FROM admin_google_emails ORDER BY id ASC").all();
-    const primaryAdmin = await db.prepare("SELECT email FROM users WHERE role = 'ADMIN' AND email IS NOT NULL LIMIT 1").first();
+    const primaryAdmin = await db.prepare("SELECT email FROM users WHERE role = 'ADMIN' AND email IS NOT NULL ORDER BY id ASC LIMIT 1").first();
     return c.json({
       emails: emails || [],
       primaryAdminEmail: primaryAdmin ? primaryAdmin.email : null
@@ -616,6 +616,70 @@ app.delete('/admin/google-emails/:id', authMiddleware, requireAdmin, async (c) =
     return c.json({ message: 'Authorized admin email removed successfully' });
   } catch (err) {
     return c.json({ error: 'Failed to delete admin email' }, 500);
+  }
+});
+
+// Transfer Primary Account Ownership Endpoint
+app.put('/admin/primary-owner', authMiddleware, requireAdmin, async (c) => {
+  const db = c.env.DB;
+  const body = await c.req.json().catch(() => ({}));
+  const email = body.email;
+  if (!email || !email.includes('@')) {
+    return c.json({ error: 'Valid email address is required' }, 400);
+  }
+  const cleanEmail = email.trim().toLowerCase();
+
+  try {
+    // 1. Find the current root primary admin user
+    const currentPrimary = await db.prepare("SELECT id, email FROM users WHERE role = 'ADMIN' ORDER BY id ASC LIMIT 1").first();
+    if (!currentPrimary) {
+      return c.json({ error: 'Primary admin user account not found in database' }, 404);
+    }
+
+    const previousPrimaryEmail = currentPrimary.email ? currentPrimary.email.toLowerCase() : null;
+
+    if (previousPrimaryEmail === cleanEmail) {
+      return c.json({ message: `${cleanEmail} is already the Primary Account Owner`, primaryAdminEmail: cleanEmail });
+    }
+
+    // 2. Ensure admin_google_emails table exists
+    try {
+      await db.prepare("CREATE TABLE IF NOT EXISTS admin_google_emails (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").run();
+    } catch (e) {}
+
+    // 3. Ensure previous primary email remains in admin_google_emails as an authorized admin
+    if (previousPrimaryEmail) {
+      await db.prepare("INSERT OR IGNORE INTO admin_google_emails (email) VALUES (?)").bind(previousPrimaryEmail).run();
+    }
+
+    // 4. Ensure new primary email is in admin_google_emails
+    await db.prepare("INSERT OR IGNORE INTO admin_google_emails (email) VALUES (?)").bind(cleanEmail).run();
+
+    // 5. If a secondary user row exists with this email (id != currentPrimary.id), merge it
+    const secondaryUser = await db.prepare("SELECT id, google_id FROM users WHERE LOWER(email) = ? AND id != ?").bind(cleanEmail, currentPrimary.id).first();
+    const targetGoogleId = secondaryUser?.google_id || null;
+
+    if (secondaryUser) {
+      await db.prepare("DELETE FROM users WHERE id = ?").bind(secondaryUser.id).run();
+    }
+
+    // 6. Update the root admin row (id = 1) with the new primary email and its google_id
+    if (targetGoogleId) {
+      await db.prepare("UPDATE users SET email = ?, google_id = ?, status = 'active' WHERE id = ?")
+        .bind(cleanEmail, targetGoogleId, currentPrimary.id).run();
+    } else {
+      await db.prepare("UPDATE users SET email = ?, status = 'active' WHERE id = ?")
+        .bind(cleanEmail, currentPrimary.id).run();
+    }
+
+    return c.json({
+      message: `Primary Account Ownership successfully transferred to ${cleanEmail}!`,
+      primaryAdminEmail: cleanEmail,
+      previousPrimaryEmail
+    });
+  } catch (err) {
+    console.error('Error changing primary admin owner:', err);
+    return c.json({ error: err.message || 'Failed to update primary account owner' }, 500);
   }
 });
 

@@ -6,7 +6,7 @@ import {
   FileSpreadsheet, FileText, Search, RefreshCw, Eye, ArrowUp, ArrowDown, ArrowUpDown,
   CalendarDays, LogOut, LayoutGrid, LayoutList, Shield, Users, CheckCircle2, Edit3,
   ArrowRightLeft, Trophy, Percent, Wallet, ChevronDown, ChevronUp, IndianRupee,
-  ArrowUpRight, ArrowDownRight, Menu, Loader2, ShieldCheck, History
+  ArrowUpRight, ArrowDownRight, Menu, Loader2, ShieldCheck, History, Activity
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -557,6 +557,37 @@ export default function AdminDashboard({ user, showToast }) {
       ? enrichedBialBreakdown[0]
       : null
   );
+
+  // Bial Variance / Spread Metrics
+  const bialsWithMembers = enrichedBialBreakdown.filter(b => (b.total_members || 0) > 0);
+  const sortedByRate = [...bialsWithMembers].sort((a, b) => (b.return_rate || 0) - (a.return_rate || 0));
+  const highestBial = sortedByRate[0] || null;
+  const lowestBial = sortedByRate[sortedByRate.length - 1] || null;
+  const bialSpreadGap = (highestBial && lowestBial)
+    ? Math.round(((highestBial.return_rate || 0) - (lowestBial.return_rate || 0)) * 10) / 10
+    : 0;
+
+  // Fund Allocation Metrics (Mission / Ramthar Ratio & Category Dominance)
+  const ramtharCol = titheColumns.find(c => 
+    c.field_key === 'ramthar' || 
+    c.code?.toLowerCase().includes('ramthar') || 
+    c.name?.toLowerCase().includes('ramthar')
+  );
+  const ramtharKey = ramtharCol ? ramtharCol.field_key : 'ramthar';
+  const ramtharTotal = grandTotals[ramtharKey] || grandTotals[`total_${ramtharKey}`] || 0;
+  const missionRatio = grandTotalVal > 0 ? Math.round((ramtharTotal / grandTotalVal) * 1000) / 10 : 0;
+
+  const categoryShares = titheColumns.map(cat => {
+    const val = grandTotals[cat.field_key] || grandTotals[`total_${cat.field_key}`] || 0;
+    const pct = grandTotalVal > 0 ? Math.round((val / grandTotalVal) * 1000) / 10 : 0;
+    return {
+      ...cat,
+      amount: val,
+      percentage: pct
+    };
+  }).sort((a, b) => b.amount - a.amount);
+
+  const dominantCategory = categoryShares[0] || null;
 
   // Financial Months Definition & Month-over-Month Comparison Data
   const FINANCIAL_MONTH_ORDER = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
@@ -1632,6 +1663,99 @@ export default function AdminDashboard({ user, showToast }) {
                   </span>
                   <span className="font-mono font-black text-slate-800 text-xs sm:text-xs block">
                     {enrichedBialBreakdown.length} Bials
+                  </span>
+                </div>
+              </div>
+
+              {/* Feature 5: Bial Variance / Spread */}
+              <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
+                {/* Header Box */}
+                <div className="pb-1 border-b border-slate-100 flex items-center justify-between">
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1 truncate">
+                    <Activity className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                    <span className="truncate">Bial Variance / Spread</span>
+                  </span>
+                  <span className="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
+                    {bialSpreadGap}% gap
+                  </span>
+                </div>
+
+                {/* Data Box 1: Highest vs Lowest Participation Bials */}
+                <div className="bg-slate-50/70 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
+                  <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] font-bold">
+                    <span className="text-slate-500 uppercase">High:</span>
+                    <span className="font-mono font-black text-emerald-700 truncate">
+                      {highestBial ? `${highestBial.name} (${highestBial.return_rate}%)` : 'N/A'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] font-bold">
+                    <span className="text-slate-500 uppercase">Low:</span>
+                    <span className="font-mono font-black text-rose-700 truncate">
+                      {lowestBial ? `${lowestBial.name} (${lowestBial.return_rate}%)` : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Data Box 2: Performance Gap Meter */}
+                <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
+                  <div className="flex items-center justify-between text-[8px] sm:text-[9px] font-bold text-slate-600">
+                    <span>Performance Gap:</span>
+                    <span className="font-mono font-black text-indigo-900">{bialSpreadGap}% spread</span>
+                  </div>
+                  <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, Math.max(5, bialSpreadGap))}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Feature 6: Fund Allocation Metrics */}
+              <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
+                {/* Header Box */}
+                <div className="pb-1 border-b border-slate-100 flex items-center justify-between">
+                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1 truncate">
+                    <PieChartIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                    <span className="truncate">Fund Allocation</span>
+                  </span>
+                  <span className="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                    {missionRatio}% Mission
+                  </span>
+                </div>
+
+                {/* Data Box 1: Mission / Ramthar Giving Ratio */}
+                <div className="bg-white p-1.5 rounded-xl border border-slate-200 space-y-0.5">
+                  <div className="flex items-center justify-between text-[8px] font-bold text-slate-500 uppercase">
+                    <span>Ramthar / Mission</span>
+                    <span className="font-mono text-slate-700">₹{ramtharTotal.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex items-baseline justify-between font-mono">
+                    <span className="text-xs sm:text-xs font-black text-emerald-700">
+                      {missionRatio}%
+                    </span>
+                    <span className="text-[8px] sm:text-[8.5px] font-bold text-slate-500 font-sans">
+                      of total funds
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: `${Math.min(100, missionRatio)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Data Box 2: Category Dominance Ratio */}
+                <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
+                  <div className="flex items-center justify-between text-[8px] sm:text-[9px] font-bold text-slate-600">
+                    <span className="truncate">Top: {dominantCategory?.name || 'N/A'}</span>
+                    <span className="font-mono font-black text-indigo-700 shrink-0 ml-1">
+                      {dominantCategory?.percentage || 0}%
+                    </span>
+                  </div>
+                  <span className="text-[8px] text-slate-500 block font-mono truncate">
+                    ₹{(dominantCategory?.amount || 0).toLocaleString('en-IN')}
                   </span>
                 </div>
               </div>

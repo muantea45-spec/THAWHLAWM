@@ -1434,7 +1434,51 @@ export function exportOfficialCertificatePDF({
     margin: { left: margin, right: margin }
   });
 
-  currentY = doc.lastAutoTable.finalY + 8;
+  const totalHH = grandTotals.total_system_members !== undefined 
+    ? grandTotals.total_system_members 
+    : ((tableType === 'bials' || tableType === 'members') ? bialsBreakdown.reduce((acc, b) => acc + (b.total_members || b.member_count || 0), 0) : 0);
+  const returnedHH = grandTotals.total_returned_members !== undefined 
+    ? grandTotals.total_returned_members 
+    : ((tableType === 'bials' || tableType === 'members') ? bialsBreakdown.reduce((acc, b) => acc + (b.returned_members || (parseFloat(b.total || b.grand_total) > 0 ? 1 : 0)), 0) : 0);
+  const returnRate = grandTotals.overall_return_rate !== undefined 
+    ? grandTotals.overall_return_rate 
+    : (totalHH > 0 ? Math.round((returnedHH / totalHH) * 1000) / 10 : 0);
+  const avgPerHH = grandTotals.avg_contribution_per_member !== undefined 
+    ? grandTotals.avg_contribution_per_member 
+    : (returnedHH > 0 ? Math.round((grandTotals.grand_total || 0) / returnedHH) : 0);
+
+  if (totalHH > 0) {
+    doc.autoTable({
+      startY: doc.lastAutoTable.finalY + 2,
+      head: [['TOTAL HOUSEHOLDS', 'HOUSEHOLDS RETURNED', 'RETURN RATE PER HOUSEHOLD', 'AVG / HOUSEHOLD']],
+      body: [[
+        String(totalHH),
+        String(returnedHH),
+        `${returnRate}%`,
+        `Rs. ${avgPerHH.toLocaleString('en-IN')}`
+      ]],
+      theme: 'grid',
+      headStyles: {
+        fillColor: [241, 245, 249],
+        textColor: [0, 0, 0],
+        fontSize: isLandscape ? 6.5 : 6,
+        fontStyle: 'bold',
+        halign: 'center',
+        cellPadding: isLandscape ? 1.2 : 0.8
+      },
+      bodyStyles: {
+        fontSize: isLandscape ? 7.5 : 7,
+        fontStyle: 'bold',
+        halign: 'center',
+        textColor: [0, 0, 0],
+        cellPadding: isLandscape ? 1.4 : 1
+      },
+      margin: { left: margin, right: margin }
+    });
+    currentY = doc.lastAutoTable.finalY + 4;
+  } else {
+    currentY = doc.lastAutoTable.finalY + 5;
+  }
 
   let tableHead, tableBody, tableFoot, colStyles;
 
@@ -1452,13 +1496,13 @@ export function exportOfficialCertificatePDF({
     ]);
     tableFoot = [['', 'ANNUAL TOTAL', pr, rt, tch, bldg, grandTotal]];
     colStyles = {
-      0: { halign: 'center', cellWidth: 10, textColor: [100, 116, 139] },
-      1: { halign: 'left', fontStyle: 'bold', textColor: [15, 23, 42] },
-      2: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [29, 78, 216] },
-      3: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [4, 120, 87] },
-      4: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [180, 83, 9] },
-      5: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [107, 33, 168] },
-      6: { halign: 'right', cellWidth: isLandscape ? 44 : 28, fontStyle: 'bold', textColor: [6, 78, 59], fillColor: [240, 253, 244] }
+      0: { halign: 'center', cellWidth: 10, textColor: [0, 0, 0] },
+      1: { halign: 'left', fontStyle: 'bold', textColor: [0, 0, 0] },
+      2: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [0, 0, 0] },
+      3: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [0, 0, 0] },
+      4: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [0, 0, 0] },
+      5: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [0, 0, 0] },
+      6: { halign: 'right', cellWidth: isLandscape ? 44 : 28, fontStyle: 'bold', textColor: [0, 0, 0], fillColor: [240, 253, 244] }
     };
   } else if (tableType === 'members' || tableType === 'member_annual_summary') {
     // Member-Level Ledger / Member Annual Summary
@@ -1472,40 +1516,47 @@ export function exportOfficialCertificatePDF({
       (m.total_building || m.building || 0).toLocaleString('en-IN'),
       (m.grand_total || m.total || 0).toLocaleString('en-IN')
     ]);
-    tableFoot = [['', `GRAND TOTAL (${bialsBreakdown.length} Members)`, pr, rt, tch, bldg, grandTotal]];
+    tableFoot = [['', `GRAND TOTAL (${bialsBreakdown.length} Households)`, pr, rt, tch, bldg, grandTotal]];
     colStyles = {
-      0: { halign: 'center', cellWidth: 10, textColor: [100, 116, 139] },
-      1: { halign: 'left', fontStyle: 'bold', textColor: [15, 23, 42] },
-      2: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [29, 78, 216] },
-      3: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [4, 120, 87] },
-      4: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [180, 83, 9] },
-      5: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [107, 33, 168] },
-      6: { halign: 'right', cellWidth: isLandscape ? 44 : 28, fontStyle: 'bold', textColor: [6, 78, 59], fillColor: [240, 253, 244] }
+      0: { halign: 'center', cellWidth: 10, textColor: [0, 0, 0] },
+      1: { halign: 'left', fontStyle: 'bold', textColor: [0, 0, 0] },
+      2: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [0, 0, 0] },
+      3: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [0, 0, 0] },
+      4: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [0, 0, 0] },
+      5: { halign: 'right', cellWidth: isLandscape ? 38 : 24, textColor: [0, 0, 0] },
+      6: { halign: 'right', cellWidth: isLandscape ? 44 : 28, fontStyle: 'bold', textColor: [0, 0, 0], fillColor: [240, 253, 244] }
     };
   } else {
     // All Bials Table
-    tableHead = [['Sl', 'Bial / Unit', 'Members', 'PTR (₹)', 'RT (₹)', 'Tch (₹)', 'Bldg (₹)', 'Total (₹)']];
+    const bialTotalHH = (bialsBreakdown || []).reduce((acc, b) => acc + (b.total_members || b.member_count || 0), 0);
+    const bialTotalRet = (bialsBreakdown || []).reduce((acc, b) => acc + (b.returned_members || 0), 0);
+    const bialOverallRate = bialTotalHH > 0 ? Math.round((bialTotalRet / bialTotalHH) * 1000) / 10 : 0;
+
+    tableHead = [['Sl', 'Bial / Unit', 'HH', 'Ret', 'Rate %', 'PTR (₹)', 'RT (₹)', 'Tch (₹)', 'Bldg (₹)', 'Total (₹)']];
     tableBody = (bialsBreakdown || []).map((b, idx) => [
       idx + 1,
       b.name || b.bial_name || `Bial ${idx + 1}`,
-      b.member_count || b.members_count || '-',
+      b.total_members || b.member_count || '-',
+      b.returned_members !== undefined ? b.returned_members : '-',
+      b.return_rate !== undefined ? `${b.return_rate}%` : '-',
       (b.total_pathian_ram || b.pathian_ram || 0).toLocaleString('en-IN'),
       (b.total_ramthar || b.ramthar || 0).toLocaleString('en-IN'),
       (b.total_tualchhung || b.tualchhung || 0).toLocaleString('en-IN'),
       (b.total_building || b.building || 0).toLocaleString('en-IN'),
       (b.total_collected || b.total || 0).toLocaleString('en-IN')
     ]);
-    const totalMembers = (bialsBreakdown || []).reduce((acc, b) => acc + (b.member_count || b.members_count || 0), 0);
-    tableFoot = [['', 'GRAND TOTAL', totalMembers ? `${totalMembers} Mem` : '-', pr, rt, tch, bldg, grandTotal]];
+    tableFoot = [['', 'GRAND TOTAL', bialTotalHH || '-', bialTotalRet || '-', `${bialOverallRate}%`, pr, rt, tch, bldg, grandTotal]];
     colStyles = {
-      0: { halign: 'center', cellWidth: 10, textColor: [100, 116, 139] },
-      1: { halign: 'left', fontStyle: 'bold', textColor: [15, 23, 42] },
-      2: { halign: 'center', cellWidth: isLandscape ? 26 : 16, textColor: [71, 85, 105] },
-      3: { halign: 'right', cellWidth: isLandscape ? 34 : 22, textColor: [29, 78, 216] },
-      4: { halign: 'right', cellWidth: isLandscape ? 34 : 22, textColor: [4, 120, 87] },
-      5: { halign: 'right', cellWidth: isLandscape ? 34 : 22, textColor: [180, 83, 9] },
-      6: { halign: 'right', cellWidth: isLandscape ? 34 : 22, textColor: [107, 33, 168] },
-      7: { halign: 'right', cellWidth: isLandscape ? 40 : 26, fontStyle: 'bold', textColor: [6, 78, 59], fillColor: [240, 253, 244] }
+      0: { halign: 'center', cellWidth: 8, textColor: [0, 0, 0] },
+      1: { halign: 'left', fontStyle: 'bold', textColor: [0, 0, 0] },
+      2: { halign: 'center', cellWidth: isLandscape ? 16 : 12, textColor: [0, 0, 0] },
+      3: { halign: 'center', cellWidth: isLandscape ? 16 : 12, textColor: [0, 0, 0] },
+      4: { halign: 'center', cellWidth: isLandscape ? 18 : 14, textColor: [0, 0, 0], fontStyle: 'bold' },
+      5: { halign: 'right', cellWidth: isLandscape ? 28 : 20, textColor: [0, 0, 0] },
+      6: { halign: 'right', cellWidth: isLandscape ? 28 : 20, textColor: [0, 0, 0] },
+      7: { halign: 'right', cellWidth: isLandscape ? 28 : 20, textColor: [0, 0, 0] },
+      8: { halign: 'right', cellWidth: isLandscape ? 28 : 20, textColor: [0, 0, 0] },
+      9: { halign: 'right', cellWidth: isLandscape ? 34 : 24, fontStyle: 'bold', textColor: [0, 0, 0], fillColor: [240, 253, 244] }
     };
   }
 
@@ -1654,6 +1705,11 @@ export function exportOfficialCertificateExcel({
   const bldg = grandTotals.total_building || 0;
   const grandTotal = grandTotals.grand_total || 0;
 
+  const totalHH = grandTotals.total_system_members || (bialsBreakdown || []).reduce((acc, b) => acc + (b.total_members || b.member_count || 0), 0) || bialsBreakdown.length;
+  const returnedHH = grandTotals.total_returned_members || (bialsBreakdown || []).reduce((acc, b) => acc + (b.returned_members || 0), 0) || (bialsBreakdown || []).filter(m => (m.grand_total || m.total || 0) > 0).length;
+  const returnRate = grandTotals.overall_return_rate !== undefined ? grandTotals.overall_return_rate : (totalHH > 0 ? Math.round((returnedHH / totalHH) * 1000) / 10 : 0);
+  const avgPerHH = grandTotals.avg_contribution_per_member || (returnedHH > 0 ? Math.round(grandTotal / returnedHH) : 0);
+
   const sheetData = [
     [denomination.toUpperCase()],
     [churchName],
@@ -1663,8 +1719,8 @@ export function exportOfficialCertificateExcel({
     [`Date of Issue: ${signatory.date || new Date().toLocaleDateString('en-GB')}`],
     [],
     ['EXECUTIVE SUMMARY TOTALS'],
-    ['Pathian Ram', 'Ramthar (RT)', 'Tualchhung (Tch)', 'Building (Bldg)', 'TOTAL'],
-    [pr, rt, tch, bldg, grandTotal],
+    ['Pathian Ram (₹)', 'Ramthar (₹)', 'Tualchhung (₹)', 'Building (₹)', 'TOTAL (₹)', 'Total Households', 'Households Returned', 'Return Rate per Household (%)', 'Avg / Household (₹)'],
+    [pr, rt, tch, bldg, grandTotal, totalHH, returnedHH, `${returnRate}%`, avgPerHH],
     [],
     ['CONTRIBUTIONS BREAKDOWN']
   ];
@@ -1702,12 +1758,14 @@ export function exportOfficialCertificateExcel({
     sheetData.push(['', `GRAND TOTAL (${bialsBreakdown.length} Members)`, pr, rt, tch, bldg, grandTotal]);
     colWidths = [{ wch: 8 }, { wch: 28 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 20 }];
   } else {
-    sheetData.push(['Sl No', 'Bial Name', 'Members Count', 'PTR (₹)', 'RT (₹)', 'Tch (₹)', 'Bldg (₹)', 'Total (₹)']);
+    sheetData.push(['Sl No', 'Bial Name', 'Total HH', 'Returned HH', 'Return Rate (%)', 'PTR (₹)', 'RT (₹)', 'Tch (₹)', 'Bldg (₹)', 'Total (₹)']);
     (bialsBreakdown || []).forEach((b, idx) => {
       sheetData.push([
         idx + 1,
         b.name || b.bial_name || `Bial ${idx + 1}`,
-        b.member_count || b.members_count || 0,
+        b.total_members || b.member_count || b.members_count || 0,
+        b.returned_members ?? '-',
+        b.return_rate !== undefined ? `${b.return_rate}%` : '-',
         b.total_pathian_ram || b.pathian_ram || 0,
         b.total_ramthar || b.ramthar || 0,
         b.total_tualchhung || b.tualchhung || 0,
@@ -1715,9 +1773,8 @@ export function exportOfficialCertificateExcel({
         b.total_collected || b.total || 0
       ]);
     });
-    const totalMembers = (bialsBreakdown || []).reduce((acc, b) => acc + (b.member_count || b.members_count || 0), 0);
-    sheetData.push(['', 'GRAND TOTAL', totalMembers, pr, rt, tch, bldg, grandTotal]);
-    colWidths = [{ wch: 8 }, { wch: 28 }, { wch: 16 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 22 }];
+    sheetData.push(['', 'GRAND TOTAL', totalHH, returnedHH, `${returnRate}%`, pr, rt, tch, bldg, grandTotal]);
+    colWidths = [{ wch: 8 }, { wch: 26 }, { wch: 14 }, { wch: 14 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 20 }];
   }
 
   sheetData.push([]);
@@ -1813,11 +1870,20 @@ export function exportConsolidatedBookletPDF({
   // Draw initial page header
   drawPageHeader();
 
+  let churchTotalHH = 0;
+  let churchReturnedHH = 0;
+
   // Process Bials in natural order (B1, B2, B3...)
   bialsData.forEach((bialGroup) => {
     const bialName = bialGroup.bial_name || bialGroup.name || 'Bial';
     const bialCode = bialGroup.bial_code || bialGroup.code || '';
     const members = bialGroup.members || [];
+    const bialTotalHH = members.length;
+    const bialReturnedHH = members.filter(m => (parseFloat(m.grand_total || m.total) || 0) > 0).length;
+    const bialReturnRate = bialTotalHH > 0 ? Math.round((bialReturnedHH / bialTotalHH) * 1000) / 10 : 0;
+
+    churchTotalHH += bialTotalHH;
+    churchReturnedHH += bialReturnedHH;
 
     // Draw Bial Header Banner
     checkSpace(12);
@@ -1829,7 +1895,7 @@ export function exportConsolidatedBookletPDF({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(0, 0, 0);
-    const headerTitle = `${bialCode ? `${bialCode} - ` : ''}${bialName} (${members.length} Members)`;
+    const headerTitle = `${bialCode ? `${bialCode} - ` : ''}${bialName} (${bialTotalHH} HH • ${bialReturnedHH} Ret • ${bialReturnRate}% Return Rate)`;
     doc.text(headerTitle, curX + 2.5, currentY + 4.2);
 
     currentY += 7.5;
@@ -1910,7 +1976,7 @@ export function exportConsolidatedBookletPDF({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Subtotal (${bialCode || bialName})`, subX + 2.5, currentY + 3.4);
+    doc.text(`Subtotal (${bialCode || bialName}) • ${bialReturnRate}% Ret (${bialReturnedHH}/${bialTotalHH} HH)`, subX + 2.5, currentY + 3.4);
 
     doc.text(bialPR.toLocaleString('en-IN'), subX + 58, currentY + 3.4, { align: 'right' });
     doc.text(bialRT.toLocaleString('en-IN'), subX + 74, currentY + 3.4, { align: 'right' });
@@ -1934,14 +2000,17 @@ export function exportConsolidatedBookletPDF({
   const gBldg = churchTotals.total_building || bialsData.reduce((acc, b) => acc + (b.subtotal?.total_building || 0), 0);
   const gTotal = churchTotals.grand_total || bialsData.reduce((acc, b) => acc + (b.subtotal?.grand_total || 0), 0);
 
+  const overallChurchReturnRate = churchTotalHH > 0 ? Math.round((churchReturnedHH / churchTotalHH) * 1000) / 10 : 0;
+  const avgPerHH = churchReturnedHH > 0 ? Math.round(gTotal / churchReturnedHH) : 0;
+
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
   doc.setTextColor(0, 0, 0);
-  doc.text(`KOHHRAN GRAND TOTAL (${globalSlNo - 1} Members)`, finalX + 3.5, currentY + 4.8);
+  doc.text(`KOHHRAN GRAND TOTAL (${churchTotalHH} HH • ${churchReturnedHH} Ret • ${overallChurchReturnRate}% Return Rate)`, finalX + 3.5, currentY + 4.8);
 
-  doc.setFontSize(6.8);
+  doc.setFontSize(6.5);
   doc.setTextColor(0, 0, 0);
-  doc.text(`PTR: Rs.${gPR.toLocaleString('en-IN')} | RT: Rs.${gRT.toLocaleString('en-IN')} | Tch: Rs.${gTch.toLocaleString('en-IN')} | Bldg: Rs.${gBldg.toLocaleString('en-IN')}`, finalX + 3.5, currentY + 9);
+  doc.text(`PTR: Rs.${gPR.toLocaleString('en-IN')} | RT: Rs.${gRT.toLocaleString('en-IN')} | Tch: Rs.${gTch.toLocaleString('en-IN')} | Bldg: Rs.${gBldg.toLocaleString('en-IN')} | Avg/HH: Rs.${avgPerHH.toLocaleString('en-IN')}`, finalX + 3.5, currentY + 9);
 
   doc.setFontSize(9.5);
   doc.setTextColor(0, 0, 0);
@@ -1972,14 +2041,22 @@ export function exportConsolidatedBookletExcel({
 
   let globalSlNo = 1;
   let churchPR = 0, churchRT = 0, churchTch = 0, churchBldg = 0, churchTotal = 0;
+  let churchTotalHH = 0;
+  let churchReturnedHH = 0;
 
   bialsData.forEach((bialGroup) => {
     const bialName = bialGroup.bial_name || bialGroup.name || 'Bial';
     const bialCode = bialGroup.bial_code || bialGroup.code || '';
     const members = bialGroup.members || [];
+    const bialTotalHH = members.length;
+    const bialReturnedHH = members.filter(m => (parseFloat(m.grand_total || m.total) || 0) > 0).length;
+    const bialReturnRate = bialTotalHH > 0 ? Math.round((bialReturnedHH / bialTotalHH) * 1000) / 10 : 0;
+
+    churchTotalHH += bialTotalHH;
+    churchReturnedHH += bialReturnedHH;
 
     // Bial Section Divider Header
-    sheetData.push([`--- ${bialCode ? `${bialCode}: ` : ''}${bialName.toUpperCase()} (${members.length} Members) ---`, '', '', '', '', '', '', '', '']);
+    sheetData.push([`--- ${bialCode ? `${bialCode}: ` : ''}${bialName.toUpperCase()} (${bialTotalHH} HH • ${bialReturnedHH} Returned • ${bialReturnRate}% Return Rate) ---`, '', '', '', '', '', '', '', '']);
 
     let bialPR = 0, bialRT = 0, bialTch = 0, bialBldg = 0, bialTotal = 0;
 
@@ -2018,7 +2095,7 @@ export function exportConsolidatedBookletExcel({
     // Bial Subtotal Row
     sheetData.push([
       `Subtotal (${bialCode || bialName})`,
-      `Total Members: ${members.length}`,
+      `${bialTotalHH} HH • ${bialReturnedHH} Ret (${bialReturnRate}%)`,
       '',
       '',
       bialPR,
@@ -2031,10 +2108,13 @@ export function exportConsolidatedBookletExcel({
     sheetData.push([]); // Empty spacing row
   });
 
+  const churchReturnRate = churchTotalHH > 0 ? Math.round((churchReturnedHH / churchTotalHH) * 1000) / 10 : 0;
+  const avgPerHH = churchReturnedHH > 0 ? Math.round(churchTotal / churchReturnedHH) : 0;
+
   // Church Grand Total Row
   sheetData.push([
     'KOHHRAN GRAND TOTAL',
-    `Total Members: ${globalSlNo - 1}`,
+    `${churchTotalHH} HH • ${churchReturnedHH} Ret (${churchReturnRate}% Return Rate) • Avg/HH: ₹${avgPerHH}`,
     '',
     '',
     churchPR,

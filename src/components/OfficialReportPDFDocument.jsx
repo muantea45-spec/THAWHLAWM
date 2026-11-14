@@ -232,14 +232,16 @@ export default function OfficialReportPDFDocument({
   // Column width calculations based on layout
   const colWidths = isBials
     ? {
-        sl: '6%',
-        name: isLandscape ? '28%' : '24%',
-        mem: '7%',
-        ptr: '13%',
-        rt: '13%',
-        tch: '13%',
-        bldg: '13%',
-        total: '13%',
+        sl: '4%',
+        name: isLandscape ? '21%' : '18%',
+        hh: '7%',
+        ret: '7%',
+        rate: '7%',
+        ptr: isLandscape ? '11%' : '11%',
+        rt: isLandscape ? '11%' : '11%',
+        tch: isLandscape ? '11%' : '11%',
+        bldg: isLandscape ? '11%' : '11%',
+        total: isLandscape ? '10%' : '11%',
       }
     : {
         sl: '6%',
@@ -364,6 +366,37 @@ export default function OfficialReportPDFDocument({
                 </View>
               </View>
 
+              {/* Household Return Rate & Compliance Summary (100% Black) */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  backgroundColor: '#f8fafc',
+                  borderWidth: 0.75,
+                  borderColor: '#94a3b8',
+                  borderRadius: 4,
+                  paddingVertical: 2,
+                  paddingHorizontal: 6,
+                  marginBottom: 3.5,
+                }}
+              >
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Text style={{ fontSize: 6.5, color: '#000000' }}>
+                    Total HH: <Text style={{ fontFamily: 'Helvetica-Bold' }}>{totals.total_system_members || breakdown.length || 0}</Text>
+                  </Text>
+                  <Text style={{ fontSize: 6.5, color: '#000000' }}>
+                    Returned: <Text style={{ fontFamily: 'Helvetica-Bold' }}>{totals.total_returned_members || breakdown.filter(m => (m.grand_total || m.total || 0) > 0).length || 0}</Text>
+                  </Text>
+                  <Text style={{ fontSize: 6.5, color: '#000000' }}>
+                    Return Rate / Household: <Text style={{ fontFamily: 'Helvetica-Bold' }}>{totals.overall_return_rate !== undefined ? `${totals.overall_return_rate}%` : 'N/A'}</Text>
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 6.5, color: '#000000' }}>
+                  Avg / HH: <Text style={{ fontFamily: 'Helvetica-Bold' }}>₹{formatINR(totals.avg_contribution_per_member || (totals.total_returned_members > 0 ? Math.round(totals.grand_total / totals.total_returned_members) : 0))}</Text>
+                </Text>
+              </View>
+
               {/* Dynamic Breakdown Table */}
               <View style={styles.tableContainer}>
                 {/* Table Header */}
@@ -377,7 +410,11 @@ export default function OfficialReportPDFDocument({
                       : 'Bial Name'}
                   </Text>
                   {isBials && (
-                    <Text style={[styles.tableHeaderCell, { width: colWidths.mem, textAlign: 'center', color: '#000000' }]}>Mem</Text>
+                    <>
+                      <Text style={[styles.tableHeaderCell, { width: colWidths.hh, textAlign: 'center', color: '#000000' }]}>HH</Text>
+                      <Text style={[styles.tableHeaderCell, { width: colWidths.ret, textAlign: 'center', color: '#000000' }]}>Ret</Text>
+                      <Text style={[styles.tableHeaderCell, { width: colWidths.rate, textAlign: 'center', color: '#000000' }]}>Return %</Text>
+                    </>
                   )}
                   <Text style={[styles.tableHeaderCell, { width: colWidths.ptr, textAlign: 'right', color: '#000000' }]}>PTR (₹)</Text>
                   <Text style={[styles.tableHeaderCell, { width: colWidths.rt, textAlign: 'right', color: '#000000' }]}>RT (₹)</Text>
@@ -419,9 +456,17 @@ export default function OfficialReportPDFDocument({
                           {rowName}
                         </Text>
                         {isBials && (
-                          <Text style={[styles.tableCell, { width: colWidths.mem, textAlign: 'center', color: '#000000' }]}>
-                            {item.member_count || '-'}
-                          </Text>
+                          <>
+                            <Text style={[styles.tableCell, { width: colWidths.hh, textAlign: 'center', color: '#000000' }]}>
+                              {item.total_members || item.member_count || '-'}
+                            </Text>
+                            <Text style={[styles.tableCell, { width: colWidths.ret, textAlign: 'center', color: '#000000' }]}>
+                              {item.returned_members ?? '-'}
+                            </Text>
+                            <Text style={[styles.tableCell, { width: colWidths.rate, textAlign: 'center', fontFamily: 'Helvetica-Bold', color: '#000000' }]}>
+                              {item.return_rate !== undefined ? `${item.return_rate}%` : '-'}
+                            </Text>
+                          </>
                         )}
                         <Text style={[styles.tableCell, { width: colWidths.ptr, textAlign: 'right', color: '#000000' }]}>
                           ₹{formatINR(ptr)}
@@ -459,9 +504,17 @@ export default function OfficialReportPDFDocument({
                       : 'GRAND TOTAL'}
                   </Text>
                   {isBials && (
-                    <Text style={[styles.tableFooterCell, { width: colWidths.mem, textAlign: 'center', color: '#000000' }]}>
-                      {breakdown.reduce((acc, b) => acc + (b.member_count || 0), 0)}
-                    </Text>
+                    <>
+                      <Text style={[styles.tableFooterCell, { width: colWidths.hh, textAlign: 'center', color: '#000000' }]}>
+                        {totals.total_system_members || breakdown.reduce((acc, b) => acc + (b.total_members || b.member_count || 0), 0)}
+                      </Text>
+                      <Text style={[styles.tableFooterCell, { width: colWidths.ret, textAlign: 'center', color: '#000000' }]}>
+                        {totals.total_returned_members || breakdown.reduce((acc, b) => acc + (b.returned_members || 0), 0)}
+                      </Text>
+                      <Text style={[styles.tableFooterCell, { width: colWidths.rate, textAlign: 'center', color: '#000000' }]}>
+                        {totals.overall_return_rate !== undefined ? `${totals.overall_return_rate}%` : '-'}
+                      </Text>
+                    </>
                   )}
                   <Text style={[styles.tableFooterCell, { width: colWidths.ptr, textAlign: 'right', color: '#000000' }]}>
                     ₹{formatINR(totals.total_pathian_ram)}

@@ -146,6 +146,23 @@ export default function OfficialReportModal({
     return filteredBookletBials.reduce((acc, b) => acc + (b.members?.length || 0), 0);
   }, [filteredBookletBials]);
 
+  // Aggregate overall Booklet Household metrics (Total, Returned, Return Rate %)
+  const { totalBookletHH, totalBookletReturned, overallBookletReturnRate } = useMemo(() => {
+    if (!bookletData?.bials) return { totalBookletHH: 0, totalBookletReturned: 0, overallBookletReturnRate: 0 };
+    let hh = 0;
+    let ret = 0;
+    bookletData.bials.forEach(b => {
+      (b.members || []).forEach(m => {
+        hh++;
+        if ((parseFloat(m.grand_total || m.total) || 0) > 0) {
+          ret++;
+        }
+      });
+    });
+    const rate = hh > 0 ? Math.round((ret / hh) * 1000) / 10 : 0;
+    return { totalBookletHH: hh, totalBookletReturned: ret, overallBookletReturnRate: rate };
+  }, [bookletData]);
+
   // Pre-load Church Logo as Base64 for instant PDF embedding
   useEffect(() => {
     getBase64ImageFromUrl(churchLogo).then(b64 => {
@@ -185,6 +202,10 @@ export default function OfficialReportModal({
                 bial_name: b.name,
                 bial_code: b.code || '',
                 member_count: b.total_members || b.member_count || 0,
+                total_members: b.total_members || b.member_count || 0,
+                returned_members: b.returned_members ?? (b.total > 0 ? (b.total_members || b.member_count || 0) : 0),
+                return_rate: b.return_rate ?? ((b.total_members || b.member_count || 0) > 0 ? Math.round(((b.returned_members || 0) / (b.total_members || b.member_count || 0)) * 1000) / 10 : 0),
+                avg_per_member: b.avg_per_member || (b.returned_members > 0 ? Math.round(b.total / b.returned_members) : 0),
                 pathian_ram: b.pathian_ram || 0,
                 ramthar: b.ramthar || 0,
                 tualchhung: b.tualchhung || 0,
@@ -197,6 +218,10 @@ export default function OfficialReportModal({
                 bial_name: b.name,
                 bial_code: b.code || `B${i + 1}`,
                 member_count: b.member_count || 0,
+                total_members: b.member_count || 0,
+                returned_members: 0,
+                return_rate: 0,
+                avg_per_member: 0,
                 pathian_ram: b.total_pathian_ram || 0,
                 ramthar: b.total_ramthar || 0,
                 tualchhung: b.total_tualchhung || 0,
@@ -210,13 +235,27 @@ export default function OfficialReportModal({
             return numA - numB;
           });
 
+          const totalSysMembers = res.grandTotals?.total_system_members || breakdown.reduce((a, b) => a + (b.total_members || 0), 0);
+          const totalRetMembers = res.grandTotals?.total_returned_members || breakdown.reduce((a, b) => a + (b.returned_members || 0), 0);
+          const overallRetRate = res.grandTotals?.overall_return_rate ?? (
+            totalSysMembers > 0 ? Math.round((totalRetMembers / totalSysMembers) * 1000) / 10 : 0
+          );
+          const grandTot = res.grandTotals?.grand_total || breakdown.reduce((a, b) => a + (b.total || 0), 0);
+          const avgContrib = res.grandTotals?.avg_contribution_per_member || (
+            totalRetMembers > 0 ? Math.round(grandTot / totalRetMembers) : 0
+          );
+
           setDynamicBreakdown(breakdown);
           setDynamicTotals({
             total_pathian_ram: res.grandTotals?.total_pathian_ram || breakdown.reduce((a, b) => a + (b.pathian_ram || 0), 0),
             total_ramthar: res.grandTotals?.total_ramthar || breakdown.reduce((a, b) => a + (b.ramthar || 0), 0),
             total_tualchhung: res.grandTotals?.total_tualchhung || breakdown.reduce((a, b) => a + (b.tualchhung || 0), 0),
             total_building: res.grandTotals?.total_building || breakdown.reduce((a, b) => a + (b.building || 0), 0),
-            grand_total: res.grandTotals?.grand_total || breakdown.reduce((a, b) => a + (b.total || 0), 0)
+            grand_total: grandTot,
+            total_system_members: totalSysMembers,
+            total_returned_members: totalRetMembers,
+            overall_return_rate: overallRetRate,
+            avg_contribution_per_member: avgContrib
           });
         } else {
           // Specific Month for All Bials
@@ -228,6 +267,10 @@ export default function OfficialReportModal({
                 bial_name: b.name,
                 bial_code: b.code || '',
                 member_count: b.total_members || b.member_count || 0,
+                total_members: b.total_members || b.member_count || 0,
+                returned_members: b.returned_members ?? (b.total > 0 ? (b.total_members || b.member_count || 0) : 0),
+                return_rate: b.return_rate ?? ((b.total_members || b.member_count || 0) > 0 ? Math.round(((b.returned_members || 0) / (b.total_members || b.member_count || 0)) * 1000) / 10 : 0),
+                avg_per_member: b.avg_per_member || (b.returned_members > 0 ? Math.round(b.total / b.returned_members) : 0),
                 pathian_ram: b.pathian_ram || 0,
                 ramthar: b.ramthar || 0,
                 tualchhung: b.tualchhung || 0,
@@ -240,6 +283,10 @@ export default function OfficialReportModal({
                 bial_name: b.name,
                 bial_code: b.code || `B${i + 1}`,
                 member_count: b.member_count || 0,
+                total_members: b.member_count || 0,
+                returned_members: 0,
+                return_rate: 0,
+                avg_per_member: 0,
                 pathian_ram: 0,
                 ramthar: 0,
                 tualchhung: 0,
@@ -247,13 +294,27 @@ export default function OfficialReportModal({
                 total: 0
               }));
 
+          const totalSysMembers = res.grandTotals?.total_system_members || breakdown.reduce((a, b) => a + (b.total_members || 0), 0);
+          const totalRetMembers = res.grandTotals?.total_returned_members || breakdown.reduce((a, b) => a + (b.returned_members || 0), 0);
+          const overallRetRate = res.grandTotals?.overall_return_rate ?? (
+            totalSysMembers > 0 ? Math.round((totalRetMembers / totalSysMembers) * 1000) / 10 : 0
+          );
+          const grandTot = res.grandTotals?.grand_total || breakdown.reduce((a, b) => a + (b.total || 0), 0);
+          const avgContrib = res.grandTotals?.avg_contribution_per_member || (
+            totalRetMembers > 0 ? Math.round(grandTot / totalRetMembers) : 0
+          );
+
           setDynamicBreakdown(breakdown);
           setDynamicTotals({
             total_pathian_ram: res.grandTotals?.total_pathian_ram || breakdown.reduce((a, b) => a + (b.pathian_ram || 0), 0),
             total_ramthar: res.grandTotals?.total_ramthar || breakdown.reduce((a, b) => a + (b.ramthar || 0), 0),
             total_tualchhung: res.grandTotals?.total_tualchhung || breakdown.reduce((a, b) => a + (b.tualchhung || 0), 0),
             total_building: res.grandTotals?.total_building || breakdown.reduce((a, b) => a + (b.building || 0), 0),
-            grand_total: res.grandTotals?.grand_total || breakdown.reduce((a, b) => a + (b.total || 0), 0)
+            grand_total: grandTot,
+            total_system_members: totalSysMembers,
+            total_returned_members: totalRetMembers,
+            overall_return_rate: overallRetRate,
+            avg_contribution_per_member: avgContrib
           });
         }
       } else {
@@ -265,10 +326,17 @@ export default function OfficialReportModal({
 
         if (reportType === 'annual') {
           const summaryRes = await api.getYearlySummary(bId, selectedYear);
+          const membersList = summaryRes.memberTotals || [];
+          const totalHH = membersList.length;
+          const returnedHH = membersList.filter(m => (m.grand_total || m.total || 0) > 0).length;
+          const retRate = totalHH > 0 ? Math.round((returnedHH / totalHH) * 1000) / 10 : 0;
+          const gTot = summaryRes.grandTotals?.grand_total || 0;
+          const avgPerHH = returnedHH > 0 ? Math.round(gTot / returnedHH) : 0;
+
           if (bialAnnualView === 'members') {
             // Member Annual Summary: Summation over the full year contributed by every member
             setTableType('member_annual_summary');
-            setDynamicBreakdown(summaryRes.memberTotals || []);
+            setDynamicBreakdown(membersList);
           } else {
             // 12 Months Breakdown for this Bial
             setTableType('monthly_breakdown');
@@ -279,33 +347,57 @@ export default function OfficialReportModal({
             total_ramthar: summaryRes.grandTotals?.total_ramthar || 0,
             total_tualchhung: summaryRes.grandTotals?.total_tualchhung || 0,
             total_building: summaryRes.grandTotals?.total_building || 0,
-            grand_total: summaryRes.grandTotals?.grand_total || 0
+            grand_total: gTot,
+            total_system_members: totalHH,
+            total_returned_members: returnedHH,
+            overall_return_rate: retRate,
+            avg_contribution_per_member: avgPerHH
           });
         } else if (selectedMonth === 'all') {
           // PARTICULAR BIAL + MONTHLY REPORT + ALL MONTHS
-          // Shows summation of every month for all members in this Bial!
           setTableType('member_annual_summary');
           const summaryRes = await api.getYearlySummary(bId, selectedYear);
-          setDynamicBreakdown(summaryRes.memberTotals || []);
+          const membersList = summaryRes.memberTotals || [];
+          const totalHH = membersList.length;
+          const returnedHH = membersList.filter(m => (m.grand_total || m.total || 0) > 0).length;
+          const retRate = totalHH > 0 ? Math.round((returnedHH / totalHH) * 1000) / 10 : 0;
+          const gTot = summaryRes.grandTotals?.grand_total || 0;
+          const avgPerHH = returnedHH > 0 ? Math.round(gTot / returnedHH) : 0;
+
+          setDynamicBreakdown(membersList);
           setDynamicTotals({
             total_pathian_ram: summaryRes.grandTotals?.total_pathian_ram || 0,
             total_ramthar: summaryRes.grandTotals?.total_ramthar || 0,
             total_tualchhung: summaryRes.grandTotals?.total_tualchhung || 0,
             total_building: summaryRes.grandTotals?.total_building || 0,
-            grand_total: summaryRes.grandTotals?.grand_total || 0
+            grand_total: gTot,
+            total_system_members: totalHH,
+            total_returned_members: returnedHH,
+            overall_return_rate: retRate,
+            avg_contribution_per_member: avgPerHH
           });
         } else {
           // Member-level contributions for this Bial and specific Month
           setTableType('members');
           const tithesRes = await api.getTithes(bId, selectedYear, selectedMonth);
           const membersList = tithesRes.members || [];
+          const totalHH = membersList.length;
+          const returnedHH = membersList.filter(m => (m.total || m.grand_total || 0) > 0).length;
+          const retRate = totalHH > 0 ? Math.round((returnedHH / totalHH) * 1000) / 10 : 0;
+          const gTot = tithesRes.summary?.grand_total || 0;
+          const avgPerHH = returnedHH > 0 ? Math.round(gTot / returnedHH) : 0;
+
           setDynamicBreakdown(membersList);
           setDynamicTotals({
             total_pathian_ram: tithesRes.summary?.sum_pathian_ram || 0,
             total_ramthar: tithesRes.summary?.sum_ramthar || 0,
             total_tualchhung: tithesRes.summary?.sum_tualchhung || 0,
             total_building: tithesRes.summary?.sum_building || 0,
-            grand_total: tithesRes.summary?.grand_total || 0
+            grand_total: gTot,
+            total_system_members: totalHH,
+            total_returned_members: returnedHH,
+            overall_return_rate: retRate,
+            avg_contribution_per_member: avgPerHH
           });
         }
       }
@@ -1227,6 +1319,38 @@ export default function OfficialReportModal({
                     </div>
                   </div>
 
+                  {/* HOUSEHOLD RETURN RATE & PARTICIPATION SUMMARY (100% BLACK TEXT) */}
+                  <div className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shadow-2xs text-black">
+                    <div className="flex items-center gap-2.5 sm:gap-4 text-xs">
+                      <div>
+                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Total Households</span>
+                        <span className="font-black text-black text-xs sm:text-sm">
+                          {dynamicTotals.total_system_members || dynamicBreakdown.length || 0} HH
+                        </span>
+                      </div>
+                      <div className="h-5 w-px bg-slate-300"></div>
+                      <div>
+                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Households Returned</span>
+                        <span className="font-black text-black text-xs sm:text-sm">
+                          {dynamicTotals.total_returned_members || dynamicBreakdown.filter(m => (m.grand_total || m.total || 0) > 0).length || 0} HH
+                        </span>
+                      </div>
+                      <div className="h-5 w-px bg-slate-300"></div>
+                      <div>
+                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Return Rate per Household</span>
+                        <span className="font-black text-black text-xs sm:text-sm">
+                          {dynamicTotals.overall_return_rate !== undefined ? `${dynamicTotals.overall_return_rate}%` : 'N/A'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right text-xs">
+                      <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Avg / Household</span>
+                      <span className="font-black text-black text-xs sm:text-sm">
+                        ₹{(dynamicTotals.avg_contribution_per_member || (dynamicTotals.total_returned_members > 0 ? Math.round(dynamicTotals.grand_total / dynamicTotals.total_returned_members) : 0)).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+
                   {/* DYNAMIC BREAKDOWN TABLE (100% BLACK TEXT) */}
                   <div className="border border-slate-300 rounded-xl overflow-hidden shadow-2xs mt-2">
                     <table className={`w-full text-left border-collapse text-black ${orientation === 'landscape' ? 'text-xs' : 'text-[11px]'}`}>
@@ -1236,7 +1360,13 @@ export default function OfficialReportModal({
                           <th className={`text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2.5'}`}>
                             {tableType === 'monthly_breakdown' ? 'Month' : (tableType === 'members' || tableType === 'member_annual_summary') ? 'Member Name' : 'Bial Name'}
                           </th>
-                          {tableType === 'bials' && <th className={`text-center text-black ${orientation === 'landscape' ? 'py-2 px-2.5' : 'py-1.5 px-2'}`}>Mem</th>}
+                          {tableType === 'bials' && (
+                            <>
+                              <th className={`text-center text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>HH</th>
+                              <th className={`text-center text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>Ret</th>
+                              <th className={`text-center text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>Return %</th>
+                            </>
+                          )}
                           <th className={`text-right text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>PTR (₹)</th>
                           <th className={`text-right text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>RT (₹)</th>
                           <th className={`text-right text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>Tch (₹)</th>
@@ -1247,7 +1377,7 @@ export default function OfficialReportModal({
                       <tbody className="divide-y divide-slate-200 text-black font-semibold">
                         {dynamicBreakdown.length === 0 ? (
                           <tr>
-                            <td colSpan={tableType === 'bials' ? 8 : 7} className="py-6 text-center text-black font-bold text-xs">
+                            <td colSpan={tableType === 'bials' ? 10 : 7} className="py-6 text-center text-black font-bold text-xs">
                               {loadingData ? 'Loading report data...' : 'No contribution records found for this period.'}
                             </td>
                           </tr>
@@ -1259,7 +1389,17 @@ export default function OfficialReportModal({
                                 {tableType === 'monthly_breakdown' ? item.month_name : (tableType === 'members' || tableType === 'member_annual_summary') ? (item.name || item.member_name) : (item.name || item.bial_name)}
                               </td>
                               {tableType === 'bials' && (
-                                <td className={`text-center text-black font-bold ${orientation === 'landscape' ? 'py-1.5 px-2.5' : 'py-1 px-2'}`}>{item.member_count || '-'}</td>
+                                <>
+                                  <td className={`text-center text-black font-bold ${orientation === 'landscape' ? 'py-1.5 px-2' : 'py-1 px-1.5'}`}>
+                                    {item.total_members || item.member_count || '-'}
+                                  </td>
+                                  <td className={`text-center text-black font-bold ${orientation === 'landscape' ? 'py-1.5 px-2' : 'py-1 px-1.5'}`}>
+                                    {item.returned_members ?? '-'}
+                                  </td>
+                                  <td className={`text-center text-black font-black ${orientation === 'landscape' ? 'py-1.5 px-2' : 'py-1 px-1.5'}`}>
+                                    {item.return_rate !== undefined ? `${item.return_rate}%` : '-'}
+                                  </td>
+                                </>
                               )}
                               <td className={`text-right font-medium text-black ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2'}`}>₹{(item.total_pathian_ram || item.pathian_ram || 0).toLocaleString('en-IN')}</td>
                               <td className={`text-right font-medium text-black ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2'}`}>₹{(item.total_ramthar || item.ramthar || 0).toLocaleString('en-IN')}</td>
@@ -1279,9 +1419,17 @@ export default function OfficialReportModal({
                             {tableType === 'monthly_breakdown' ? 'ANNUAL TOTAL' : (tableType === 'members' || tableType === 'member_annual_summary') ? `GRAND TOTAL (${dynamicBreakdown.length} Members)` : 'GRAND TOTAL'}
                           </td>
                           {tableType === 'bials' && (
-                            <td className={`text-center font-bold text-[10px] text-black ${orientation === 'landscape' ? 'py-2 px-2.5' : 'py-1.5 px-2'}`}>
-                              {dynamicBreakdown.reduce((acc, b) => acc + (b.member_count || 0), 0)}
-                            </td>
+                            <>
+                              <td className={`text-center font-black text-[10px] text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>
+                                {dynamicTotals.total_system_members || dynamicBreakdown.reduce((acc, b) => acc + (b.total_members || b.member_count || 0), 0)}
+                              </td>
+                              <td className={`text-center font-black text-[10px] text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>
+                                {dynamicTotals.total_returned_members || dynamicBreakdown.reduce((acc, b) => acc + (b.returned_members || 0), 0)}
+                              </td>
+                              <td className={`text-center font-black text-[10px] text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>
+                                {dynamicTotals.overall_return_rate !== undefined ? `${dynamicTotals.overall_return_rate}%` : '-'}
+                              </td>
+                            </>
                           )}
                           <td className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_pathian_ram || 0).toLocaleString('en-IN')}</td>
                           <td className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_ramthar || 0).toLocaleString('en-IN')}</td>
@@ -1472,51 +1620,70 @@ export default function OfficialReportModal({
                               key={bial.bial_id}
                               className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-2xs"
                             >
-                              {/* Bial Banner Header */}
-                              <div className="bg-slate-100 border-b border-black/40 px-3 py-1.5 flex items-center justify-between text-black font-black text-xs">
-                                <span>📍 {bial.bial_code ? `${bial.bial_code} - ` : ''}{bial.bial_name}</span>
-                                <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-slate-300">
-                                  {bial.members.length} Members
-                                </span>
-                              </div>
+                              {/* Bial Banner Header (With Household Return Rate) */}
+                              {(() => {
+                                const totalHH = bial.members.length;
+                                const returnedHH = bial.members.filter(m => (parseFloat(m.grand_total || m.total) || 0) > 0).length;
+                                const returnRate = totalHH > 0 ? Math.round((returnedHH / totalHH) * 1000) / 10 : 0;
+                                return (
+                                  <>
+                                    <div className="bg-slate-100 border-b border-black/40 px-3 py-1.5 flex flex-wrap items-center justify-between gap-1.5 text-black font-black text-xs">
+                                      <span>📍 {bial.bial_code ? `${bial.bial_code} - ` : ''}{bial.bial_name}</span>
+                                      <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                                        <span className="bg-white px-2 py-0.5 rounded border border-slate-300">
+                                          {totalHH} HH
+                                        </span>
+                                        <span className="bg-white px-2 py-0.5 rounded border border-slate-300">
+                                          {returnedHH} Returned
+                                        </span>
+                                        <span className="bg-slate-200 px-2 py-0.5 rounded border border-black/40 font-black">
+                                          {returnRate}% Return Rate
+                                        </span>
+                                      </div>
+                                    </div>
 
-                              {/* Table with continuous Sl No */}
-                              <table className="w-full text-left border-collapse text-black text-[10px]">
-                                <thead className="bg-slate-50 border-b border-black/30 font-extrabold uppercase text-[9px]">
-                                  <tr>
-                                    <th className="py-1 px-1.5 text-center w-8">Sl</th>
-                                    <th className="py-1 px-2">Member Name</th>
-                                    <th className="py-1 px-1 text-right">PTR (₹)</th>
-                                    <th className="py-1 px-1 text-right">RT (₹)</th>
-                                    <th className="py-1 px-1 text-right">Tch (₹)</th>
-                                    <th className="py-1 px-1 text-right">Bldg (₹)</th>
-                                    <th className="py-1 px-2 text-right">Total (₹)</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-200">
-                                  {bial.members.map((m) => (
-                                    <tr key={m.member_id} className="hover:bg-slate-50 even:bg-slate-50/50">
-                                      <td className="py-1 px-1.5 text-center font-bold text-black">{m.booklet_sl_no}</td>
-                                      <td className="py-1 px-2 font-semibold text-black truncate max-w-[130px]">{m.member_name}</td>
-                                      <td className="py-1 px-1 text-right text-black font-medium">{m.pathian_ram ? m.pathian_ram.toLocaleString('en-IN') : '-'}</td>
-                                      <td className="py-1 px-1 text-right text-black font-medium">{m.ramthar ? m.ramthar.toLocaleString('en-IN') : '-'}</td>
-                                      <td className="py-1 px-1 text-right text-black font-medium">{m.tualchhung ? m.tualchhung.toLocaleString('en-IN') : '-'}</td>
-                                      <td className="py-1 px-1 text-right text-black font-medium">{m.building ? m.building.toLocaleString('en-IN') : '-'}</td>
-                                      <td className="py-1 px-2 text-right text-black font-bold">{m.grand_total ? `₹${m.grand_total.toLocaleString('en-IN')}` : '₹0'}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                                <tfoot className="bg-slate-100 border-t-2 border-black text-black font-black text-[9.5px]">
-                                  <tr>
-                                    <td colSpan={2} className="py-1 px-2 uppercase font-extrabold">Subtotal ({bial.bial_code || bial.bial_name})</td>
-                                    <td className="py-1 px-1 text-right">{(sub.total_pathian_ram || 0).toLocaleString('en-IN')}</td>
-                                    <td className="py-1 px-1 text-right">{(sub.total_ramthar || 0).toLocaleString('en-IN')}</td>
-                                    <td className="py-1 px-1 text-right">{(sub.total_tualchhung || 0).toLocaleString('en-IN')}</td>
-                                    <td className="py-1 px-1 text-right">{(sub.total_building || 0).toLocaleString('en-IN')}</td>
-                                    <td className="py-1 px-2 text-right font-black bg-slate-200">₹{(sub.grand_total || 0).toLocaleString('en-IN')}</td>
-                                  </tr>
-                                </tfoot>
-                              </table>
+                                    {/* Table with continuous Sl No */}
+                                    <table className="w-full text-left border-collapse text-black text-[10px]">
+                                      <thead className="bg-slate-50 border-b border-black/30 font-extrabold uppercase text-[9px]">
+                                        <tr>
+                                          <th className="py-1 px-1.5 text-center w-8">Sl</th>
+                                          <th className="py-1 px-2">Member Name</th>
+                                          <th className="py-1 px-1 text-right">PTR (₹)</th>
+                                          <th className="py-1 px-1 text-right">RT (₹)</th>
+                                          <th className="py-1 px-1 text-right">Tch (₹)</th>
+                                          <th className="py-1 px-1 text-right">Bldg (₹)</th>
+                                          <th className="py-1 px-2 text-right">Total (₹)</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-200">
+                                        {bial.members.map((m) => (
+                                          <tr key={m.member_id} className="hover:bg-slate-50 even:bg-slate-50/50">
+                                            <td className="py-1 px-1.5 text-center font-bold text-black">{m.booklet_sl_no}</td>
+                                            <td className="py-1 px-2 font-semibold text-black truncate max-w-[130px]">{m.member_name}</td>
+                                            <td className="py-1 px-1 text-right text-black font-medium">{m.pathian_ram ? m.pathian_ram.toLocaleString('en-IN') : '-'}</td>
+                                            <td className="py-1 px-1 text-right text-black font-medium">{m.ramthar ? m.ramthar.toLocaleString('en-IN') : '-'}</td>
+                                            <td className="py-1 px-1 text-right text-black font-medium">{m.tualchhung ? m.tualchhung.toLocaleString('en-IN') : '-'}</td>
+                                            <td className="py-1 px-1 text-right text-black font-medium">{m.building ? m.building.toLocaleString('en-IN') : '-'}</td>
+                                            <td className="py-1 px-2 text-right text-black font-bold">{m.grand_total ? `₹${m.grand_total.toLocaleString('en-IN')}` : '₹0'}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                      <tfoot className="bg-slate-100 border-t-2 border-black text-black font-black text-[9.5px]">
+                                        <tr>
+                                          <td colSpan={2} className="py-1 px-2 uppercase font-extrabold">
+                                            Subtotal ({bial.bial_code || bial.bial_name}) • {returnRate}% Return Rate ({returnedHH}/{totalHH} HH)
+                                          </td>
+                                          <td className="py-1 px-1 text-right">{(sub.total_pathian_ram || 0).toLocaleString('en-IN')}</td>
+                                          <td className="py-1 px-1 text-right">{(sub.total_ramthar || 0).toLocaleString('en-IN')}</td>
+                                          <td className="py-1 px-1 text-right">{(sub.total_tualchhung || 0).toLocaleString('en-IN')}</td>
+                                          <td className="py-1 px-1 text-right">{(sub.total_building || 0).toLocaleString('en-IN')}</td>
+                                          <td className="py-1 px-2 text-right font-black bg-slate-200">₹{(sub.grand_total || 0).toLocaleString('en-IN')}</td>
+                                        </tr>
+                                      </tfoot>
+                                    </table>
+                                  </>
+                                );
+                              })()}
                             </div>
                           );
                         })}
@@ -1526,7 +1693,7 @@ export default function OfficialReportModal({
                       <div className="mt-4 bg-slate-100 text-black rounded-xl p-3.5 border-2 border-black flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
                         <div>
                           <h4 className="font-heading font-black text-sm uppercase tracking-wider text-black">
-                            KOHHRAN GRAND TOTAL ({bookletData.totalMemberCount || processedBookletBials.reduce((a, b) => a + (b.members?.length || 0), 0)} Members)
+                            KOHHRAN GRAND TOTAL ({totalBookletHH} Households • {totalBookletReturned} Returned • {overallBookletReturnRate}% Return Rate)
                           </h4>
                           <p className="text-[11px] text-black font-semibold mt-0.5">
                             PTR: ₹{(bookletData.churchGrandTotal?.total_pathian_ram || 0).toLocaleString('en-IN')} • 
@@ -1536,6 +1703,10 @@ export default function OfficialReportModal({
                           </p>
                         </div>
                         <div className="text-right">
+                          <span className="text-[10px] uppercase font-bold text-black block">Avg / Household</span>
+                          <span className="text-xs font-bold text-black block mb-0.5">
+                            ₹{(totalBookletReturned > 0 ? Math.round((bookletData.churchGrandTotal?.grand_total || 0) / totalBookletReturned) : 0).toLocaleString('en-IN')}
+                          </span>
                           <span className="text-[10px] uppercase font-bold text-black block">Total Collections</span>
                           <span className="text-base sm:text-lg font-black text-black">
                             ₹{(bookletData.churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}

@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Building2, Eye, BarChart3, RefreshCw, ArrowRightLeft,
   FileText, FileSpreadsheet, Calendar, KeyRound, CalendarDays, ChevronLeft,
-  ChevronRight, X, Shield, ShieldCheck, Sparkles, FolderArchive, LogOut, Award, SlidersHorizontal
+  ChevronRight, X, Shield, ShieldCheck, Sparkles, FolderArchive, LogOut, Award, SlidersHorizontal, History
 } from 'lucide-react';
 
 export default function AdminSidebar({
@@ -60,6 +60,13 @@ export default function AdminSidebar({
       shortLabel: 'Backup',
       icon: RefreshCw,
       desc: 'Database snapshots'
+    },
+    {
+      id: 'audit',
+      label: 'Activity Audit Log',
+      shortLabel: 'Audit',
+      icon: History,
+      desc: 'Security & actions log'
     }
   ];
 

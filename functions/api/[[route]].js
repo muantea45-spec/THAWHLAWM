@@ -69,6 +69,38 @@ async function resetLoginRateLimit(db, ip) {
   } catch (e) {}
 }
 
+// Audit Logging Helper
+async function logAudit(db, user, action, details, c = null) {
+  try {
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        username TEXT,
+        email TEXT,
+        role TEXT,
+        action TEXT NOT NULL,
+        details TEXT,
+        ip_address TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    const ip = c ? (c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'local') : 'unknown';
+    const userId = user?.id || null;
+    const username = user?.username || (user?.email ? user.email.split('@')[0] : 'admin');
+    const email = user?.email || null;
+    const role = user?.role || 'ADMIN';
+
+    await db.prepare(`
+      INSERT INTO audit_logs (user_id, username, email, role, action, details, ip_address)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).bind(userId, username, email, role, action, String(details || ''), ip).run();
+  } catch (err) {
+    console.warn('Audit log write error:', err);
+  }
+}
+
 const CRYPTO_FALLBACK_JWT_SECRET = 'ee28c9e5da1c504ffc652e15314c3fa50bb57fed68caadf018093a29d89a399a';
 
 function getJwtSecret(c) {
@@ -597,6 +629,7 @@ app.post('/admin/google-emails', authMiddleware, requireAdmin, async (c) => {
       }
     }
 
+    await logAudit(db, c.get('user'), 'AUTHORIZE_ADMIN_EMAIL', `Authorized Google email: ${cleanEmail}`, c);
     return c.json({ message: `Successfully authorized ${cleanEmail} as an Admin. They can now log in using Google!`, email: cleanEmail });
   } catch (err) {
     return c.json({ error: err.message || 'Failed to add admin email' }, 400);
@@ -612,6 +645,7 @@ app.delete('/admin/google-emails/:id', authMiddleware, requireAdmin, async (c) =
     if (target?.email) {
       // Lock any secondary user with this email (keeping primary admin id=1 safe)
       await db.prepare("UPDATE users SET status = 'locked' WHERE LOWER(email) = ? AND id != 1").bind(target.email.toLowerCase()).run();
+      await logAudit(db, c.get('user'), 'REVOKE_ADMIN_EMAIL', `Revoked Google email: ${target.email}`, c);
     }
     return c.json({ message: 'Authorized admin email removed successfully' });
   } catch (err) {
@@ -672,6 +706,8 @@ app.put('/admin/primary-owner', authMiddleware, requireAdmin, async (c) => {
         .bind(cleanEmail, currentPrimary.id).run();
     }
 
+    await logAudit(db, c.get('user'), 'TRANSFER_PRIMARY_OWNER', `Transferred Primary Ownership from ${previousPrimaryEmail || 'none'} to ${cleanEmail}`, c);
+
     return c.json({
       message: `Primary Account Ownership successfully transferred to ${cleanEmail}!`,
       primaryAdminEmail: cleanEmail,
@@ -680,6 +716,32 @@ app.put('/admin/primary-owner', authMiddleware, requireAdmin, async (c) => {
   } catch (err) {
     console.error('Error changing primary admin owner:', err);
     return c.json({ error: err.message || 'Failed to update primary account owner' }, 500);
+  }
+});
+
+// Admin Audit Logs Endpoint
+app.get('/admin/audit-logs', authMiddleware, requireAdmin, async (c) => {
+  const db = c.env.DB;
+  try {
+    await db.prepare(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        username TEXT,
+        email TEXT,
+        role TEXT,
+        action TEXT NOT NULL,
+        details TEXT,
+        ip_address TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `).run();
+
+    const limit = Math.min(200, parseInt(c.req.query('limit')) || 100);
+    const { results } = await db.prepare("SELECT * FROM audit_logs ORDER BY id DESC LIMIT ?").bind(limit).all();
+    return c.json({ logs: results || [] });
+  } catch (err) {
+    return c.json({ error: 'Failed to fetch audit logs' }, 500);
   }
 });
 
@@ -933,6 +995,7 @@ app.post('/admin/month-locks/toggle', authMiddleware, requireAdmin, async (c) =>
       );
 
       await db.batch(stmts);
+      await logAudit(db, c.get('user'), 'GLOBAL_MONTH_LOCK', `Year ${targetYear}, Month ${targetMonth}: ${lockVal ? 'LOCKED ALL BIALS' : 'UNLOCKED ALL BIALS'}`, c);
       return c.json({ message: `Global lock for month ${targetMonth} set to ${lockVal ? 'LOCKED' : 'UNLOCKED'}` });
     } else {
       if (!bial_id) return c.json({ error: 'bial_id is required' }, 400);
@@ -945,6 +1008,7 @@ app.post('/admin/month-locks/toggle', authMiddleware, requireAdmin, async (c) =>
           updated_at = CURRENT_TIMESTAMP
       `).bind(bial_id, targetYear, targetMonth, lockVal).run();
 
+      await logAudit(db, c.get('user'), 'BIAL_MONTH_LOCK', `Year ${targetYear}, Month ${targetMonth}, Bial #${bial_id}: ${lockVal ? 'LOCKED' : 'UNLOCKED'}`, c);
       return c.json({ message: `Bial lock updated for month ${targetMonth}` });
     }
   } catch (err) {
@@ -1484,6 +1548,8 @@ app.post('/admin/members/transfer', authMiddleware, requireAdmin, async (c) => {
       db.prepare('UPDATE members SET bial_id = ?, sl_no = ? WHERE id = ?').bind(targetBialId, assignedSlNo, memberId),
       db.prepare('UPDATE tithes SET bial_id = ? WHERE member_id = ?').bind(targetBialId, memberId)
     ]);
+
+    await logAudit(db, c.get('user'), 'TRANSFER_MEMBER', `Transferred "${member.name}" from ${sourceBial?.name || 'Bial #' + member.bial_id} to ${destinationBial.name} (New Sl No: ${assignedSlNo})`, c);
 
     return c.json({
       message: `Member "${member.name}" successfully transferred from ${sourceBial?.name || 'Previous Bial'} to ${destinationBial.name}!`,

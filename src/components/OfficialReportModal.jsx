@@ -1659,6 +1659,121 @@ export default function OfficialReportModal({
                     <>
                       {/* SINGLE-COLUMN A5 BOOKLET FORMAT */}
                       <div className="flex flex-col gap-4 max-w-[660px] mx-auto w-full">
+                        {/* 1. FRONT COVER PAGE & 2. TABLE OF CONTENTS (When viewing full booklet) */}
+                        {bookletBialFilter === 'all' && !bookletSearch.trim() && (
+                          <>
+                            {/* FRONT COVER PAGE */}
+                            <div className="border-2 border-black rounded-2xl p-6 bg-white shadow-sm text-center relative overflow-hidden">
+                              <div className="border border-black p-5 rounded-xl">
+                                <p className="text-[10px] tracking-widest font-black uppercase text-black mb-1">
+                                  Mizoram Presbyterian Church
+                                </p>
+                                <h2 className="text-xl sm:text-2xl font-black text-black tracking-tight">
+                                  BETHLEHEM KOHHRAN
+                                </h2>
+                                <p className="text-[11px] font-semibold text-black mb-3">
+                                  Aizawl, Mizoram
+                                </p>
+
+                                <div className="w-16 h-0.5 bg-black mx-auto mb-4" />
+
+                                <h1 className="text-lg sm:text-xl font-black text-black uppercase tracking-wide">
+                                  Kumtluan Thawhlawm Chanchin Bu
+                                </h1>
+                                <p className="text-xs font-bold text-black mt-1">
+                                  Financial Year: {selectedYear} – {selectedYear + 1}
+                                </p>
+                                <p className="text-[10px] text-black font-medium">
+                                  (Pathian Ram, Ramthar, Tualchhung leh Building Thawhlawmte)
+                                </p>
+
+                                {/* Scripture Thufingte 3:9 */}
+                                <div className="my-5 p-3 rounded-xl bg-slate-50 border border-black/30 max-w-md mx-auto">
+                                  <p className="italic text-[11px] font-medium text-black leading-relaxed">
+                                    “LALPA chu i sumin chawimawi la, I thil thar chhuah zawng zawng a parithain chawimawi rawh.”
+                                  </p>
+                                  <p className="font-bold text-[10px] text-black mt-1">
+                                    — Thufingte 3:9
+                                  </p>
+                                </div>
+
+                                {/* Cover Summary Stats */}
+                                <div className="p-3 bg-slate-100 rounded-xl border border-black/40 max-w-md mx-auto grid grid-cols-2 gap-2 text-left text-[11px] text-black">
+                                  <div>
+                                    <span className="font-semibold block text-[10px] text-slate-700">Total Bials:</span>
+                                    <span className="font-black">{processedBookletBials.length} Bials</span>
+                                  </div>
+                                  <div>
+                                    <span className="font-semibold block text-[10px] text-slate-700">Chhungkua (Households):</span>
+                                    <span className="font-black">{totalBookletHH} ({totalBookletReturned} Ret)</span>
+                                  </div>
+                                  <div>
+                                    <span className="font-semibold block text-[10px] text-slate-700">Return Rate:</span>
+                                    <span className="font-black">{overallBookletReturnRate}%</span>
+                                  </div>
+                                  <div>
+                                    <span className="font-semibold block text-[10px] text-slate-700">Grand Total:</span>
+                                    <span className="font-black text-emerald-900">₹{(bookletData.churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}</span>
+                                  </div>
+                                </div>
+
+                                <p className="text-[9.5px] font-medium text-black mt-4">
+                                  Bethlehem Kohhran • Kohhran Committee Buatsaih
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* TABLE OF CONTENTS / BIAL-TE CHHINCHHIAHNA */}
+                            <div className="border border-black rounded-xl overflow-hidden bg-white shadow-2xs">
+                              <div className="bg-slate-100 border-b border-black/40 px-3 py-2 text-center">
+                                <h3 className="font-black text-xs text-black uppercase tracking-wider">
+                                  Table of Contents (Bial-te Chhinchhiahna)
+                                </h3>
+                                <p className="text-[10px] text-black font-medium">
+                                  Bial tin thawhlawm chanchin bu kimchang leh phek awmna
+                                </p>
+                              </div>
+
+                              <table className="w-full text-left border-collapse text-black text-[10px]">
+                                <thead className="bg-slate-50 border-b border-black/30 font-black uppercase text-[9px]">
+                                  <tr>
+                                    <th className="py-1.5 px-2 text-center w-8">Sl</th>
+                                    <th className="py-1.5 px-3">Bial Name</th>
+                                    <th className="py-1.5 px-3 text-center">Households</th>
+                                    <th className="py-1.5 px-3 text-center">Return Rate</th>
+                                    <th className="py-1.5 px-3 text-right">Subtotal (₹)</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-black/10">
+                                  {processedBookletBials.map((b, idx) => {
+                                    const hh = b.members?.length || 0;
+                                    const ret = b.members?.filter(m => (parseFloat(m.grand_total || m.total) || 0) > 0).length || 0;
+                                    const rate = hh > 0 ? Math.round((ret / hh) * 1000) / 10 : 0;
+                                    const sub = b.subtotal?.grand_total || 0;
+                                    return (
+                                      <tr key={b.bial_id} className={idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'}>
+                                        <td className="py-1.5 px-2 text-center font-bold">{idx + 1}</td>
+                                        <td className="py-1.5 px-3 font-bold">{b.bial_code ? `${b.bial_code} - ` : ''}{b.bial_name}</td>
+                                        <td className="py-1.5 px-3 text-center">{hh} HH ({ret} Ret)</td>
+                                        <td className="py-1.5 px-3 text-center font-bold">{rate}%</td>
+                                        <td className="py-1.5 px-3 text-right font-black">₹{sub.toLocaleString('en-IN')}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                                <tfoot>
+                                  <tr className="bg-slate-200 border-t-2 border-black font-black">
+                                    <td colSpan={2} className="py-1.5 px-3">KOHHRAN GRAND TOTAL</td>
+                                    <td className="py-1.5 px-3 text-center">{totalBookletHH} HH ({totalBookletReturned} Ret)</td>
+                                    <td className="py-1.5 px-3 text-center">{overallBookletReturnRate}%</td>
+                                    <td className="py-1.5 px-3 text-right font-black">₹{(bookletData.churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}</td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          </>
+                        )}
+
                         {filteredBookletBials.map((bial) => {
                           const sub = bial.subtotal || {};
                           return (

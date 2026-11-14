@@ -1824,8 +1824,201 @@ export function exportConsolidatedBookletPDF({
   const colWidth = pageWidth - marginLeft - marginRight; // 128mm
   const colX = marginLeft; // 10mm
 
+  // 1. Sort Bials strictly starting from the First Bial (Bial 1 / B1) in natural sequential order
+  const sortedBials = [...bialsData].sort((a, b) => {
+    const codeA = a.bial_code || a.code || '';
+    const codeB = b.bial_code || b.code || '';
+    const numA = parseInt(codeA.replace(/\D/g, '') || a.bial_id || a.id) || 0;
+    const numB = parseInt(codeB.replace(/\D/g, '') || b.bial_id || b.id) || 0;
+    if (numA !== numB) return numA - numB;
+    return (a.bial_name || a.name || '').localeCompare(b.bial_name || b.name || '', undefined, { numeric: true });
+  });
+
+  // Pre-calculate church metrics
+  let churchTotalHH = 0;
+  let churchReturnedHH = 0;
+  let computedPR = 0, computedRT = 0, computedTch = 0, computedBldg = 0, computedGrandTotal = 0;
+
+  const bialSummaries = sortedBials.map(b => {
+    const members = [...(b.members || [])].sort((m1, m2) => (parseInt(m1.sl_no) || 0) - (parseInt(m2.sl_no) || 0));
+    const totalHH = members.length;
+    const returnedHH = members.filter(m => (parseFloat(m.grand_total || m.total) || 0) > 0).length;
+    const returnRate = totalHH > 0 ? Math.round((returnedHH / totalHH) * 1000) / 10 : 0;
+    
+    let bPR = 0, bRT = 0, bTch = 0, bBldg = 0, bTotal = 0;
+    members.forEach(m => {
+      const pr = parseFloat(m.total_pathian_ram || m.pathian_ram) || 0;
+      const rt = parseFloat(m.total_ramthar || m.ramthar) || 0;
+      const tch = parseFloat(m.total_tualchhung || m.tualchhung) || 0;
+      const bldg = parseFloat(m.total_building || m.building) || 0;
+      const total = parseFloat(m.grand_total || m.total) || (pr + rt + tch + bldg);
+      bPR += pr; bRT += rt; bTch += tch; bBldg += bldg; bTotal += total;
+    });
+
+    churchTotalHH += totalHH;
+    churchReturnedHH += returnedHH;
+    computedPR += bPR; computedRT += bRT; computedTch += bTch; computedBldg += bBldg; computedGrandTotal += bTotal;
+
+    return {
+      bialGroup: b,
+      bialName: b.bial_name || b.name || 'Bial',
+      bialCode: b.bial_code || b.code || '',
+      leaderName: b.leader_name || b.leader || b.head || '-',
+      members,
+      totalHH,
+      returnedHH,
+      returnRate,
+      bPR, bRT, bTch, bBldg, bTotal
+    };
+  });
+
+  const finalPR = churchTotals.total_pathian_ram || computedPR;
+  const finalRT = churchTotals.total_ramthar || computedRT;
+  const finalTch = churchTotals.total_tualchhung || computedTch;
+  const finalBldg = churchTotals.total_building || computedBldg;
+  const finalGrandTotal = churchTotals.grand_total || computedGrandTotal;
+  const overallReturnRate = churchTotalHH > 0 ? Math.round((churchReturnedHH / churchTotalHH) * 1000) / 10 : 0;
+  const avgPerHH = churchReturnedHH > 0 ? Math.round(finalGrandTotal / churchReturnedHH) : 0;
+
+  // ==========================================
+  // PAGE 1: PRESS-READY COVER PAGE (A5)
+  // ==========================================
+  // Decorative Double Border
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.75);
+  doc.rect(8, 8, pageWidth - 16, pageHeight - 16);
+  doc.setLineWidth(0.25);
+  doc.rect(9.5, 9.5, pageWidth - 19, pageHeight - 19);
+
+  // Church Header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(0, 0, 0);
+  doc.text('MIZORAM PRESBYTERIAN CHURCH', pageWidth / 2, 28, { align: 'center' });
+  doc.setFontSize(14.5);
+  doc.text('BETHLEHEM KOHHRAN', pageWidth / 2, 36, { align: 'center' });
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text('AIZAWL, MIZORAM', pageWidth / 2, 42, { align: 'center' });
+
+  // Divider
+  doc.setLineWidth(0.4);
+  doc.line(pageWidth / 2 - 25, 46.5, pageWidth / 2 + 25, 46.5);
+
+  // Booklet Title
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(15);
+  doc.text('KUMTLUAN THAWHLAWM', pageWidth / 2, 66, { align: 'center' });
+  doc.setFontSize(13);
+  doc.text('CHANCHIN BU', pageWidth / 2, 73, { align: 'center' });
+
+  doc.setFontSize(9.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text(`FINANCIAL YEAR: ${year} – ${year + 1}`, pageWidth / 2, 83, { align: 'center' });
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'normal');
+  doc.text('(Pathian Ram, Ramthar, Tualchhung leh Building Thawhlawmte)', pageWidth / 2, 88.5, { align: 'center' });
+
+  // Scripture Quote (Thufingte 3:9)
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.text('“LALPA chu i sumin chawimawi la,', pageWidth / 2, 108, { align: 'center' });
+  doc.text('I thil thar chhuah zawng zawng a parithain chawimawi rawh.”', pageWidth / 2, 113, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7.5);
+  doc.text('— Thufingte 3:9', pageWidth / 2, 119, { align: 'center' });
+
+  // Cover Summary Box
+  doc.setFillColor(248, 250, 252);
+  doc.setDrawColor(0, 0, 0);
+  doc.setLineWidth(0.35);
+  doc.roundedRect(20, 132, pageWidth - 40, 38, 1.5, 1.5, 'FD');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('KOHHRAN KHAWKHAWMNA (SUMMARY)', pageWidth / 2, 139, { align: 'center' });
+  doc.setLineWidth(0.2);
+  doc.line(25, 141.5, pageWidth - 25, 141.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text(`Bial Zat: ${sortedBials.length} Bials`, 26, 148);
+  doc.text(`Chhungkua (Households): ${churchTotalHH} (${churchReturnedHH} Ret)`, 26, 154);
+  doc.text(`Thawh Zat Percentage: ${overallReturnRate}% Return Rate`, 26, 160);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text(`Grand Total: Rs. ${finalGrandTotal.toLocaleString('en-IN')}`, pageWidth / 2, 166, { align: 'center' });
+
+  // Cover Footer
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text('Bethlehem Kohhran • Kohhran Committee Buatsaih', pageWidth / 2, 194, { align: 'center' });
+
+  // ==========================================
+  // PAGE 2: TABLE OF CONTENTS (BIAL-TE CHHINCHHIAHNA)
+  // ==========================================
+  doc.addPage('a5', 'portrait');
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('TABLE OF CONTENTS (BIAL-TE CHHINCHHIAHNA)', pageWidth / 2, 13.5, { align: 'center' });
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Bethlehem Kohhran • Kumtluan Thawhlawm Bu • FY ${year}-${year + 1}`, pageWidth / 2, 17.5, { align: 'center' });
+  doc.setLineWidth(0.3);
+  doc.line(marginLeft, 19.5, pageWidth - marginRight, 19.5);
+
+  // TOC Table Header
+  let tocY = 23;
+  doc.setFillColor(226, 232, 240);
+  doc.rect(colX, tocY, colWidth, 5.0, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.5);
+  doc.text('Sl', colX + 2, tocY + 3.4);
+  doc.text('Bial Name / Hming', colX + 8, tocY + 3.4);
+  doc.text('Households', colX + 54, tocY + 3.4);
+  doc.text('Return Rate', colX + 84, tocY + 3.4);
+  doc.text('Total (Rs.)', colX + colWidth - 2, tocY + 3.4, { align: 'right' });
+
+  tocY += 5.2;
+
+  bialSummaries.forEach((bs, idx) => {
+    if (idx % 2 === 1) {
+      doc.setFillColor(248, 250, 252);
+      doc.rect(colX, tocY - 0.4, colWidth, 4.2, 'F');
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text(String(idx + 1), colX + 2, tocY + 2.6);
+    doc.text(`${bs.bialCode ? `${bs.bialCode} - ` : ''}${bs.bialName}`, colX + 8, tocY + 2.6);
+    doc.text(`${bs.totalHH} HH (${bs.returnedHH} Ret)`, colX + 54, tocY + 2.6);
+    doc.text(`${bs.returnRate}%`, colX + 84, tocY + 2.6);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Rs. ${bs.bTotal.toLocaleString('en-IN')}`, colX + colWidth - 2, tocY + 2.6, { align: 'right' });
+    tocY += 4.5;
+  });
+
+  // TOC Summary Total Row
+  doc.setFillColor(224, 231, 255);
+  doc.rect(colX, tocY, colWidth, 5.5, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.text('KOHHRAN HUAP KHAWKHAWMNA', colX + 2, tocY + 3.7);
+  doc.text(`${churchTotalHH} HH (${churchReturnedHH} Ret)`, colX + 54, tocY + 3.7);
+  doc.text(`${overallReturnRate}%`, colX + 84, tocY + 3.7);
+  doc.text(`Rs. ${finalGrandTotal.toLocaleString('en-IN')}`, colX + colWidth - 2, tocY + 3.7, { align: 'right' });
+
+  // Scripture note at TOC bottom
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(6.8);
+  doc.text('“Phek dawtah hian Bial tin chanchin kimchang a inziak chhunzawm e.”', pageWidth / 2, pageHeight - 14, { align: 'center' });
+
+  // ==========================================
+  // PAGE 3+: SEQUENTIAL BIAL LEDGERS
+  // ==========================================
+  doc.addPage('a5', 'portrait');
   let currentY = marginTop;
-  let pageNum = 1;
   let globalSlNo = 1;
 
   const drawPageHeader = () => {
@@ -1845,7 +2038,7 @@ export function exportConsolidatedBookletPDF({
 
   const drawPageFooter = () => {
     const totalPages = doc.internal.getNumberOfPages();
-    for (let p = 1; p <= totalPages; p++) {
+    for (let p = 2; p <= totalPages; p++) {
       doc.setPage(p);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
@@ -1858,27 +2051,12 @@ export function exportConsolidatedBookletPDF({
   const checkSpace = (neededHeight) => {
     if (currentY + neededHeight > pageHeight - marginBottom) {
       doc.addPage('a5', 'portrait');
-      pageNum++;
       drawPageHeader();
       currentY = marginTop;
     }
   };
 
-  // Draw initial page header
   drawPageHeader();
-
-  let churchTotalHH = 0;
-  let churchReturnedHH = 0;
-
-  // Sort Bials strictly starting from the First Bial (Bial 1 / B1) in natural sequential order
-  const sortedBials = [...bialsData].sort((a, b) => {
-    const codeA = a.bial_code || a.code || '';
-    const codeB = b.bial_code || b.code || '';
-    const numA = parseInt(codeA.replace(/\D/g, '') || a.bial_id || a.id) || 0;
-    const numB = parseInt(codeB.replace(/\D/g, '') || b.bial_id || b.id) || 0;
-    if (numA !== numB) return numA - numB;
-    return (a.bial_name || a.name || '').localeCompare(b.bial_name || b.name || '', undefined, { numeric: true });
-  });
 
   // Process Bials in natural order (Bial 1, Bial 2, Bial 3...)
   sortedBials.forEach((bialGroup) => {
@@ -2004,7 +2182,7 @@ export function exportConsolidatedBookletPDF({
   const gTotal = churchTotals.grand_total || sortedBials.reduce((acc, b) => acc + (b.subtotal?.grand_total || 0), 0);
 
   const overallChurchReturnRate = churchTotalHH > 0 ? Math.round((churchReturnedHH / churchTotalHH) * 1000) / 10 : 0;
-  const avgPerHH = churchReturnedHH > 0 ? Math.round(gTotal / churchReturnedHH) : 0;
+  const finalAvgPerHH = churchReturnedHH > 0 ? Math.round(gTotal / churchReturnedHH) : 0;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.2);
@@ -2013,7 +2191,7 @@ export function exportConsolidatedBookletPDF({
 
   doc.setFontSize(6.2);
   doc.setTextColor(0, 0, 0);
-  doc.text(`PTR: Rs.${gPR.toLocaleString('en-IN')} | RT: Rs.${gRT.toLocaleString('en-IN')} | Tch: Rs.${gTch.toLocaleString('en-IN')} | Bldg: Rs.${gBldg.toLocaleString('en-IN')} | Avg/HH: Rs.${avgPerHH.toLocaleString('en-IN')}`, finalX + 3, currentY + 8.8);
+  doc.text(`PTR: Rs.${gPR.toLocaleString('en-IN')} | RT: Rs.${gRT.toLocaleString('en-IN')} | Tch: Rs.${gTch.toLocaleString('en-IN')} | Bldg: Rs.${gBldg.toLocaleString('en-IN')} | Avg/HH: Rs.${finalAvgPerHH.toLocaleString('en-IN')}`, finalX + 3, currentY + 8.8);
 
   doc.setFontSize(9.0);
   doc.setTextColor(0, 0, 0);

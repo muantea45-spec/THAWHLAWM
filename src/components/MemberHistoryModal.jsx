@@ -9,7 +9,11 @@ import {
   X,
   LayoutGrid,
   Table as TableIcon,
-  Loader2
+  Loader2,
+  TrendingUp,
+  Percent,
+  CheckCircle2,
+  CalendarCheck
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { exportMemberHistoryPDF } from '../utils/exportEngine';
@@ -68,6 +72,10 @@ export default function MemberHistoryModal({
   const annual = data?.annualSummary || {};
   const entries = data?.monthlyEntries || [];
   const activeCols = (data?.columns && data.columns.length > 0) ? data.columns : DEFAULT_TITHE_COLUMNS;
+
+  const monthsReturnedCount = entries.filter(e => Number(e.total) > 0).length;
+  const returnRatePercent = Math.round((monthsReturnedCount / 12) * 100);
+  const avgMonthly = monthsReturnedCount > 0 ? Math.round((Number(annual.grand_total) || 0) / monthsReturnedCount) : 0;
 
   // Start editing a specific month on click
   const startEditing = (entry) => {
@@ -277,6 +285,71 @@ export default function MemberHistoryModal({
           </div>
         ) : (
           <>
+            {/* HOUSEHOLD RETURN COMPLIANCE & CONTRIBUTION HIGHLIGHT */}
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 text-white shadow-md border border-indigo-900/50">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 mb-3 pb-3 border-b border-indigo-800/40">
+                <div>
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-300">
+                    Household 12-Month Performance ({year})
+                  </span>
+                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                    {member?.name || 'Household'}
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-800/80 text-indigo-200 border border-indigo-600/40">
+                      Sl No: #{member?.sl_no}
+                    </span>
+                  </h3>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-slate-300 font-medium">Bial:</span>
+                  <span className="font-bold text-amber-300">{member?.bial_name || 'Assigned Bial'}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2 sm:gap-3 text-center">
+                {/* Metric 1: Months Returned */}
+                <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2.5 border border-white/10 flex flex-col justify-center">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 flex items-center justify-center gap-1">
+                    <CalendarCheck className="w-3 h-3 text-indigo-300" /> Months Returned
+                  </span>
+                  <div className="text-base sm:text-lg font-black font-mono text-white mt-0.5">
+                    {monthsReturnedCount} <span className="text-xs font-normal text-slate-300">/ 12</span>
+                  </div>
+                  <div className="w-full bg-white/20 h-1.5 rounded-full mt-1.5 overflow-hidden">
+                    <div
+                      className="bg-emerald-400 h-full rounded-full transition-all duration-500"
+                      style={{ width: `${(monthsReturnedCount / 12) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Metric 2: Compliance Rate */}
+                <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2.5 border border-white/10 flex flex-col justify-center">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 flex items-center justify-center gap-1">
+                    <Percent className="w-3 h-3 text-emerald-300" /> Return Rate
+                  </span>
+                  <div className={`text-base sm:text-lg font-black font-mono mt-0.5 ${returnRatePercent >= 75 ? 'text-emerald-300' : returnRatePercent >= 50 ? 'text-amber-300' : 'text-rose-300'}`}>
+                    {returnRatePercent}%
+                  </div>
+                  <span className="text-[10px] text-slate-300 truncate">
+                    {returnRatePercent === 100 ? '⭐ Perfect Record' : returnRatePercent >= 75 ? 'High Regularity' : 'Partial Returns'}
+                  </span>
+                </div>
+
+                {/* Metric 3: Average Contribution */}
+                <div className="bg-white/10 backdrop-blur-xs rounded-xl p-2.5 border border-white/10 flex flex-col justify-center">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 flex items-center justify-center gap-1">
+                    <TrendingUp className="w-3 h-3 text-cyan-300" /> Avg / Active Mo
+                  </span>
+                  <div className="text-base sm:text-lg font-black font-mono text-cyan-300 mt-0.5">
+                    ₹{avgMonthly.toLocaleString('en-IN')}
+                  </div>
+                  <span className="text-[10px] text-slate-300 truncate">
+                    {monthsReturnedCount > 0 ? `across ${monthsReturnedCount} mo.` : 'no returns yet'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* OVERALL PAYMENTS SUMMARY CARDS */}
             <div>
               <div className="flex items-center justify-between mb-2">

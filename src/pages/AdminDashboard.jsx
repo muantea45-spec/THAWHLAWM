@@ -6,7 +6,7 @@ import {
   FileSpreadsheet, FileText, Search, RefreshCw, Eye, ArrowUp, ArrowDown, ArrowUpDown,
   CalendarDays, LogOut, LayoutGrid, LayoutList, Shield, Users, CheckCircle2, Edit3,
   ArrowRightLeft, Trophy, Percent, Wallet, ChevronDown, ChevronUp, IndianRupee,
-  ArrowUpRight, ArrowDownRight, Menu, Loader2, ShieldCheck
+  ArrowUpRight, ArrowDownRight, Menu, Loader2, ShieldCheck, History
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -20,6 +20,7 @@ import BialCredentialsModal from '../components/BialCredentialsModal';
 import MonthMatrixModal from '../components/MonthMatrixModal';
 import FinancialYearModal from '../components/FinancialYearModal';
 import AdminMemberEditModal from '../components/AdminMemberEditModal';
+import MemberHistoryModal from '../components/MemberHistoryModal';
 import MemberTransferModal from '../components/MemberTransferModal';
 import MemberRolloverModal from '../components/MemberRolloverModal';
 import OfficialReportModal from '../components/OfficialReportModal';
@@ -87,6 +88,16 @@ export default function AdminDashboard({ user, showToast }) {
   const [compareYearTargetData, setCompareYearTargetData] = useState(null);
   const [compareYearBaseData, setCompareYearBaseData] = useState(null);
   const [loadingYearCompare, setLoadingYearCompare] = useState(false);
+
+  // Member History Modal State
+  const [selectedMemberForHistory, setSelectedMemberForHistory] = useState(null);
+  const [showMemberHistoryModal, setShowMemberHistoryModal] = useState(false);
+
+  // Audit Log State
+  const [auditLogs, setAuditLogs] = useState([]);
+  const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
+  const [auditSearchQuery, setAuditSearchQuery] = useState('');
+  const [auditFilterAction, setAuditFilterAction] = useState('all');
 
   // Inspector Tab State
   const [inspectorBialId, setInspectorBialId] = useState('all');
@@ -212,6 +223,24 @@ export default function AdminDashboard({ user, showToast }) {
       isMounted = false;
     };
   }, [activeTab, compareMode, compareYearTarget, compareYearBase]);
+
+  const fetchAuditLogs = async () => {
+    try {
+      setLoadingAuditLogs(true);
+      const res = await api.getAuditLogs(100);
+      setAuditLogs(res?.logs || []);
+    } catch (err) {
+      if (showToast) showToast('Failed to load audit logs', 'error');
+    } finally {
+      setLoadingAuditLogs(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'audit') {
+      fetchAuditLogs();
+    }
+  }, [activeTab]);
 
   // Real-time synchronization for Tithe Columns and Headers across all tabs, inspector, and devices
   useEffect(() => {
@@ -1243,6 +1272,17 @@ export default function AdminDashboard({ user, showToast }) {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    setSelectedMemberForHistory(m.member_id || m.id);
+                                    setShowMemberHistoryModal(true);
+                                  }}
+                                  className="p-1 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                  title={`View 12-month statement for ${m.name}`}
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setTransferPreselectedMember(m);
                                     setTransferPreselectedBialId(inspectorBialId);
                                     setShowTransferModal(true);
@@ -1332,6 +1372,17 @@ export default function AdminDashboard({ user, showToast }) {
                             </div>
                           </div>
                           <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedMemberForHistory(m.member_id || m.id);
+                                setShowMemberHistoryModal(true);
+                              }}
+                              className="p-1 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                              title={`View 12-month statement for ${m.name}`}
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -2410,6 +2461,165 @@ export default function AdminDashboard({ user, showToast }) {
           </div>
         )}
 
+        {/* TAB 5: ACTIVITY AUDIT LOG */}
+        {activeTab === 'audit' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            {/* Header & Controls Card */}
+            <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <History className="w-5 h-5 text-indigo-600" /> Activity Audit Trail
+                </h3>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Real-time security log of administrator actions, email authorizations, primary owner changes, and month lock controls.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Search Input */}
+                <div className="relative min-w-[200px] sm:min-w-[240px]">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                  <input
+                    type="text"
+                    value={auditSearchQuery}
+                    onChange={(e) => setAuditSearchQuery(e.target.value)}
+                    placeholder="Search logs by action, user, or email..."
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-xs font-medium focus:outline-none focus:border-indigo-600 shadow-2xs"
+                  />
+                  {auditSearchQuery && (
+                    <button
+                      onClick={() => setAuditSearchQuery('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                {/* Filter Chips */}
+                <select
+                  value={auditFilterAction}
+                  onChange={(e) => setAuditFilterAction(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-semibold focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
+                >
+                  <option value="all">All Actions</option>
+                  <option value="auth">Admin & Google Auth</option>
+                  <option value="locks">Month Locks</option>
+                  <option value="transfers">Transfers</option>
+                </select>
+
+                {/* Refresh Button */}
+                <button
+                  onClick={fetchAuditLogs}
+                  disabled={loadingAuditLogs}
+                  className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  title="Refresh Audit Logs"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loadingAuditLogs ? 'animate-spin' : ''}`} />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Audit Logs Table / Feed */}
+            <div className="glass-panel rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xs border border-slate-200/80 bg-white">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                      <th className="py-3 px-4">Timestamp</th>
+                      <th className="py-3 px-3">Action</th>
+                      <th className="py-3 px-4">Performed By</th>
+                      <th className="py-3 px-4">Event Details</th>
+                      <th className="py-3 px-3 text-right">IP Address</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-sans">
+                    {loadingAuditLogs ? (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center text-indigo-600 font-bold animate-pulse">
+                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-600" />
+                          <span>Loading audit log trail...</span>
+                        </td>
+                      </tr>
+                    ) : auditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="py-12 text-center text-slate-400">
+                          No audit activity logs recorded yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      auditLogs
+                        .filter(log => {
+                          if (auditFilterAction === 'auth' && !log.action.includes('EMAIL') && !log.action.includes('PRIMARY')) return false;
+                          if (auditFilterAction === 'locks' && !log.action.includes('LOCK')) return false;
+                          if (auditFilterAction === 'transfers' && !log.action.includes('TRANSFER')) return false;
+                          if (!auditSearchQuery.trim()) return true;
+                          const q = auditSearchQuery.toLowerCase();
+                          return (
+                            (log.action && log.action.toLowerCase().includes(q)) ||
+                            (log.username && log.username.toLowerCase().includes(q)) ||
+                            (log.email && log.email.toLowerCase().includes(q)) ||
+                            (log.details && log.details.toLowerCase().includes(q)) ||
+                            (log.ip_address && log.ip_address.toLowerCase().includes(q))
+                          );
+                        })
+                        .map(log => {
+                          let badgeBg = 'bg-slate-100 text-slate-700 border-slate-300';
+                          if (log.action.includes('AUTHORIZE')) badgeBg = 'bg-emerald-50 text-emerald-800 border-emerald-300';
+                          else if (log.action.includes('REVOKE')) badgeBg = 'bg-rose-50 text-rose-800 border-rose-300';
+                          else if (log.action.includes('PRIMARY')) badgeBg = 'bg-amber-50 text-amber-900 border-amber-300';
+                          else if (log.action.includes('TRANSFER')) badgeBg = 'bg-blue-50 text-blue-800 border-blue-300';
+                          else if (log.action.includes('LOCK')) badgeBg = 'bg-purple-50 text-purple-800 border-purple-300';
+
+                          const formattedDate = log.created_at
+                            ? new Date(log.created_at).toLocaleString('en-IN', {
+                                dateStyle: 'short',
+                                timeStyle: 'short'
+                              })
+                            : '-';
+
+                          return (
+                            <tr key={log.id} className="hover:bg-slate-50/80 transition-colors">
+                              <td className="py-2.5 px-4 font-mono text-slate-500 whitespace-nowrap text-[11px]">
+                                {formattedDate}
+                              </td>
+                              <td className="py-2.5 px-3 whitespace-nowrap">
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${badgeBg}`}>
+                                  {log.action}
+                                </span>
+                              </td>
+                              <td className="py-2.5 px-4">
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-slate-900">
+                                    {log.username || 'Admin'}
+                                  </span>
+                                  {log.email && (
+                                    <span className="text-[10px] text-slate-500 truncate max-w-[180px]">
+                                      {log.email}
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-4 text-slate-700 font-medium max-w-md">
+                                <div className="break-words leading-relaxed text-xs">
+                                  {log.details || '-'}
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 text-right font-mono text-slate-400 text-[10.5px] whitespace-nowrap">
+                                {log.ip_address || 'local'}
+                              </td>
+                            </tr>
+                          );
+                        })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
         </div>
       </div>
 
@@ -2713,6 +2923,21 @@ export default function AdminDashboard({ user, showToast }) {
           loadInspectorLedger();
         }}
         showToast={showToast}
+      />
+
+      {/* Member 12-Month Contribution History Modal */}
+      <MemberHistoryModal
+        isOpen={showMemberHistoryModal}
+        onClose={() => {
+          setShowMemberHistoryModal(false);
+          setSelectedMemberForHistory(null);
+        }}
+        memberId={selectedMemberForHistory}
+        initialYear={year}
+        showToast={showToast}
+        onUpdate={() => {
+          if (activeTab === 'inspector') loadInspectorLedger();
+        }}
       />
 
     </div>

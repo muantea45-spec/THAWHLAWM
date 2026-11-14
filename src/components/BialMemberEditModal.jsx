@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { UserCheck, Trash2, Save, Lock, Edit3 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { UserCheck, Trash2, Save, Lock, Edit3, Copy, RefreshCw } from 'lucide-react';
 import { api } from '../utils/api';
 import { FINANCIAL_MONTHS, DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 import Modal from './common/Modal';
@@ -22,7 +22,9 @@ export default function BialMemberEditModal({
   const [amounts, setAmounts] = useState({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [loadingPreviousMonth, setLoadingPreviousMonth] = useState(false);
 
+  const inputRefs = useRef([]);
   const activeCols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
 
   useEffect(() => {
@@ -40,6 +42,67 @@ export default function BialMemberEditModal({
 
   const handleAmountChange = (fieldKey, val) => {
     setAmounts(prev => ({ ...prev, [fieldKey]: val }));
+  };
+
+  const handleRepeatPreviousMonth = async () => {
+    const memberId = member?.member_id || member?.id;
+    if (!memberId) return;
+
+    try {
+      setLoadingPreviousMonth(true);
+      const historyRes = await api.getMemberHistory(memberId, year);
+      const monthlyEntries = historyRes?.monthlyEntries || [];
+      
+      // Financial months cycle: 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3
+      const monthOrder = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
+      const currentIdx = monthOrder.indexOf(month);
+      
+      // Look back from currentIdx - 1 downwards
+      let targetEntry = null;
+      for (let i = currentIdx - 1; i >= 0; i--) {
+        const mNum = monthOrder[i];
+        const found = monthlyEntries.find(e => e.month === mNum && Number(e.total) > 0);
+        if (found) {
+          targetEntry = found;
+          break;
+        }
+      }
+      
+      // If not found in previous months of this year, look anywhere with total > 0
+      if (!targetEntry) {
+        targetEntry = monthlyEntries.find(e => Number(e.total) > 0);
+      }
+
+      if (!targetEntry) {
+        showToast('No previous month records found to repeat', 'info');
+        return;
+      }
+
+      const newAmounts = { ...amounts };
+      activeCols.forEach(col => {
+        const v = targetEntry[col.field_key];
+        newAmounts[col.field_key] = (v !== undefined && v !== null && Number(v) > 0) ? String(v) : '';
+      });
+      setAmounts(newAmounts);
+
+      const targetMonthName = FINANCIAL_MONTHS.find(m => m.id === targetEntry.month)?.name || `Month ${targetEntry.month}`;
+      showToast(`Copied previous tithes from ${targetMonthName}!`, 'success');
+    } catch (err) {
+      showToast(err.message || 'Failed to fetch previous month data', 'error');
+    } finally {
+      setLoadingPreviousMonth(false);
+    }
+  };
+
+  const handleAmountKeyDown = (e, index) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (index < activeCols.length - 1) {
+        inputRefs.current[index + 1]?.focus();
+      } else {
+        handleSave(e);
+      }
+    }
   };
 
   const calculatedTotal = activeCols.reduce((sum, col) => {
@@ -178,17 +241,29 @@ export default function BialMemberEditModal({
 
           {/* Section 2: Tithe Breakdown for Selected Month */}
           <div className="space-y-2 pt-2 border-t border-slate-100">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-1.5">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
                 2. Tithe Figures for {monthName}
               </span>
-              <span className="text-[11px] font-mono font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
-                Total: ₹{calculatedTotal.toLocaleString('en-IN')}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  disabled={isLocked || loadingPreviousMonth}
+                  onClick={handleRepeatPreviousMonth}
+                  className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[10.5px] border border-indigo-200 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-40"
+                  title="Copy tithe amounts from the previous recorded month"
+                >
+                  <Copy className="w-3 h-3 text-indigo-600" />
+                  <span>{loadingPreviousMonth ? 'Copying...' : 'Hmasa Ang'}</span>
+                </button>
+                <span className="text-[11px] font-mono font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
+                  Total: ₹{calculatedTotal.toLocaleString('en-IN')}
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 font-mono">
-              {activeCols.map(col => (
+              {activeCols.map((col, idx) => (
                 <div 
                   key={col.id} 
                   className="p-2 sm:p-2.5 rounded-xl border transition-all"
@@ -206,12 +281,16 @@ export default function BialMemberEditModal({
                   <div className="relative flex items-center">
                     <span className="absolute left-2.5 text-xs font-bold text-slate-400 pointer-events-none">₹</span>
                     <input
+                      ref={el => { inputRefs.current[idx] = el; }}
                       type="number"
+                      inputMode="decimal"
+                      pattern="[0-9]*"
                       min="0"
                       step="any"
                       disabled={isLocked}
                       value={amounts[col.field_key] || ''}
                       onChange={(e) => handleAmountChange(col.field_key, e.target.value)}
+                      onKeyDown={(e) => handleAmountKeyDown(e, idx)}
                       placeholder="0"
                       className="w-full pl-7 pr-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 text-base sm:text-xs shadow-2xs disabled:bg-slate-50"
                     />

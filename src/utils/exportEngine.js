@@ -1456,11 +1456,11 @@ export function exportOfficialCertificatePDF({
   if (totalHH > 0) {
     doc.autoTable({
       startY: doc.lastAutoTable.finalY + 2,
-      head: [['TOTAL HOUSEHOLDS', 'HOUSEHOLDS RETURNED', 'RETURN RATE PER HOUSEHOLD', 'AVG / HOUSEHOLD']],
+      head: [['RETURNED / HOUSEHOLD', 'RATE PERCENTAGE', 'TOTAL HOUSEHOLDS', 'AVG / HOUSEHOLD']],
       body: [[
-        String(totalHH),
-        String(returnedHH),
+        `${returnedHH} / ${totalHH} HH`,
         `${returnRate}%`,
+        `${totalHH} Families`,
         `Rs. ${avgPerHH.toLocaleString('en-IN')}`
       ]],
       theme: 'grid',
@@ -1725,8 +1725,8 @@ export function exportOfficialCertificateExcel({
     [`Date of Issue: ${signatory.date || new Date().toLocaleDateString('en-GB')}`],
     [],
     ['EXECUTIVE SUMMARY TOTALS'],
-    ['Pathian Ram (₹)', 'Ramthar (₹)', 'Tualchhung (₹)', 'Building (₹)', 'TOTAL (₹)', 'Total Households', 'Households Returned', 'Return Rate per Household (%)', 'Avg / Household (₹)'],
-    [pr, rt, tch, bldg, grandTotal, totalHH, returnedHH, `${returnRate}%`, avgPerHH],
+    ['Pathian Ram (₹)', 'Ramthar (₹)', 'Tualchhung (₹)', 'Building (₹)', 'TOTAL (₹)', 'Returned / Household', 'Rate Percentage', 'Total Households', 'Avg / Household (₹)'],
+    [pr, rt, tch, bldg, grandTotal, `${returnedHH} / ${totalHH} HH`, `${returnRate}%`, totalHH, avgPerHH],
     [],
     ['CONTRIBUTIONS BREAKDOWN']
   ];

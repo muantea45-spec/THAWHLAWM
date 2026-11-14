@@ -383,13 +383,10 @@ export default function OfficialReportPDFDocument({
               >
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   <Text style={{ fontSize: 6.5, color: '#000000' }}>
-                    Total HH: <Text style={{ fontFamily: 'Helvetica-Bold' }}>{totals.total_system_members || breakdown.length || 0}</Text>
+                    Returned / Household: <Text style={{ fontFamily: 'Helvetica-Bold' }}>{totals.total_returned_members || breakdown.filter(m => (m.grand_total || m.total || 0) > 0).length || 0} / {totals.total_system_members || breakdown.length || 0} HH</Text>
                   </Text>
                   <Text style={{ fontSize: 6.5, color: '#000000' }}>
-                    Returned: <Text style={{ fontFamily: 'Helvetica-Bold' }}>{totals.total_returned_members || breakdown.filter(m => (m.grand_total || m.total || 0) > 0).length || 0}</Text>
-                  </Text>
-                  <Text style={{ fontSize: 6.5, color: '#000000' }}>
-                    Return Rate / Household: <Text style={{ fontFamily: 'Helvetica-Bold' }}>{totals.overall_return_rate !== undefined ? `${totals.overall_return_rate}%` : 'N/A'}</Text>
+                    Rate Percentage: <Text style={{ fontFamily: 'Helvetica-Bold' }}>{totals.overall_return_rate !== undefined ? `${totals.overall_return_rate}%` : 'N/A'}</Text>
                   </Text>
                 </View>
                 <Text style={{ fontSize: 6.5, color: '#000000' }}>

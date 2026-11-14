@@ -794,6 +794,41 @@ export default function OfficialReportModal({
                   </select>
                 </div>
               </div>
+
+              {/* OVERALL RETURNED / HOUSEHOLD & RATE PERCENTAGE LIVE DISPLAY IN REPORT FORM */}
+              <div className="pt-2 border-t border-slate-200">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="flex items-center gap-1.5 text-slate-700">
+                      <Users className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Returned / Household:</span>
+                    </span>
+                    <span className="font-mono font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-300 text-xs shadow-2xs">
+                      {dynamicTotals.total_returned_members || 0} / {dynamicTotals.total_system_members || 0} HH
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-slate-700">Rate Percentage:</span>
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-black text-xs">
+                      {dynamicTotals.overall_return_rate !== undefined ? `${dynamicTotals.overall_return_rate}%` : '0%'}
+                    </span>
+                  </div>
+
+                  {/* Return Rate Progress Bar */}
+                  <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className="bg-emerald-600 h-full rounded-full transition-all duration-300"
+                      style={{ width: `${Math.min(100, Math.max(0, dynamicTotals.overall_return_rate || 0))}%` }}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10.5px] text-slate-600 font-semibold pt-0.5">
+                    <span>Avg / HH: ₹{(dynamicTotals.avg_contribution_per_member || 0).toLocaleString('en-IN')}</span>
+                    <span className="font-black text-slate-900">Total: ₹{(dynamicTotals.grand_total || 0).toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* 2. Paper Layout & Format */}
@@ -1334,30 +1369,30 @@ export default function OfficialReportModal({
                   <div className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-1.5 flex flex-wrap items-center justify-between gap-2 shadow-2xs text-black">
                     <div className="flex items-center gap-2.5 sm:gap-4 text-xs">
                       <div>
-                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Total Households</span>
+                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Returned / Household</span>
                         <span className="font-black text-black text-xs sm:text-sm">
-                          {dynamicTotals.total_system_members || dynamicBreakdown.length || 0} HH
+                          {dynamicTotals.total_returned_members || dynamicBreakdown.filter(m => (m.grand_total || m.total || 0) > 0).length || 0} / {dynamicTotals.total_system_members || dynamicBreakdown.length || 0} HH
                         </span>
                       </div>
                       <div className="h-5 w-px bg-slate-300"></div>
                       <div>
-                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Households Returned</span>
-                        <span className="font-black text-black text-xs sm:text-sm">
-                          {dynamicTotals.total_returned_members || dynamicBreakdown.filter(m => (m.grand_total || m.total || 0) > 0).length || 0} HH
-                        </span>
-                      </div>
-                      <div className="h-5 w-px bg-slate-300"></div>
-                      <div>
-                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Return Rate per Household</span>
+                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Rate Percentage</span>
                         <span className="font-black text-black text-xs sm:text-sm">
                           {dynamicTotals.overall_return_rate !== undefined ? `${dynamicTotals.overall_return_rate}%` : 'N/A'}
                         </span>
                       </div>
+                      <div className="h-5 w-px bg-slate-300"></div>
+                      <div>
+                        <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Avg / Household</span>
+                        <span className="font-black text-black text-xs sm:text-sm">
+                          ₹{(dynamicTotals.avg_contribution_per_member || (dynamicTotals.total_returned_members > 0 ? Math.round(dynamicTotals.grand_total / dynamicTotals.total_returned_members) : 0)).toLocaleString('en-IN')}
+                        </span>
+                      </div>
                     </div>
                     <div className="text-right text-xs">
-                      <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Avg / Household</span>
+                      <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Total Households</span>
                       <span className="font-black text-black text-xs sm:text-sm">
-                        ₹{(dynamicTotals.avg_contribution_per_member || (dynamicTotals.total_returned_members > 0 ? Math.round(dynamicTotals.grand_total / dynamicTotals.total_returned_members) : 0)).toLocaleString('en-IN')}
+                        {dynamicTotals.total_system_members || dynamicBreakdown.length || 0} HH
                       </span>
                     </div>
                   </div>

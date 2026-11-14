@@ -86,7 +86,7 @@ export default function BialSidebar({
                   <UserCheck className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="font-heading font-extrabold text-xs uppercase tracking-wider text-slate-900 truncate">
+                  <h2 className="font-heading font-bold text-sm text-slate-900 truncate">
                     {bialName}
                   </h2>
                   <p className="text-[10px] text-slate-400 font-medium truncate">
@@ -122,7 +122,7 @@ export default function BialSidebar({
           {/* Section 1: Navigation Tabs */}
           <div className="px-2 space-y-1">
             {showFull && (
-              <span className="px-2 text-[9.5px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+              <span className="px-2 text-[11px] font-semibold text-slate-500 block mb-1">
                 Navigation
               </span>
             )}
@@ -135,7 +135,7 @@ export default function BialSidebar({
                   key={tab.id}
                   onClick={() => handleTabClick(tab.id)}
                   title={tab.label}
-                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                  className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     isActive
                       ? 'bg-indigo-600 text-white shadow-xs shadow-indigo-600/30'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 bg-transparent'
@@ -158,7 +158,7 @@ export default function BialSidebar({
           {/* Section 2: Bial Actions / Tools (Overall, Export) */}
           <div className="px-2 space-y-1 pt-2 border-t border-slate-100">
             {showFull && (
-              <span className="px-2 text-[9.5px] font-black uppercase tracking-wider text-slate-400 block mb-1">
+              <span className="px-2 text-[11px] font-semibold text-slate-500 block mb-1">
                 Bial Features
               </span>
             )}
@@ -189,7 +189,7 @@ export default function BialSidebar({
         <div className="p-2 space-y-2 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
           {showFull ? (
             <div className="space-y-1.5">
-              <label className="block text-[9.5px] font-bold uppercase tracking-wider text-slate-500 px-1">
+              <label className="block text-[11px] font-semibold text-slate-500 px-1">
                 Financial Year
               </label>
               <select

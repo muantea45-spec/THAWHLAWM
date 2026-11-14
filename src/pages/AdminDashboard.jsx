@@ -15,17 +15,18 @@ import {
 
 import { api, setAuthToken, setAuthUser } from '../utils/api';
 import Modal from '../components/common/Modal';
-import BialModal from '../components/BialModal';
-import MonthMatrixModal from '../components/MonthMatrixModal';
-import FinancialYearModal from '../components/FinancialYearModal';
-import AdminMemberEditModal from '../components/AdminMemberEditModal';
-import MemberHistoryModal from '../components/MemberHistoryModal';
-import MemberTransferModal from '../components/MemberTransferModal';
-import MemberRolloverModal from '../components/MemberRolloverModal';
-import OfficialReportModal from '../components/OfficialReportModal';
-import ManageColumnsModal from '../components/ManageColumnsModal';
 import TitheColumnsTab from '../components/TitheColumnsTab';
 import CredentialsTab from '../components/CredentialsTab';
+
+const BialModal = React.lazy(() => import('../components/BialModal'));
+const MonthMatrixModal = React.lazy(() => import('../components/MonthMatrixModal'));
+const FinancialYearModal = React.lazy(() => import('../components/FinancialYearModal'));
+const AdminMemberEditModal = React.lazy(() => import('../components/AdminMemberEditModal'));
+const MemberHistoryModal = React.lazy(() => import('../components/MemberHistoryModal'));
+const MemberTransferModal = React.lazy(() => import('../components/MemberTransferModal'));
+const MemberRolloverModal = React.lazy(() => import('../components/MemberRolloverModal'));
+const OfficialReportModal = React.lazy(() => import('../components/OfficialReportModal'));
+const ManageColumnsModal = React.lazy(() => import('../components/ManageColumnsModal'));
 import churchLogo from '../assets/church_logo.jpg';
 import {
   exportAdminConsolidatedPDF,
@@ -1559,9 +1560,9 @@ export default function AdminDashboard({ user, showToast }) {
               <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
                 {/* Header Box */}
                 <div className="pb-1 border-b border-slate-100">
-                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1 truncate">
+                  <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 truncate">
                     <Users className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                    <span className="truncate">HOUSEHOLDS RETURNED</span>
+                    <span className="truncate">Households Returned</span>
                   </span>
                 </div>
 
@@ -1603,9 +1604,9 @@ export default function AdminDashboard({ user, showToast }) {
               <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
                 {/* Header Box */}
                 <div className="pb-1 border-b border-slate-100">
-                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1 truncate">
+                  <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 truncate">
                     <Percent className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span className="truncate">OVERALL RETURN RATE</span>
+                    <span className="truncate">Overall Return Rate</span>
                   </span>
                 </div>
 
@@ -1642,15 +1643,15 @@ export default function AdminDashboard({ user, showToast }) {
               <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
                 {/* Header Box */}
                 <div className="pb-1 border-b border-slate-100">
-                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1 truncate">
+                  <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 truncate">
                     <Wallet className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                    <span className="truncate">AVG / HOUSEHOLD</span>
+                    <span className="truncate">Avg per Household</span>
                   </span>
                 </div>
 
                 {/* Data Box 1: Avg Amount */}
                 <div className="bg-white p-1.5 sm:p-2 rounded-xl border border-slate-200 space-y-0.5">
-                  <span className="text-[8px] font-bold text-slate-500 uppercase block">Average Tithe / Active HH</span>
+                  <span className="text-[8px] font-bold text-slate-500 block">Average Tithe / Active HH</span>
                   <div className="text-xs sm:text-xs font-mono font-black text-purple-800">
                     ₹{avgContributionPerMember.toLocaleString('en-IN')}
                   </div>
@@ -1671,7 +1672,7 @@ export default function AdminDashboard({ user, showToast }) {
               <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
                 {/* Header Box */}
                 <div className="pb-1 border-b border-slate-100 flex items-center justify-between">
-                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1 truncate">
+                  <span className="text-[10px] font-bold text-slate-700 flex items-center gap-1.5 truncate">
                     <Activity className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
                     <span className="truncate">Bial Variance / Spread</span>
                   </span>
@@ -1683,13 +1684,13 @@ export default function AdminDashboard({ user, showToast }) {
                 {/* Data Box 1: Highest vs Lowest Participation Bials */}
                 <div className="bg-slate-50/70 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
                   <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] font-bold">
-                    <span className="text-slate-500 uppercase">High:</span>
+                    <span className="text-slate-500">High:</span>
                     <span className="font-mono font-black text-emerald-700 truncate">
                       {highestBial ? `${highestBial.name} (${highestBial.return_rate}%)` : 'N/A'}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] font-bold">
-                    <span className="text-slate-500 uppercase">Low:</span>
+                    <span className="text-slate-500">Low:</span>
                     <span className="font-mono font-black text-rose-700 truncate">
                       {lowestBial ? `${lowestBial.name} (${lowestBial.return_rate}%)` : 'N/A'}
                     </span>
@@ -1715,7 +1716,7 @@ export default function AdminDashboard({ user, showToast }) {
               <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
                 {/* Header Box */}
                 <div className="pb-1 border-b border-slate-100 flex items-center justify-between">
-                  <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1 truncate">
+                  <span className="text-[10px] font-bold text-slate-700 flex items-center gap-1.5 truncate">
                     <PieChartIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span className="truncate">Fund Allocation</span>
                   </span>
@@ -1726,7 +1727,7 @@ export default function AdminDashboard({ user, showToast }) {
 
                 {/* Data Box 1: Mission / Ramthar Giving Ratio */}
                 <div className="bg-white p-1.5 rounded-xl border border-slate-200 space-y-0.5">
-                  <div className="flex items-center justify-between text-[8px] font-bold text-slate-500 uppercase">
+                  <div className="flex items-center justify-between text-[8px] font-bold text-slate-500">
                     <span>Ramthar / Mission</span>
                     <span className="font-mono text-slate-700">₹{ramtharTotal.toLocaleString('en-IN')}</span>
                   </div>
@@ -1779,24 +1780,26 @@ export default function AdminDashboard({ user, showToast }) {
                       <button
                         type="button"
                         onClick={() => setCompareMode('month')}
-                        className={`px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+                        className={`px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                           compareMode === 'month'
                             ? 'bg-white text-indigo-700 shadow-2xs'
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        📅 Monthly
+                        <Calendar className="w-3.5 h-3.5 shrink-0" />
+                        <span>Monthly</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setCompareMode('year')}
-                        className={`px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer ${
+                        className={`px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
                           compareMode === 'year'
                             ? 'bg-white text-indigo-700 shadow-2xs'
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        🏛️ Financial Year
+                        <Building2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>Financial Year</span>
                       </button>
                     </div>
                   </div>
@@ -2400,8 +2403,8 @@ export default function AdminDashboard({ user, showToast }) {
                         <div className="bg-white/90 p-1.5 rounded-lg border border-slate-200/80 flex items-center justify-between gap-2 min-w-0">
                           <div className="flex items-center gap-1.5 min-w-0">
                             {idx === 0 && b.total > 0 ? (
-                              <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 font-bold text-[9px] flex items-center justify-center border border-amber-300 shadow-2xs shrink-0">
-                                👑
+                              <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 font-bold text-[9px] flex items-center justify-center border border-amber-300 shadow-2xs shrink-0" title="Rank 1">
+                                <Trophy className="w-2.5 h-2.5 text-amber-800 shrink-0" />
                               </span>
                             ) : idx === 1 && b.total > 0 ? (
                               <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-700 font-bold text-[9px] flex items-center justify-center border border-slate-300 shrink-0">
@@ -2741,305 +2744,325 @@ export default function AdminDashboard({ user, showToast }) {
         </div>
       </div>
 
-      {/* Modals */}
-      <BialModal
-        isOpen={showBialModal}
-        onClose={() => setShowBialModal(false)}
-        onSave={handleSaveBial}
-        bialToEdit={bialToEdit}
-      />
+      {/* Modals wrapped in Suspense for optimal lazy-loading */}
+      <React.Suspense fallback={null}>
+        {showBialModal && (
+          <BialModal
+            isOpen={showBialModal}
+            onClose={() => setShowBialModal(false)}
+            onSave={handleSaveBial}
+            bialToEdit={bialToEdit}
+          />
+        )}
 
-      <MonthMatrixModal
-        isOpen={showMatrixModal}
-        onClose={() => setShowMatrixModal(false)}
-        currentYear={year}
-        showToast={showToast}
-      />
+        {showMatrixModal && (
+          <MonthMatrixModal
+            isOpen={showMatrixModal}
+            onClose={() => setShowMatrixModal(false)}
+            currentYear={year}
+            showToast={showToast}
+          />
+        )}
 
-      <FinancialYearModal
-        isOpen={showYearModal}
-        onClose={() => setShowYearModal(false)}
-        years={financialYears}
-        activeYear={activeYear}
-        onYearsUpdated={loadFinancialYears}
-        showToast={showToast}
-      />
+        {showYearModal && (
+          <FinancialYearModal
+            isOpen={showYearModal}
+            onClose={() => setShowYearModal(false)}
+            years={financialYears}
+            activeYear={activeYear}
+            onYearsUpdated={loadFinancialYears}
+            showToast={showToast}
+          />
+        )}
 
-      {/* 1. Previous Consolidated Report & Overall Member Ledger Modal */}
-      <Modal isOpen={showConsolidatedModal} onClose={() => setShowConsolidatedModal(false)} maxWidth="max-w-md">
-        <Modal.Header
-          title={`Consolidated Reports & Overall Ledger - FY ${year}`}
-          subtitle="Select consolidated summary or overall member summation"
-          icon={FileSpreadsheet}
-          onClose={() => setShowConsolidatedModal(false)}
-        />
-        <Modal.Body className="space-y-3.5">
-          {/* Section 1: Consolidated Bial Totals */}
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-              1. Consolidated Summary (All Bials Totals)
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => {
-                  exportAdminConsolidatedExcel({ year, grandTotals, bialBreakdown: stats?.bialBreakdown || [] });
-                  setShowConsolidatedModal(false);
-                  showToast('Excel report downloaded', 'success');
-                }}
-                className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                <span>Excel (.xlsx)</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  exportAdminConsolidatedPDF({ year, grandTotals, bialBreakdown: stats?.bialBreakdown || [] });
-                  setShowConsolidatedModal(false);
-                  showToast('PDF report downloaded', 'success');
-                }}
-                className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileText className="w-4 h-4 text-rose-600" />
-                <span>PDF (.pdf)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Section 2: Overall Member Contributions (Annual Summation for each member sorted Bial 1...) */}
-          <div className="space-y-1.5 pt-2 border-t border-slate-200">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">
-                2. Overall Member-by-Member Ledger
+        {/* 1. Previous Consolidated Report & Overall Member Ledger Modal */}
+        <Modal isOpen={showConsolidatedModal} onClose={() => setShowConsolidatedModal(false)} maxWidth="max-w-md">
+          <Modal.Header
+            title={`Consolidated Reports & Overall Ledger - FY ${year}`}
+            subtitle="Select consolidated summary or overall member summation"
+            icon={FileSpreadsheet}
+            onClose={() => setShowConsolidatedModal(false)}
+          />
+          <Modal.Body className="space-y-3.5">
+            {/* Section 1: Consolidated Bial Totals */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                1. Consolidated Summary (All Bials Totals)
               </span>
-              <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
-                Sorted Bial 1...
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    exportAdminConsolidatedExcel({ year, grandTotals, bialBreakdown: stats?.bialBreakdown || [] });
+                    setShowConsolidatedModal(false);
+                    showToast('Excel report downloaded', 'success');
+                  }}
+                  className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Excel (.xlsx)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    exportAdminConsolidatedPDF({ year, grandTotals, bialBreakdown: stats?.bialBreakdown || [] });
+                    setShowConsolidatedModal(false);
+                    showToast('PDF report downloaded', 'success');
+                  }}
+                  className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                >
+                  <FileText className="w-4 h-4 text-rose-600" />
+                  <span>PDF (.pdf)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Section 2: Overall Member Contributions (Annual Summation for each member sorted Bial 1...) */}
+            <div className="space-y-1.5 pt-2 border-t border-slate-200">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">
+                  2. Overall Member-by-Member Ledger
+                </span>
+                <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                  Sorted Bial 1...
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-tight">
+                Full annual summation of PTR, RT, Tch, Bldg and overall total for each member across all Bials.
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                <button
+                  onClick={() => handleExportOverall('excel')}
+                  className="p-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 text-indigo-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                  <span>Overall Excel</span>
+                </button>
+
+                <button
+                  onClick={() => handleExportOverall('pdf')}
+                  className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                >
+                  <FileText className="w-4 h-4 text-purple-600" />
+                  <span>Overall PDF</span>
+                </button>
+              </div>
+            </div>
+          </Modal.Body>
+          <Modal.Footer>
+            <button
+              onClick={() => setShowConsolidatedModal(false)}
+              className="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </Modal.Footer>
+        </Modal>
+
+        {/* 2. Official Church Certificate & Report Form Generator Modal */}
+        {showReportFormModal && (
+          <OfficialReportModal
+            isOpen={showReportFormModal}
+            onClose={() => setShowReportFormModal(false)}
+            currentYear={year}
+            financialYears={financialYears}
+            bials={bials}
+            grandTotals={grandTotals}
+            stats={stats}
+            user={user}
+            showToast={showToast}
+          />
+        )}
+
+        {/* Inspector (Bial Ledger) Export Dialog */}
+        <Modal isOpen={showInspectorExportModal} onClose={() => setShowInspectorExportModal(false)} maxWidth="max-w-md">
+          <Modal.Header
+            title={`${selectedBialObj?.name || 'Bial'} - Export Ledger`}
+            subtitle={`${FINANCIAL_MONTHS.find(m => m.id === inspectorMonth)?.name || ''} FY ${year}`}
+            icon={FileText}
+            onClose={() => setShowInspectorExportModal(false)}
+          />
+          <Modal.Body className="space-y-3.5">
+            {/* Section 1: Monthly Ledger for Selected Bial */}
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
+                1. This Month Bial Ledger ({selectedBialObj?.name})
               </span>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    exportToExcel({
+                      bialName: selectedBialObj ? selectedBialObj.name : 'Bial',
+                      year,
+                      month: inspectorMonth,
+                      members: sortedInspectorMembers,
+                      summary: inspectorLedger?.summary || {},
+                      columns: titheColumns
+                    });
+                    setShowInspectorExportModal(false);
+                    showToast('Excel ledger downloaded', 'success');
+                  }}
+                  className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Excel (.xlsx)</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    exportToPDF({
+                      bialName: selectedBialObj ? selectedBialObj.name : 'Bial',
+                      year,
+                      month: inspectorMonth,
+                      members: sortedInspectorMembers,
+                      summary: inspectorLedger?.summary || {},
+                      columns: titheColumns
+                    });
+                    setShowInspectorExportModal(false);
+                    showToast('PDF ledger downloaded', 'success');
+                  }}
+                  className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                >
+                  <FileText className="w-4 h-4 text-rose-600" />
+                  <span>PDF (.pdf)</span>
+                </button>
+              </div>
             </div>
-            <p className="text-[11px] text-slate-500 leading-tight">
-              Full annual summation of PTR, RT, Tch, Bldg and overall total for each member across all Bials.
-            </p>
-            <div className="grid grid-cols-2 gap-2 pt-0.5">
-              <button
-                onClick={() => handleExportOverall('excel')}
-                className="p-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 text-indigo-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
-                <span>Overall Excel</span>
-              </button>
 
-              <button
-                onClick={() => handleExportOverall('pdf')}
-                className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileText className="w-4 h-4 text-purple-600" />
-                <span>Overall PDF</span>
-              </button>
+            {/* Section 2: Overall Member Contributions (Annual Summation for all Bials) */}
+            <div className="space-y-1.5 pt-2 border-t border-slate-200">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">
+                  2. Overall Member-by-Member Ledger
+                </span>
+                <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                  Sorted Bial 1...
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 leading-tight">
+                Full annual summation of PTR, RT, Tch, Bldg and overall total for each member across all Bials.
+              </p>
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                <button
+                  onClick={() => handleExportOverall('excel')}
+                  className="p-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 text-indigo-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                  <span>Overall Excel</span>
+                </button>
+
+                <button
+                  onClick={() => handleExportOverall('pdf')}
+                  className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                >
+                  <FileText className="w-4 h-4 text-purple-600" />
+                  <span>Overall PDF</span>
+                </button>
+              </div>
             </div>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <button
-            onClick={() => setShowConsolidatedModal(false)}
-            className="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-        </Modal.Footer>
-      </Modal>
+          </Modal.Body>
+          <Modal.Footer>
+            <button
+              onClick={() => setShowInspectorExportModal(false)}
+              className="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+          </Modal.Footer>
+        </Modal>
 
-      {/* 2. Official Church Certificate & Report Form Generator Modal */}
-      <OfficialReportModal
-        isOpen={showReportFormModal}
-        onClose={() => setShowReportFormModal(false)}
-        currentYear={year}
-        financialYears={financialYears}
-        bials={bials}
-        grandTotals={grandTotals}
-        stats={stats}
-        user={user}
-        showToast={showToast}
-      />
+        {/* Admin Member & Tithe Edit Modal */}
+        {showMemberEditModal && (
+          <AdminMemberEditModal
+            isOpen={showMemberEditModal}
+            onClose={() => {
+              setShowMemberEditModal(false);
+              setSelectedMemberToEdit(null);
+            }}
+            member={selectedMemberToEdit}
+            bial={selectedBialObj}
+            year={year}
+            month={inspectorMonth}
+            columns={titheColumns}
+            onSaved={() => {
+              loadInspectorLedger();
+              loadAdminData();
+            }}
+            onTransferClick={(m) => {
+              setTransferPreselectedMember(m);
+              setTransferPreselectedBialId(inspectorBialId || (selectedBialObj && selectedBialObj.id));
+              setShowTransferModal(true);
+            }}
+            showToast={showToast}
+          />
+        )}
 
-      {/* Inspector (Bial Ledger) Export Dialog */}
-      <Modal isOpen={showInspectorExportModal} onClose={() => setShowInspectorExportModal(false)} maxWidth="max-w-md">
-        <Modal.Header
-          title={`${selectedBialObj?.name || 'Bial'} - Export Ledger`}
-          subtitle={`${FINANCIAL_MONTHS.find(m => m.id === inspectorMonth)?.name || ''} FY ${year}`}
-          icon={FileText}
-          onClose={() => setShowInspectorExportModal(false)}
-        />
-        <Modal.Body className="space-y-3.5">
-          {/* Section 1: Monthly Ledger for Selected Bial */}
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-              1. This Month Bial Ledger ({selectedBialObj?.name})
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => {
-                  exportToExcel({
-                    bialName: selectedBialObj ? selectedBialObj.name : 'Bial',
-                    year,
-                    month: inspectorMonth,
-                    members: sortedInspectorMembers,
-                    summary: inspectorLedger?.summary || {},
-                    columns: titheColumns
-                  });
-                  setShowInspectorExportModal(false);
-                  showToast('Excel ledger downloaded', 'success');
-                }}
-                className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                <span>Excel (.xlsx)</span>
-              </button>
+        {/* Manage Contribution Columns Modal */}
+        {showColumnsModal && (
+          <ManageColumnsModal
+            isOpen={showColumnsModal}
+            onClose={() => setShowColumnsModal(false)}
+            onColumnsUpdated={() => {
+              loadAdminData();
+              loadInspectorLedger();
+            }}
+          />
+        )}
 
-              <button
-                onClick={() => {
-                  exportToPDF({
-                    bialName: selectedBialObj ? selectedBialObj.name : 'Bial',
-                    year,
-                    month: inspectorMonth,
-                    members: sortedInspectorMembers,
-                    summary: inspectorLedger?.summary || {},
-                    columns: titheColumns
-                  });
-                  setShowInspectorExportModal(false);
-                  showToast('PDF ledger downloaded', 'success');
-                }}
-                className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileText className="w-4 h-4 text-rose-600" />
-                <span>PDF (.pdf)</span>
-              </button>
-            </div>
-          </div>
+        {/* Admin Member Transfer Modal */}
+        {showTransferModal && (
+          <MemberTransferModal
+            isOpen={showTransferModal}
+            onClose={() => {
+              setShowTransferModal(false);
+              setTransferPreselectedMember(null);
+              setTransferPreselectedBialId(null);
+            }}
+            bials={bials}
+            preselectedMember={transferPreselectedMember}
+            preselectedBialId={transferPreselectedBialId}
+            onTransferred={() => {
+              loadAdminData();
+              loadInspectorLedger();
+            }}
+            showToast={showToast}
+          />
+        )}
 
-          {/* Section 2: Overall Member Contributions (Annual Summation for all Bials) */}
-          <div className="space-y-1.5 pt-2 border-t border-slate-200">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">
-                2. Overall Member-by-Member Ledger
-              </span>
-              <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
-                Sorted Bial 1...
-              </span>
-            </div>
-            <p className="text-[11px] text-slate-500 leading-tight">
-              Full annual summation of PTR, RT, Tch, Bldg and overall total for each member across all Bials.
-            </p>
-            <div className="grid grid-cols-2 gap-2 pt-0.5">
-              <button
-                onClick={() => handleExportOverall('excel')}
-                className="p-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 text-indigo-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
-                <span>Overall Excel</span>
-              </button>
+        {/* Admin Member Rollover Modal */}
+        {showRolloverModal && (
+          <MemberRolloverModal
+            isOpen={showRolloverModal}
+            onClose={() => setShowRolloverModal(false)}
+            currentYear={year}
+            financialYears={financialYears}
+            bialId={inspectorBialId || 'all'}
+            bialName={inspectorBialId === 'all' ? 'All Bials' : selectedBialObj?.name}
+            onSuccess={(newYear) => {
+              if (newYear) setYear(newYear);
+              loadAdminData();
+              loadInspectorLedger();
+            }}
+            showToast={showToast}
+          />
+        )}
 
-              <button
-                onClick={() => handleExportOverall('pdf')}
-                className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileText className="w-4 h-4 text-purple-600" />
-                <span>Overall PDF</span>
-              </button>
-            </div>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <button
-            onClick={() => setShowInspectorExportModal(false)}
-            className="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
-          >
-            Cancel
-          </button>
-        </Modal.Footer>
-      </Modal>
-
-      {/* Admin Member & Tithe Edit Modal */}
-      <AdminMemberEditModal
-        isOpen={showMemberEditModal}
-        onClose={() => {
-          setShowMemberEditModal(false);
-          setSelectedMemberToEdit(null);
-        }}
-        member={selectedMemberToEdit}
-        bial={selectedBialObj}
-        year={year}
-        month={inspectorMonth}
-        columns={titheColumns}
-        onSaved={() => {
-          loadInspectorLedger();
-          loadAdminData();
-        }}
-        onTransferClick={(m) => {
-          setTransferPreselectedMember(m);
-          setTransferPreselectedBialId(inspectorBialId || (selectedBialObj && selectedBialObj.id));
-          setShowTransferModal(true);
-        }}
-        showToast={showToast}
-      />
-
-      {/* Manage Contribution Columns Modal */}
-      <ManageColumnsModal
-        isOpen={showColumnsModal}
-        onClose={() => setShowColumnsModal(false)}
-        onColumnsUpdated={() => {
-          loadAdminData();
-          loadInspectorLedger();
-        }}
-      />
-
-      {/* Admin Member Transfer Modal */}
-      <MemberTransferModal
-        isOpen={showTransferModal}
-        onClose={() => {
-          setShowTransferModal(false);
-          setTransferPreselectedMember(null);
-          setTransferPreselectedBialId(null);
-        }}
-        bials={bials}
-        preselectedMember={transferPreselectedMember}
-        preselectedBialId={transferPreselectedBialId}
-        onTransferred={() => {
-          loadAdminData();
-          loadInspectorLedger();
-        }}
-        showToast={showToast}
-      />
-
-      {/* Admin Member Rollover Modal */}
-      <MemberRolloverModal
-        isOpen={showRolloverModal}
-        onClose={() => setShowRolloverModal(false)}
-        currentYear={year}
-        financialYears={financialYears}
-        bialId={inspectorBialId || 'all'}
-        bialName={inspectorBialId === 'all' ? 'All Bials' : selectedBialObj?.name}
-        onSuccess={(newYear) => {
-          if (newYear) setYear(newYear);
-          loadAdminData();
-          loadInspectorLedger();
-        }}
-        showToast={showToast}
-      />
-
-      {/* Member 12-Month Contribution History Modal */}
-      <MemberHistoryModal
-        isOpen={showMemberHistoryModal}
-        onClose={() => {
-          setShowMemberHistoryModal(false);
-          setSelectedMemberForHistory(null);
-        }}
-        memberId={selectedMemberForHistory}
-        initialYear={year}
-        showToast={showToast}
-        onUpdate={() => {
-          if (activeTab === 'inspector') loadInspectorLedger();
-        }}
-      />
+        {/* Member 12-Month Contribution History Modal */}
+        {showMemberHistoryModal && (
+          <MemberHistoryModal
+            isOpen={showMemberHistoryModal}
+            onClose={() => {
+              setShowMemberHistoryModal(false);
+              setSelectedMemberForHistory(null);
+            }}
+            memberId={selectedMemberForHistory}
+            initialYear={year}
+            showToast={showToast}
+            onUpdate={() => {
+              if (activeTab === 'inspector') loadInspectorLedger();
+            }}
+          />
+        )}
+      </React.Suspense>
 
     </div>
   );

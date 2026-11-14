@@ -52,6 +52,8 @@ export default function MemberModal({ isOpen, onClose, onSave, memberToEdit, nex
             </label>
             <input
               type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
               min="1"
               required
               value={slNo}
@@ -62,7 +64,7 @@ export default function MemberModal({ isOpen, onClose, onSave, memberToEdit, nex
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1.5">
-              HMING (Member Full Name)
+              Hming (Member Full Name)
             </label>
             <input
               type="text"

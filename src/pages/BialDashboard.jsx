@@ -13,13 +13,15 @@ import {
 } from 'recharts';
 
 import { api, setAuthToken, setAuthUser } from '../utils/api';
-import MemberModal from '../components/MemberModal';
-import BialMemberEditModal from '../components/BialMemberEditModal';
-import BialYearlySummaryModal from '../components/BialYearlySummaryModal';
-import MemberHistoryModal from '../components/MemberHistoryModal';
-import OfficialReportModal from '../components/OfficialReportModal';
-import DigitalReceiptModal from '../components/DigitalReceiptModal';
 import Modal from '../components/common/Modal';
+
+const MemberModal = React.lazy(() => import('../components/MemberModal'));
+const BialMemberEditModal = React.lazy(() => import('../components/BialMemberEditModal'));
+const BialYearlySummaryModal = React.lazy(() => import('../components/BialYearlySummaryModal'));
+const MemberHistoryModal = React.lazy(() => import('../components/MemberHistoryModal'));
+const OfficialReportModal = React.lazy(() => import('../components/OfficialReportModal'));
+const DigitalReceiptModal = React.lazy(() => import('../components/DigitalReceiptModal'));
+
 import { FINANCIAL_MONTHS, MONTH_NAME_MAP, DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 import churchLogo from '../assets/church_logo.jpg';
 
@@ -779,9 +781,10 @@ export default function BialDashboard({ user, showToast }) {
                   <button
                     type="button"
                     onClick={() => setMemberFilter('unpaid')}
-                    className="text-[11px] font-extrabold text-rose-700 hover:underline flex items-center gap-1 pr-1 cursor-pointer"
+                    className="text-[11px] font-bold text-rose-700 hover:underline flex items-center gap-1.5 pr-1 cursor-pointer"
                   >
-                    <span>⚠️ Chhungkaw {unpaidCount} in an pe lo</span>
+                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                    <span>Chhungkaw {unpaidCount} in an pe lo</span>
                   </button>
                 )}
               </div>
@@ -1179,75 +1182,84 @@ export default function BialDashboard({ user, showToast }) {
         </div>
       </div>
 
-      {/* MODAL 1: ADD / EDIT MEMBER */}
-      <MemberModal
-        isOpen={showMemberModal}
-        onClose={() => setShowMemberModal(false)}
-        onSave={handleSaveMember}
-        memberToEdit={memberToEdit}
-        nextSlNo={rawMembers.length + 1}
-      />
+      {/* MODALS (Lazy-Loaded via Suspense for optimal mobile performance) */}
+      <React.Suspense fallback={null}>
+        {showMemberModal && (
+          <MemberModal
+            isOpen={showMemberModal}
+            onClose={() => setShowMemberModal(false)}
+            onSave={handleSaveMember}
+            memberToEdit={memberToEdit}
+            nextSlNo={rawMembers.length + 1}
+          />
+        )}
 
-      {/* MODAL 2: BIAL OVERALL YEARLY SUMMARY */}
-      <BialYearlySummaryModal
-        isOpen={showYearlySummaryModal}
-        onClose={() => setShowYearlySummaryModal(false)}
-        bialId={targetBialId}
-        initialYear={year}
-        showToast={showToast}
-        onSelectMember={(mId) => {
-          setSelectedMemberForHistory(mId);
-          setShowMemberHistoryModal(true);
-        }}
-      />
+        {showYearlySummaryModal && (
+          <BialYearlySummaryModal
+            isOpen={showYearlySummaryModal}
+            onClose={() => setShowYearlySummaryModal(false)}
+            bialId={targetBialId}
+            initialYear={year}
+            showToast={showToast}
+            onSelectMember={(mId) => {
+              setSelectedMemberForHistory(mId);
+              setShowMemberHistoryModal(true);
+            }}
+          />
+        )}
 
-      {/* MODAL 3: MEMBER PAYMENT HISTORY STATEMENT */}
-      <MemberHistoryModal
-        isOpen={showMemberHistoryModal}
-        onClose={() => setShowMemberHistoryModal(false)}
-        memberId={selectedMemberForHistory}
-        initialYear={year}
-        showToast={showToast}
-        onUpdate={loadLedger}
-        canExport={false}
-      />
+        {showMemberHistoryModal && (
+          <MemberHistoryModal
+            isOpen={showMemberHistoryModal}
+            onClose={() => setShowMemberHistoryModal(false)}
+            memberId={selectedMemberForHistory}
+            initialYear={year}
+            showToast={showToast}
+            onUpdate={loadLedger}
+            canExport={false}
+          />
+        )}
 
-      {/* Bial Member & Tithe Quick Edit Modal (Opened on Card Click) */}
-      <BialMemberEditModal
-        isOpen={showMemberEditModal}
-        onClose={() => {
-          setShowMemberEditModal(false);
-          setSelectedMemberForEditModal(null);
-        }}
-        columns={titheColumns}
-        member={selectedMemberForEditModal ? {
-          ...selectedMemberForEditModal,
-          ...(drafts[selectedMemberForEditModal.member_id] || {})
-        } : null}
-        bialName={bialName}
-        bialId={targetBialId}
-        year={year}
-        month={month}
-        isLocked={isLocked && user.role !== 'ADMIN'}
-        onSaved={() => {
-          loadLedger();
-        }}
-        showToast={showToast}
-      />
+        {showMemberEditModal && (
+          <BialMemberEditModal
+            isOpen={showMemberEditModal}
+            onClose={() => {
+              setShowMemberEditModal(false);
+              setSelectedMemberForEditModal(null);
+            }}
+            columns={titheColumns}
+            member={selectedMemberForEditModal ? {
+              ...selectedMemberForEditModal,
+              ...(drafts[selectedMemberForEditModal.member_id] || {})
+            } : null}
+            bialName={bialName}
+            bialId={targetBialId}
+            year={year}
+            month={month}
+            isLocked={isLocked && user.role !== 'ADMIN'}
+            onSaved={() => {
+              loadLedger();
+            }}
+            showToast={showToast}
+          />
+        )}
 
-      <DigitalReceiptModal
-        isOpen={Boolean(receiptMember)}
-        onClose={() => setReceiptMember(null)}
-        member={receiptMember ? {
-          ...receiptMember,
-          ...(drafts[receiptMember.member_id] || {})
-        } : null}
-        month={month}
-        year={year}
-        bialName={bialName}
-        columns={titheColumns}
-        showToast={showToast}
-      />
+        {Boolean(receiptMember) && (
+          <DigitalReceiptModal
+            isOpen={Boolean(receiptMember)}
+            onClose={() => setReceiptMember(null)}
+            member={receiptMember ? {
+              ...receiptMember,
+              ...(drafts[receiptMember.member_id] || {})
+            } : null}
+            month={month}
+            year={year}
+            bialName={bialName}
+            columns={titheColumns}
+            showToast={showToast}
+          />
+        )}
+      </React.Suspense>
 
     </div>
   );

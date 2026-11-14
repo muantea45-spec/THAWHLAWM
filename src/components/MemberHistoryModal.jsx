@@ -13,7 +13,8 @@ import {
   TrendingUp,
   Percent,
   CheckCircle2,
-  CalendarCheck
+  CalendarCheck,
+  Info
 } from 'lucide-react';
 import { api } from '../utils/api';
 import { exportMemberHistoryPDF } from '../utils/exportEngine';
@@ -400,8 +401,9 @@ export default function MemberHistoryModal({
                     <Calendar className="w-3.5 h-3.5 text-indigo-600" />
                     Monthly Statement (Apr {year} – Mar {year + 1})
                   </h4>
-                  <span className="text-[11px] text-indigo-600 font-medium hidden sm:inline">
-                    💡 Click on any unlocked month row to edit
+                  <span className="text-[11px] text-indigo-600 font-medium hidden sm:inline-flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span>Click on any unlocked month row to edit</span>
                   </span>
                 </div>
 
@@ -596,8 +598,9 @@ export default function MemberHistoryModal({
                     <LayoutGrid className="w-3.5 h-3.5 text-indigo-600" />
                     Month Cards (Apr {year} – Mar {year + 1})
                   </h4>
-                  <span className="text-[11px] text-indigo-600 font-medium">
-                    💡 Click on any unlocked month card to edit
+                  <span className="text-[11px] text-indigo-600 font-medium inline-flex items-center gap-1.5">
+                    <Info className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                    <span>Click on any unlocked month card to edit</span>
                   </span>
                 </div>
 

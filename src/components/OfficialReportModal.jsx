@@ -682,7 +682,7 @@ export default function OfficialReportModal({
                 </label>
                 {fixedBialId ? (
                   <div className="w-full px-2.5 py-1.5 rounded-xl bg-indigo-50/80 border border-indigo-200 text-indigo-950 font-bold text-xs flex items-center justify-between shadow-2xs">
-                    <span className="truncate">📍 {bials.find(b => String(b.id) === String(fixedBialId))?.name || `Bial ${fixedBialId}`}</span>
+                    <span className="truncate">{bials.find(b => String(b.id) === String(fixedBialId))?.name || `Bial ${fixedBialId}`}</span>
                     <span className="text-[9px] font-black text-indigo-700 bg-white border border-indigo-200 px-1.5 py-0.5 rounded-md uppercase shrink-0">
                       Bial Scope
                     </span>
@@ -693,9 +693,9 @@ export default function OfficialReportModal({
                     onChange={(e) => setSelectedBialId(e.target.value)}
                     className="w-full px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer truncate"
                   >
-                    <option value="all">🌟 ALL BIALS (Church Combined)</option>
+                    <option value="all">All Bials (Church Combined)</option>
                     {sortedBials.map(b => (
-                      <option key={b.id} value={b.id}>📍 {b.name} ({b.code})</option>
+                      <option key={b.id} value={b.id}>{b.name} ({b.code})</option>
                     ))}
                   </select>
                 )}
@@ -743,7 +743,7 @@ export default function OfficialReportModal({
                       }`}
                       title="12 Month Breakdown (April - March)"
                     >
-                      📅 12 Months
+                      12 Months
                     </button>
                     <button
                       type="button"
@@ -753,7 +753,7 @@ export default function OfficialReportModal({
                       }`}
                       title="Member Annual Summation (Member-by-Member for Full Year)"
                     >
-                      👥 Member Summary
+                      Member Summary
                     </button>
                   </div>
                 </div>
@@ -787,7 +787,7 @@ export default function OfficialReportModal({
                     onChange={(e) => setSelectedMonth(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
                     className="w-full px-2 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer disabled:opacity-40 disabled:bg-slate-50"
                   >
-                    <option value="all">🌟 All Months (Summation)</option>
+                    <option value="all">All Months (Summation)</option>
                     {FINANCIAL_MONTHS.map(m => (
                       <option key={m.id} value={m.id}>{m.name}</option>
                     ))}
@@ -1609,10 +1609,10 @@ export default function OfficialReportModal({
                       onChange={(e) => setBookletBialFilter(e.target.value)}
                       className="px-2.5 py-1.5 text-xs rounded-lg bg-white border border-slate-300 text-black font-bold focus:outline-none focus:border-black cursor-pointer"
                     >
-                      <option value="all">🌟 All Bials (1 to 12)</option>
+                      <option value="all">All Bials (1 to 12)</option>
                       {processedBookletBials.map(b => (
                         <option key={b.bial_id} value={b.bial_id}>
-                          📍 {b.bial_code ? `${b.bial_code} - ` : ''}{b.bial_name} ({b.members?.length || 0})
+                          {b.bial_code ? `${b.bial_code} - ` : ''}{b.bial_name} ({b.members?.length || 0})
                         </option>
                       ))}
                     </select>
@@ -1789,7 +1789,7 @@ export default function OfficialReportModal({
                                 return (
                                   <>
                                     <div className="bg-slate-100 border-b border-black/40 px-3 py-1.5 flex flex-wrap items-center justify-between gap-1.5 text-black font-black text-xs">
-                                      <span>📍 {bial.bial_code ? `${bial.bial_code} - ` : ''}{bial.bial_name}</span>
+                                      <span>{bial.bial_code ? `${bial.bial_code} - ` : ''}{bial.bial_name}</span>
                                       <div className="flex items-center gap-1.5 text-[10px] font-bold">
                                         <span className="bg-white px-2 py-0.5 rounded border border-slate-300">
                                           {totalHH} HH

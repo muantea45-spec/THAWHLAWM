@@ -1028,14 +1028,13 @@ export default function BialDashboard({ user, showToast }) {
                           </h3>
                         </div>
 
-                        {/* Month A and Month B Selectors on a Single Line */}
-                        <div className="flex items-center justify-center gap-2 text-xs font-bold shrink-0 bg-white px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs flex-wrap">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-indigo-900 text-[10.5px] uppercase font-black tracking-tight">Month A :</span>
+                        {/* Month Selectors on a Single Line */}
+                        <div className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-300 shadow-2xs whitespace-nowrap">
+                          <div className="flex items-center gap-1">
                             <select
                               value={compareMonthTarget}
                               onChange={(e) => setCompareMonthTarget(parseInt(e.target.value))}
-                              className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs"
+                              className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs sm:text-sm"
                             >
                               {FINANCIAL_MONTHS.map(m => (
                                 <option key={m.id} value={m.id}>{m.name}</option>
@@ -1043,14 +1042,13 @@ export default function BialDashboard({ user, showToast }) {
                             </select>
                           </div>
 
-                          <span className="text-slate-400 text-xs font-black px-1">VS</span>
+                          <span className="text-slate-400 text-xs sm:text-sm font-black px-1 sm:px-1.5">VS</span>
 
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-slate-600 text-[10.5px] uppercase font-black tracking-tight">Month B :</span>
+                          <div className="flex items-center gap-1">
                             <select
                               value={compareMonthBase}
                               onChange={(e) => setCompareMonthBase(parseInt(e.target.value))}
-                              className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs"
+                              className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs sm:text-sm"
                             >
                               {FINANCIAL_MONTHS.map(m => (
                                 <option key={m.id} value={m.id}>{m.name}</option>
@@ -1076,11 +1074,11 @@ export default function BialDashboard({ user, showToast }) {
                               {/* Month Figures in Single Lines */}
                               <div className="space-y-1 text-xs font-mono">
                                 <div className="flex justify-between items-center bg-indigo-50/70 px-2 py-1 rounded-lg border border-indigo-100">
-                                  <span className="text-[9.5px] font-bold text-indigo-800 font-sans truncate">Month A ({targetName}):</span>
+                                  <span className="text-[10px] sm:text-[10.5px] font-bold text-indigo-800 font-sans truncate">{targetName}:</span>
                                   <span className="font-extrabold text-indigo-950">₹{item.valA.toLocaleString('en-IN')}</span>
                                 </div>
                                 <div className="flex justify-between items-center bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
-                                  <span className="text-[9.5px] font-bold text-slate-600 font-sans truncate">Month B ({baseName}):</span>
+                                  <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-600 font-sans truncate">{baseName}:</span>
                                   <span className="font-bold text-slate-800">₹{item.valB.toLocaleString('en-IN')}</span>
                                 </div>
                               </div>

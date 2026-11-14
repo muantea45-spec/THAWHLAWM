@@ -1688,9 +1688,8 @@ export default function AdminDashboard({ user, showToast }) {
 
                 {/* Dropdown Selectors for Month or Year */}
                 {compareMode === 'month' ? (
-                  <div className="flex items-center justify-center gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs flex-wrap self-center sm:self-center">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-indigo-900 text-[11px] uppercase font-black tracking-tight">Month A :</span>
+                  <div className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs whitespace-nowrap self-center sm:self-center">
+                    <div className="flex items-center gap-1">
                       <select
                         value={compareMonthTarget}
                         onChange={(e) => setCompareMonthTarget(parseInt(e.target.value))}
@@ -1702,10 +1701,9 @@ export default function AdminDashboard({ user, showToast }) {
                       </select>
                     </div>
 
-                    <span className="text-slate-400 text-xs sm:text-sm font-black px-1">VS</span>
+                    <span className="text-slate-400 text-xs sm:text-sm font-black px-1 sm:px-1.5">VS</span>
 
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-slate-600 text-[11px] uppercase font-black tracking-tight">Month B :</span>
+                    <div className="flex items-center gap-1">
                       <select
                         value={compareMonthBase}
                         onChange={(e) => setCompareMonthBase(parseInt(e.target.value))}

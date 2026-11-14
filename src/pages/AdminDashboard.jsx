@@ -6,7 +6,7 @@ import {
   FileSpreadsheet, FileText, Search, RefreshCw, Eye, ArrowUp, ArrowDown, ArrowUpDown,
   CalendarDays, LogOut, LayoutGrid, LayoutList, Shield, Users, CheckCircle2, Edit3,
   ArrowRightLeft, Trophy, Percent, Wallet, ChevronDown, ChevronUp, IndianRupee,
-  ArrowUpRight, ArrowDownRight, Menu, Loader2
+  ArrowUpRight, ArrowDownRight, Menu, Loader2, ShieldCheck
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -59,6 +59,7 @@ export default function AdminDashboard({ user, showToast }) {
   const [showBialModal, setShowBialModal] = useState(false);
   const [bialToEdit, setBialToEdit] = useState(null);
   const [showCredentialsModal, setShowCredentialsModal] = useState(false);
+  const [credentialsModalSection, setCredentialsModalSection] = useState('bials'); // 'bials' | 'admin_google'
   const [showMatrixModal, setShowMatrixModal] = useState(false);
   const [showYearModal, setShowYearModal] = useState(false);
   const [showRolloverModal, setShowRolloverModal] = useState(false);
@@ -733,7 +734,14 @@ export default function AdminDashboard({ user, showToast }) {
           onOpenConsolidated={() => setShowConsolidatedModal(true)}
           onOpenReportForm={() => setShowReportFormModal(true)}
           onOpenMatrix={() => setShowMatrixModal(true)}
-          onOpenCredentials={() => setShowCredentialsModal(true)}
+          onOpenCredentials={() => {
+            setCredentialsModalSection('bials');
+            setShowCredentialsModal(true);
+          }}
+          onOpenAdmins={() => {
+            setCredentialsModalSection('admin_google');
+            setShowCredentialsModal(true);
+          }}
           onOpenYears={() => setShowYearModal(true)}
           onOpenColumns={() => setActiveTab('columns')}
           year={year}
@@ -774,6 +782,19 @@ export default function AdminDashboard({ user, showToast }) {
                   FY {year}
                 </span>
               </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setCredentialsModalSection('admin_google');
+                  setShowCredentialsModal(true);
+                }}
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all cursor-pointer shadow-2xs shrink-0"
+                title="Make another admin or authorize Google logins"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Manage Admins</span>
+              </button>
             </div>
 
             {/* Dropdowns */}
@@ -2405,6 +2426,7 @@ export default function AdminDashboard({ user, showToast }) {
         onClose={() => setShowCredentialsModal(false)}
         bials={bials}
         onRefresh={loadAdminData}
+        initialSection={credentialsModalSection}
         onEditBial={(b) => {
           setBialToEdit(b);
           setShowBialModal(true);

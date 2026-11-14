@@ -21,9 +21,10 @@ export default function BialCredentialsModal({
   onRefresh,
   onEditBial,
   onAddNewBial,
-  showToast
+  showToast,
+  initialSection = 'bials'
 }) {
-  const [activeSection, setActiveSection] = useState('bials'); // 'bials' | 'admin_google'
+  const [activeSection, setActiveSection] = useState(initialSection);
   const [searchQuery, setSearchQuery] = useState('');
   const [resettingBialId, setResettingBialId] = useState(null);
   const [newPassword, setNewPassword] = useState('');
@@ -35,6 +36,12 @@ export default function BialCredentialsModal({
   const [loadingGoogleEmails, setLoadingGoogleEmails] = useState(false);
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [addingEmail, setAddingEmail] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveSection(initialSection || 'bials');
+    }
+  }, [isOpen, initialSection]);
 
   useEffect(() => {
     if (isOpen && activeSection === 'admin_google') {
@@ -57,15 +64,16 @@ export default function BialCredentialsModal({
 
   const handleAddAdminEmail = async (e) => {
     e.preventDefault();
-    if (!newAdminEmail || !newAdminEmail.includes('@')) {
+    const emailToSubmit = newAdminEmail.trim().toLowerCase();
+    if (!emailToSubmit || !emailToSubmit.includes('@')) {
       if (showToast) showToast('Please enter a valid email address', 'error');
       return;
     }
 
     try {
       setAddingEmail(true);
-      await api.addAdminGoogleEmail(newAdminEmail.trim().toLowerCase());
-      if (showToast) showToast(`Added ${newAdminEmail} as authorized Admin Google Login`, 'success');
+      const res = await api.addAdminGoogleEmail(emailToSubmit);
+      if (showToast) showToast(res?.message || `Successfully added ${emailToSubmit} as an Admin!`, 'success');
       setNewAdminEmail('');
       fetchGoogleEmails();
     } catch (err) {
@@ -149,28 +157,17 @@ export default function BialCredentialsModal({
   return (
     <Modal isOpen={isOpen} onClose={onClose} maxWidth="max-w-2xl">
       <Modal.Header
-        title="User & Admin Credentials Manager"
-        subtitle="Manage login credentials for Bial collectors and authorized Google accounts for Kohhran Admins"
-        icon={Key}
+        title={activeSection === 'admin_google' ? "Make Another Admin (Google Login)" : "Bial User Passwords & Credentials"}
+        subtitle={activeSection === 'admin_google' 
+          ? "Authorize church administrators to sign in using Google Mail on the login home page" 
+          : "Manage login credentials and reset passwords for Bial collectors"}
+        icon={activeSection === 'admin_google' ? ShieldCheck : Key}
         onClose={onClose}
       />
 
       <Modal.Body className="space-y-3">
         {/* SECTION NAVIGATION TABS */}
         <div className="flex items-center p-1 bg-slate-100 rounded-xl border border-slate-200">
-          <button
-            type="button"
-            onClick={() => setActiveSection('bials')}
-            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-              activeSection === 'bials'
-                ? 'bg-white text-indigo-900 shadow-xs border border-slate-200'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Bial User Credentials ({bials.length})</span>
-          </button>
-
           <button
             type="button"
             onClick={() => setActiveSection('admin_google')}
@@ -180,8 +177,21 @@ export default function BialCredentialsModal({
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            <GoogleIcon className="w-3.5 h-3.5" />
-            <span>Admin Google Logins</span>
+            <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Manage Admins (Google Logins)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveSection('bials')}
+            className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+              activeSection === 'bials'
+                ? 'bg-white text-indigo-900 shadow-xs border border-slate-200'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 text-slate-600" />
+            <span>Bial User Passwords ({bials.length})</span>
           </button>
         </div>
 
@@ -337,19 +347,24 @@ export default function BialCredentialsModal({
         {/* SECTION 2: AUTHORIZED ADMIN GOOGLE LOGINS                */}
         {/* ======================================================== */}
         {activeSection === 'admin_google' && (
-          <div className="space-y-4 animate-in fade-in duration-150">
-            <div className="p-3 bg-indigo-50/70 rounded-2xl border border-indigo-200/80 space-y-1">
-              <span className="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
-                <ShieldCheck className="w-4 h-4 text-indigo-600" />
-                Google Authentication for Admins
-              </span>
-              <p className="text-[11px] text-indigo-950/80 leading-relaxed">
-                When an administrator clicks <span className="font-bold">"Sign in with Google"</span> on the Login homepage, only the authorized Google accounts listed below are granted Admin access.
-              </p>
+          <div className="space-y-3.5 animate-in fade-in duration-150">
+            {/* Header Callout */}
+            <div className="p-3.5 bg-gradient-to-r from-indigo-50/90 via-purple-50/70 to-indigo-50/90 rounded-2xl border border-indigo-200/90 space-y-1.5 shadow-2xs">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-indigo-600/30">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-indigo-950">Make Another Admin via Google Login</h4>
+                  <p className="text-[11px] text-indigo-900/80 leading-relaxed">
+                    Authorize any church leader or administrator by entering their Google email below. They can immediately log in from the app homepage using the <strong>"Sign in with Google"</strong> button.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Form to Add Authorized Google Email */}
-            <form onSubmit={handleAddAdminEmail} className="flex gap-2">
+            <form onSubmit={handleAddAdminEmail} className="flex flex-col sm:flex-row gap-2">
               <div className="relative flex-1">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
@@ -357,37 +372,44 @@ export default function BialCredentialsModal({
                   required
                   value={newAdminEmail}
                   onChange={(e) => setNewAdminEmail(e.target.value)}
-                  placeholder="Enter administrator's Google email (e.g. pastor@gmail.com)"
-                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 shadow-2xs"
+                  placeholder="Enter administrator's Gmail (e.g. pastor@gmail.com)"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
                 />
               </div>
               <button
                 type="submit"
                 disabled={addingEmail || !newAdminEmail}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs shrink-0"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs shadow-indigo-600/20 shrink-0"
               >
-                <Plus className="w-4 h-4" /> <span>Authorize Email</span>
+                <Plus className="w-4 h-4" /> <span>{addingEmail ? 'Authorizing...' : 'Authorize Admin'}</span>
               </button>
             </form>
 
             {/* List of Authorized Google Emails */}
-            <div className="space-y-2 max-h-[42vh] overflow-y-auto pr-0.5">
-              <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                Authorized Admin Accounts ({googleEmails.length + (primaryAdminEmail ? 1 : 0)})
-              </span>
+            <div className="space-y-2 max-h-[38vh] overflow-y-auto pr-0.5">
+              <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                <span className="text-[10.5px] font-bold text-slate-600 uppercase tracking-wider block">
+                  Authorized Church Administrators ({googleEmails.length + (primaryAdminEmail ? 1 : 0)})
+                </span>
+                <span className="text-[10px] font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                  Full Admin Rights
+                </span>
+              </div>
 
               {/* Primary Admin account if linked */}
               {primaryAdminEmail && (
-                <div className="p-2.5 rounded-xl bg-indigo-50/50 border border-indigo-200 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <GoogleIcon className="w-4 h-4" />
-                    <div>
-                      <span className="font-mono font-bold text-xs text-indigo-950 block">{primaryAdminEmail}</span>
-                      <span className="text-[10px] text-indigo-600 font-bold uppercase">Primary Admin Account</span>
+                <div className="p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-200/90 flex items-center justify-between shadow-2xs">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-white border border-indigo-100 flex items-center justify-center shrink-0">
+                      <GoogleIcon className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-mono font-bold text-xs text-indigo-950 block truncate">{primaryAdminEmail}</span>
+                      <span className="text-[10px] text-indigo-700 font-bold uppercase tracking-tight">Primary Account Owner</span>
                     </div>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200">
-                    Active
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">
+                    Owner
                   </span>
                 </div>
               )}
@@ -411,18 +433,23 @@ export default function BialCredentialsModal({
                       key={item.id}
                       className="p-2.5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 flex items-center justify-between shadow-2xs transition-colors"
                     >
-                      <div className="flex items-center gap-2">
-                        <GoogleIcon className="w-4 h-4" />
-                        <div>
-                          <span className="font-mono font-bold text-xs text-slate-900 block">{item.email}</span>
-                          <span className="text-[10px] text-slate-400 font-sans">Authorized Admin</span>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-lg bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
+                          <GoogleIcon className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="font-mono font-bold text-xs text-slate-900 block truncate">{item.email}</span>
+                          <span className="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                            Authorized Admin
+                          </span>
                         </div>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleDeleteAdminEmail(item.id, item.email)}
-                        className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
                         title="Revoke Admin Access"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -430,6 +457,19 @@ export default function BialCredentialsModal({
                     </div>
                   ))
               )}
+            </div>
+
+            {/* How-It-Works Step-by-Step Guide */}
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5">
+              <span className="font-bold text-slate-800 block text-[11px] uppercase tracking-wide">
+                How the new Admin logs in:
+              </span>
+              <ol className="list-decimal list-inside space-y-1 text-[11.5px] text-slate-600">
+                <li>Authorize their Gmail address above and click <strong>"Authorize Admin"</strong>.</li>
+                <li>Send them the web application link: <span className="font-mono text-indigo-700 font-bold select-all">https://thawhlawmptr.pages.dev</span></li>
+                <li>On the login homepage, they simply click the black <strong>"Sign in with Google"</strong> button.</li>
+                <li>They choose their authorized Google account and will be signed into the Admin Console instantly!</li>
+              </ol>
             </div>
           </div>
         )}

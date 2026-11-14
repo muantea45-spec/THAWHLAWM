@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Building2, Eye, BarChart3, RefreshCw, ArrowRightLeft,
   FileText, FileSpreadsheet, Calendar, KeyRound, CalendarDays, ChevronLeft,
-  ChevronRight, X, Shield, Sparkles, FolderArchive, LogOut, Award, SlidersHorizontal
+  ChevronRight, X, Shield, ShieldCheck, Sparkles, FolderArchive, LogOut, Award, SlidersHorizontal
 } from 'lucide-react';
 
 export default function AdminSidebar({
@@ -13,6 +13,7 @@ export default function AdminSidebar({
   onOpenReportForm,
   onOpenMatrix,
   onOpenCredentials,
+  onOpenAdmins,
   onOpenYears,
   onOpenColumns,
   year,
@@ -100,13 +101,22 @@ export default function AdminSidebar({
       tooltip: 'Lock & unlock month entries'
     },
     {
+      id: 'admins',
+      label: 'Manage Admins (Google)',
+      shortLabel: 'Admins',
+      icon: ShieldCheck,
+      color: 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border-indigo-200',
+      action: onOpenAdmins,
+      tooltip: 'Authorize another church admin to sign in using Google Mail'
+    },
+    {
       id: 'credentials',
-      label: 'Bial Credentials',
-      shortLabel: 'Credentials',
+      label: 'Bial User Passwords',
+      shortLabel: 'Bial Logins',
       icon: KeyRound,
       color: 'text-purple-700 bg-purple-50 hover:bg-purple-100 border-purple-200',
       action: onOpenCredentials,
-      tooltip: 'Manage bial logins & passwords'
+      tooltip: 'Manage bial collector logins & reset passwords'
     },
     {
       id: 'years',

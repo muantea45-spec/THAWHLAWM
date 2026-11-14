@@ -423,6 +423,11 @@ app.post('/auth/google', async (c) => {
   }
 
   try {
+    // Ensure admin_google_emails table exists
+    try {
+      await db.prepare("CREATE TABLE IF NOT EXISTS admin_google_emails (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").run();
+    } catch (e) {}
+
     const { results: adminUsers } = await db.prepare("SELECT * FROM users WHERE role = 'ADMIN'").all();
     const admins = adminUsers || [];
 
@@ -432,13 +437,13 @@ app.post('/auth/google', async (c) => {
       allowedEmails = (allowedRows || []).map(r => r.email.toLowerCase());
     } catch (e) {}
 
+    const hasAnyAllowed = allowedEmails.length > 0;
+    const isAllowed = allowedEmails.includes(verifiedEmail);
+
     let matchedAdmin = admins.find(a => a.email && a.email.toLowerCase() === verifiedEmail);
 
-    if (!matchedAdmin && allowedEmails.includes(verifiedEmail)) {
-      matchedAdmin = admins[0] || null;
-    }
-
-    const hasAnyLinkedEmail = admins.some(a => a.email && a.email.trim() !== '') || allowedEmails.length > 0;
+    // Initial bootstrap: If no email is configured anywhere yet, link the first sign-in as primary admin
+    const hasAnyLinkedEmail = admins.some(a => a.email && a.email.trim() !== '') || hasAnyAllowed;
     if (!matchedAdmin && !hasAnyLinkedEmail && admins.length > 0) {
       matchedAdmin = admins[0];
       try {
@@ -449,6 +454,45 @@ app.post('/auth/google', async (c) => {
       } catch (err) {
         console.error('Error linking initial admin email:', err);
       }
+    } else if (!isAllowed && !matchedAdmin) {
+      return c.json({
+        error: `Access Denied: Google account (${verifiedEmail}) is not authorized as an Admin. Please ask a church administrator to add your Google email in the Admin Console.`
+      }, 403);
+    }
+
+    // If verifiedEmail is authorized in allowedEmails, ensure an admin record exists in users table
+    if (!matchedAdmin && isAllowed) {
+      try {
+        const userByEmail = await db.prepare("SELECT * FROM users WHERE LOWER(email) = ? AND role = 'ADMIN'").bind(verifiedEmail).first();
+        if (userByEmail) {
+          matchedAdmin = userByEmail;
+        } else {
+          const cleanUser = verifiedEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || 'admin';
+          let newUsername = cleanUser;
+          const taken = await db.prepare("SELECT id FROM users WHERE username = ?").bind(newUsername).first();
+          if (taken) {
+            newUsername = `${cleanUser}_${Math.floor(1000 + Math.random() * 9000)}`;
+          }
+          const dummyHash = '$2a$10$GOOGLEAUTH' + Math.random().toString(36).substring(2);
+          const insertRes = await db.prepare(
+            "INSERT INTO users (username, password_hash, role, status, email, google_id) VALUES (?, ?, 'ADMIN', 'active', ?, ?)"
+          ).bind(newUsername, dummyHash, verifiedEmail, googleSub).run();
+          matchedAdmin = {
+            id: insertRes.meta?.last_row_id || (admins[0]?.id || 1),
+            username: newUsername,
+            role: 'ADMIN',
+            status: 'active',
+            email: verifiedEmail
+          };
+        }
+      } catch (err) {
+        console.warn('Error linking/creating admin user:', err);
+        matchedAdmin = admins[0] || null;
+      }
+    } else if (matchedAdmin && googleSub && !matchedAdmin.google_id) {
+      try {
+        await db.prepare("UPDATE users SET google_id = ? WHERE id = ?").bind(googleSub, matchedAdmin.id).run();
+      } catch (e) {}
     }
 
     if (!matchedAdmin) {
@@ -497,6 +541,9 @@ app.post('/auth/google', async (c) => {
 app.get('/admin/google-emails', authMiddleware, requireAdmin, async (c) => {
   const db = c.env.DB;
   try {
+    try {
+      await db.prepare("CREATE TABLE IF NOT EXISTS admin_google_emails (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").run();
+    } catch (e) {}
     const { results: emails } = await db.prepare("SELECT id, email, created_at FROM admin_google_emails ORDER BY id ASC").all();
     const primaryAdmin = await db.prepare("SELECT email FROM users WHERE role = 'ADMIN' AND email IS NOT NULL LIMIT 1").first();
     return c.json({
@@ -510,16 +557,49 @@ app.get('/admin/google-emails', authMiddleware, requireAdmin, async (c) => {
 
 app.post('/admin/google-emails', authMiddleware, requireAdmin, async (c) => {
   const db = c.env.DB;
-  const { email } = await c.req.json();
+  const body = await c.req.json().catch(() => ({}));
+  const email = body.email;
   if (!email || !email.includes('@')) {
     return c.json({ error: 'Valid email address is required' }, 400);
   }
   const cleanEmail = email.trim().toLowerCase();
   try {
+    await db.prepare("CREATE TABLE IF NOT EXISTS admin_google_emails (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").run();
+    
+    // Check if already in list
+    const existing = await db.prepare("SELECT id FROM admin_google_emails WHERE LOWER(email) = ?").bind(cleanEmail).first();
+    if (existing) {
+      return c.json({ error: `The email "${cleanEmail}" is already authorized as an Admin` }, 400);
+    }
+
     await db.prepare("INSERT INTO admin_google_emails (email) VALUES (?)").bind(cleanEmail).run();
-    return c.json({ message: 'Admin Google email authorized successfully', email: cleanEmail });
+    
+    // Also ensure a corresponding active user row exists in users table
+    const existingUser = await db.prepare("SELECT id, status FROM users WHERE LOWER(email) = ? AND role = 'ADMIN'").bind(cleanEmail).first();
+    if (existingUser) {
+      if (existingUser.status === 'locked') {
+        await db.prepare("UPDATE users SET status = 'active' WHERE id = ?").bind(existingUser.id).run();
+      }
+    } else {
+      const cleanUser = cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20) || 'admin';
+      let newUsername = cleanUser;
+      const taken = await db.prepare("SELECT id FROM users WHERE username = ?").bind(newUsername).first();
+      if (taken) {
+        newUsername = `${cleanUser}_${Math.floor(1000 + Math.random() * 9000)}`;
+      }
+      const dummyHash = '$2a$10$GOOGLEAUTH' + Math.random().toString(36).substring(2);
+      try {
+        await db.prepare(
+          "INSERT INTO users (username, password_hash, role, status, email) VALUES (?, ?, 'ADMIN', 'active', ?)"
+        ).bind(newUsername, dummyHash, cleanEmail).run();
+      } catch (uErr) {
+        console.warn('Note on pre-creating user row:', uErr);
+      }
+    }
+
+    return c.json({ message: `Successfully authorized ${cleanEmail} as an Admin. They can now log in using Google!`, email: cleanEmail });
   } catch (err) {
-    return c.json({ error: 'Failed to add admin email or email already exists' }, 400);
+    return c.json({ error: err.message || 'Failed to add admin email' }, 400);
   }
 });
 
@@ -527,8 +607,13 @@ app.delete('/admin/google-emails/:id', authMiddleware, requireAdmin, async (c) =
   const db = c.env.DB;
   const id = parseInt(c.req.param('id'));
   try {
+    const target = await db.prepare("SELECT email FROM admin_google_emails WHERE id = ?").bind(id).first();
     await db.prepare("DELETE FROM admin_google_emails WHERE id = ?").bind(id).run();
-    return c.json({ message: 'Authorized admin email removed' });
+    if (target?.email) {
+      // Lock any secondary user with this email (keeping primary admin id=1 safe)
+      await db.prepare("UPDATE users SET status = 'locked' WHERE LOWER(email) = ? AND id != 1").bind(target.email.toLowerCase()).run();
+    }
+    return c.json({ message: 'Authorized admin email removed successfully' });
   } catch (err) {
     return c.json({ error: 'Failed to delete admin email' }, 500);
   }

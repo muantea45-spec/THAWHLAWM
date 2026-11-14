@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { UserCheck, Trash2, Save, Lock, Edit3, Copy, RefreshCw } from 'lucide-react';
+import { UserCheck, Trash2, Save, Lock, Edit3 } from 'lucide-react';
 import { api } from '../utils/api';
 import { FINANCIAL_MONTHS, DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 import Modal from './common/Modal';
@@ -22,7 +22,6 @@ export default function BialMemberEditModal({
   const [amounts, setAmounts] = useState({});
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [loadingPreviousMonth, setLoadingPreviousMonth] = useState(false);
 
   const inputRefs = useRef([]);
   const activeCols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
@@ -42,56 +41,6 @@ export default function BialMemberEditModal({
 
   const handleAmountChange = (fieldKey, val) => {
     setAmounts(prev => ({ ...prev, [fieldKey]: val }));
-  };
-
-  const handleRepeatPreviousMonth = async () => {
-    const memberId = member?.member_id || member?.id;
-    if (!memberId) return;
-
-    try {
-      setLoadingPreviousMonth(true);
-      const historyRes = await api.getMemberHistory(memberId, year);
-      const monthlyEntries = historyRes?.monthlyEntries || [];
-      
-      // Financial months cycle: 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3
-      const monthOrder = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
-      const currentIdx = monthOrder.indexOf(month);
-      
-      // Look back from currentIdx - 1 downwards
-      let targetEntry = null;
-      for (let i = currentIdx - 1; i >= 0; i--) {
-        const mNum = monthOrder[i];
-        const found = monthlyEntries.find(e => e.month === mNum && Number(e.total) > 0);
-        if (found) {
-          targetEntry = found;
-          break;
-        }
-      }
-      
-      // If not found in previous months of this year, look anywhere with total > 0
-      if (!targetEntry) {
-        targetEntry = monthlyEntries.find(e => Number(e.total) > 0);
-      }
-
-      if (!targetEntry) {
-        showToast('No previous month records found to repeat', 'info');
-        return;
-      }
-
-      const newAmounts = { ...amounts };
-      activeCols.forEach(col => {
-        const v = targetEntry[col.field_key];
-        newAmounts[col.field_key] = (v !== undefined && v !== null && Number(v) > 0) ? String(v) : '';
-      });
-      setAmounts(newAmounts);
-
-      const targetMonthName = FINANCIAL_MONTHS.find(m => m.id === targetEntry.month)?.name || `Month ${targetEntry.month}`;
-      showToast(`Copied previous tithes from ${targetMonthName}!`, 'success');
-    } catch (err) {
-      showToast(err.message || 'Failed to fetch previous month data', 'error');
-    } finally {
-      setLoadingPreviousMonth(false);
-    }
   };
 
   const handleAmountKeyDown = (e, index) => {
@@ -241,25 +190,13 @@ export default function BialMemberEditModal({
 
           {/* Section 2: Tithe Breakdown for Selected Month */}
           <div className="space-y-2 pt-2 border-t border-slate-100">
-            <div className="flex flex-wrap items-center justify-between gap-1.5">
+            <div className="flex items-center justify-between">
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 block">
                 2. Tithe Figures for {monthName}
               </span>
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={isLocked || loadingPreviousMonth}
-                  onClick={handleRepeatPreviousMonth}
-                  className="px-2 py-0.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-[10.5px] border border-indigo-200 transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-40"
-                  title="Copy tithe amounts from the previous recorded month"
-                >
-                  <Copy className="w-3 h-3 text-indigo-600" />
-                  <span>{loadingPreviousMonth ? 'Copying...' : 'Hmasa Ang'}</span>
-                </button>
-                <span className="text-[11px] font-mono font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
-                  Total: ₹{calculatedTotal.toLocaleString('en-IN')}
-                </span>
-              </div>
+              <span className="text-[11px] font-mono font-black text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-lg border border-emerald-200">
+                Total: ₹{calculatedTotal.toLocaleString('en-IN')}
+              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-2.5 font-mono">

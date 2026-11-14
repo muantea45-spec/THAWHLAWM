@@ -1677,11 +1677,11 @@ export default function AdminDashboard({ user, showToast }) {
                     </div>
                   </div>
 
-                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-normal mt-0.5">
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-normal mt-0.5 whitespace-nowrap overflow-x-auto no-scrollbar">
                     {compareMode === 'month' ? (
-                      <>Comparing <strong className="text-slate-800 font-semibold">Month A ({currMonthFullName})</strong> vs <strong className="text-slate-700 font-semibold">Month B ({prevMonthFullName})</strong> in FY {year}</>
+                      <>Comparing <strong className="text-slate-800 font-semibold">{currMonthFullName}</strong> vs <strong className="text-slate-700 font-semibold">{prevMonthFullName}</strong> (FY {year})</>
                     ) : (
-                      <>Comparing <strong className="text-indigo-800 font-semibold">FY {compareYearTarget}-{compareYearTarget + 1} (Year A)</strong> vs <strong className="text-slate-700 font-semibold">FY {compareYearBase}-{compareYearBase + 1} (Year B)</strong></>
+                      <>Comparing <strong className="text-indigo-800 font-semibold">FY {compareYearTarget}-{compareYearTarget + 1}</strong> vs <strong className="text-slate-700 font-semibold">FY {compareYearBase}-{compareYearBase + 1}</strong></>
                     )}
                   </p>
                 </div>
@@ -1718,9 +1718,8 @@ export default function AdminDashboard({ user, showToast }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2 text-xs font-bold shrink-0 bg-white px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs flex-wrap self-end sm:self-center">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-indigo-900 text-[10.5px] uppercase font-black tracking-tight">Year A :</span>
+                  <div className="flex items-center gap-1.5 sm:gap-2 text-xs font-bold shrink-0 bg-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs whitespace-nowrap self-start sm:self-center">
+                    <div className="flex items-center gap-1">
                       <select
                         value={compareYearTarget}
                         onChange={(e) => setCompareYearTarget(parseInt(e.target.value))}
@@ -1732,10 +1731,9 @@ export default function AdminDashboard({ user, showToast }) {
                       </select>
                     </div>
 
-                    <span className="text-slate-400 text-xs font-black px-1">VS</span>
+                    <span className="text-slate-400 text-xs font-black px-1 sm:px-1.5">VS</span>
 
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-slate-600 text-[10.5px] uppercase font-black tracking-tight">Year B :</span>
+                    <div className="flex items-center gap-1">
                       <select
                         value={compareYearBase}
                         onChange={(e) => setCompareYearBase(parseInt(e.target.value))}
@@ -1990,19 +1988,19 @@ export default function AdminDashboard({ user, showToast }) {
 
                           {/* Base Year vs Target Year Boxes */}
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5">
-                              <span className="text-[8.5px] font-bold text-slate-500 uppercase block font-sans">
-                                FY {compareYearBase}-{compareYearBase + 1} (Year B)
+                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
+                              <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase block font-sans whitespace-nowrap truncate">
+                                FY {compareYearBase}-{compareYearBase + 1}
                               </span>
-                              <span className="text-xs sm:text-sm font-black text-slate-700 block">
+                              <span className="text-xs sm:text-sm font-black text-slate-700 block truncate">
                                 ₹{fyBaseTotal.toLocaleString('en-IN')}
                               </span>
                             </div>
-                            <div className="p-2 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5">
-                              <span className="text-[8.5px] font-bold text-indigo-700 uppercase block font-sans">
-                                FY {compareYearTarget}-{compareYearTarget + 1} (Year A)
+                            <div className="p-2 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5 min-w-0">
+                              <span className="text-[9px] sm:text-[10px] font-bold text-indigo-700 uppercase block font-sans whitespace-nowrap truncate">
+                                FY {compareYearTarget}-{compareYearTarget + 1}
                               </span>
-                              <span className="text-xs sm:text-sm font-black text-indigo-900 block">
+                              <span className="text-xs sm:text-sm font-black text-indigo-900 block truncate">
                                 ₹{fyTargetTotal.toLocaleString('en-IN')}
                               </span>
                             </div>
@@ -2067,31 +2065,31 @@ export default function AdminDashboard({ user, showToast }) {
 
                           {/* Base vs Target Household Boxes */}
                           <div className="grid grid-cols-2 gap-2">
-                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5">
-                              <span className="text-[8.5px] font-bold text-slate-500 uppercase block font-sans">
-                                FY {compareYearBase} (Year B)
+                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
+                              <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase block font-sans whitespace-nowrap truncate">
+                                FY {compareYearBase}
                               </span>
-                              <span className="text-xs sm:text-sm font-black text-slate-700 block">
+                              <span className="text-xs sm:text-sm font-black text-slate-700 block truncate">
                                 {fyBaseReturned} <span className="text-[9px] font-sans text-slate-500 font-normal">/ {fyBaseHH} HH</span>
                               </span>
-                              <span className="text-[9.5px] font-bold text-slate-600 block">
+                              <span className="text-[9.5px] font-bold text-slate-600 block truncate">
                                 {fyBaseReturnRate}% return rate
                               </span>
-                              <span className="text-[9px] text-slate-500 block">
+                              <span className="text-[9px] text-slate-500 block truncate">
                                 Avg: ₹{fyBaseAvg.toLocaleString('en-IN')}/HH
                               </span>
                             </div>
-                            <div className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5">
-                              <span className="text-[8.5px] font-bold text-emerald-700 uppercase block font-sans">
-                                FY {compareYearTarget} (Year A)
+                            <div className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5 min-w-0">
+                              <span className="text-[9px] sm:text-[10px] font-bold text-emerald-700 uppercase block font-sans whitespace-nowrap truncate">
+                                FY {compareYearTarget}
                               </span>
-                              <span className="text-xs sm:text-sm font-black text-emerald-900 block">
+                              <span className="text-xs sm:text-sm font-black text-emerald-900 block truncate">
                                 {fyTargetReturned} <span className="text-[9px] font-sans text-emerald-600 font-normal">/ {fyTargetHH} HH</span>
                               </span>
-                              <span className="text-[9.5px] font-bold text-emerald-700 block">
+                              <span className="text-[9.5px] font-bold text-emerald-700 block truncate">
                                 {fyTargetReturnRate}% return rate
                               </span>
-                              <span className="text-[9px] text-emerald-800 font-semibold block">
+                              <span className="text-[9px] text-emerald-800 font-semibold block truncate">
                                 Avg: ₹{fyTargetAvg.toLocaleString('en-IN')}/HH
                               </span>
                             </div>

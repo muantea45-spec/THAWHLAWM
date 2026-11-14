@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Building2, BarChart3, CalendarDays, FileSpreadsheet,
+  Building2, BarChart3, CalendarDays,
   ChevronLeft, ChevronRight, X, UserCheck, LogOut, Award, FileText, KeyRound
 } from 'lucide-react';
 
@@ -9,7 +9,6 @@ export default function BialSidebar({
   onSelectTab,
   onOpenYearlySummary,
   onOpenCertificate,
-  onOpenExport,
   onOpenPasswordModal,
   year,
   setYear,
@@ -39,15 +38,6 @@ export default function BialSidebar({
   ];
 
   const bialTools = [
-    {
-      id: 'export',
-      label: 'Export Reports',
-      shortLabel: 'Export',
-      icon: FileSpreadsheet,
-      color: 'text-slate-700 bg-white hover:bg-slate-50 border-slate-200',
-      action: onOpenExport,
-      tooltip: 'Export ledger to Excel or PDF'
-    },
     {
       id: 'overall',
       label: 'Overall Summary',

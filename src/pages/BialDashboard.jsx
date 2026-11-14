@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import BialSidebar from '../components/BialSidebar';
 import {
   Calendar, Lock, Unlock, UserPlus, Edit3, Trash2, Search,
-  FileSpreadsheet, FileText, Save, CheckCircle, AlertTriangle,
+  FileText, Save, CheckCircle, AlertTriangle,
   ArrowUp, ArrowDown, ArrowUpDown, Layers, Eye,
   ChevronDown, ChevronUp, LogOut, Building2, BarChart3, PieChart as PieChartIcon,
   RefreshCw, Menu, Award, Users
@@ -20,12 +20,6 @@ import MemberHistoryModal from '../components/MemberHistoryModal';
 import OfficialReportModal from '../components/OfficialReportModal';
 import DigitalReceiptModal from '../components/DigitalReceiptModal';
 import Modal from '../components/common/Modal';
-import {
-  exportToExcel,
-  exportToPDF,
-  exportBialYearlySummaryExcel,
-  exportBialYearlySummaryPDF
-} from '../utils/exportEngine';
 import { FINANCIAL_MONTHS, MONTH_NAME_MAP, DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 import churchLogo from '../assets/church_logo.jpg';
 
@@ -70,7 +64,6 @@ export default function BialDashboard({ user, showToast }) {
   const [showYearlySummaryModal, setShowYearlySummaryModal] = useState(false);
   const [selectedMemberForHistory, setSelectedMemberForHistory] = useState(null);
   const [showMemberHistoryModal, setShowMemberHistoryModal] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
 
   // Focus navigation matrix ref
@@ -548,7 +541,6 @@ export default function BialDashboard({ user, showToast }) {
           onSelectTab={setActiveTab}
           onOpenYearlySummary={() => setShowYearlySummaryModal(true)}
           onOpenCertificate={() => setShowCertificateModal(true)}
-          onOpenExport={() => setShowExportModal(true)}
           year={year}
           setYear={setYear}
           financialYears={financialYears}
@@ -1219,154 +1211,8 @@ export default function BialDashboard({ user, showToast }) {
         initialYear={year}
         showToast={showToast}
         onUpdate={loadLedger}
+        canExport={false}
       />
-
-      {/* MODAL 4: EXPORT DIALOG (LIKE ADMIN) */}
-      <Modal isOpen={showExportModal} onClose={() => setShowExportModal(false)} maxWidth="max-w-[395px]">
-        <Modal.Header
-          title="Export Tithe Ledger"
-          subtitle={`${bialName} • ${FINANCIAL_MONTHS.find(m => m.id === month)?.name || ''} FY ${year}`}
-          icon={FileText}
-          onClose={() => setShowExportModal(false)}
-        />
-        <Modal.Body className="space-y-3.5">
-          {/* Section 1: This Month */}
-          <div className="space-y-1.5">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-              1. This Month Ledger ({FINANCIAL_MONTHS.find(m => m.id === month)?.name || ''} {year})
-            </span>
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => {
-                  exportToExcel({
-                    bialName,
-                    year,
-                    month,
-                    columns: titheColumns,
-                    members: processedMembers.map(m => {
-                      const row = {
-                        ...m,
-                        total: drafts[m.member_id]?.total || 0
-                      };
-                      titheColumns.forEach(c => {
-                        row[c.field_key] = parseFloat(drafts[m.member_id]?.[c.field_key]) || 0;
-                      });
-                      return row;
-                    }),
-                    summary: {
-                      ...footerColumnSums,
-                      grand_total: footerGrandTotal
-                    }
-                  });
-                  setShowExportModal(false);
-                  showToast('Excel ledger downloaded', 'success');
-                }}
-                className="p-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                <span>Excel (.xlsx)</span>
-              </button>
-
-              <button
-                onClick={() => {
-                  exportToPDF({
-                    bialName,
-                    year,
-                    month,
-                    columns: titheColumns,
-                    members: processedMembers.map(m => {
-                      const row = {
-                        ...m,
-                        total: drafts[m.member_id]?.total || 0
-                      };
-                      titheColumns.forEach(c => {
-                        row[c.field_key] = parseFloat(drafts[m.member_id]?.[c.field_key]) || 0;
-                      });
-                      return row;
-                    }),
-                    summary: {
-                      ...footerColumnSums,
-                      grand_total: footerGrandTotal
-                    }
-                  });
-                  setShowExportModal(false);
-                  showToast('PDF report downloaded', 'success');
-                }}
-                className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileText className="w-4 h-4 text-rose-600" />
-                <span>PDF (.pdf)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Section 2: Annual Overall Summary */}
-          <div className="space-y-1.5 pt-2 border-t border-slate-200">
-            <span className="text-[10px] font-bold text-indigo-900 uppercase tracking-wider block">
-              2. Annual Summary (All 12 Months)
-            </span>
-            <div className="grid grid-cols-2 gap-2 pt-0.5">
-              <button
-                onClick={async () => {
-                  try {
-                    showToast('Generating Annual Summary Excel...', 'info');
-                    const res = await api.getYearlySummary(targetBialId, year);
-                    exportBialYearlySummaryExcel({
-                      bialName: res.bial?.name || bialName,
-                      year: res.year,
-                      columns: res.columns || titheColumns,
-                      monthlyBreakdown: res.monthlyBreakdown,
-                      memberTotals: res.memberTotals,
-                      grandTotals: res.grandTotals
-                    });
-                    setShowExportModal(false);
-                    showToast('Annual Summary Excel downloaded', 'success');
-                  } catch (err) {
-                    showToast(err.message || 'Failed to export yearly summary', 'error');
-                  }
-                }}
-                className="p-2.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 border border-indigo-300 text-indigo-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
-                <span>Overall Excel</span>
-              </button>
-
-              <button
-                onClick={async () => {
-                  try {
-                    showToast('Generating Annual Summary PDF...', 'info');
-                    const res = await api.getYearlySummary(targetBialId, year);
-                    exportBialYearlySummaryPDF({
-                      bialName: res.bial?.name || bialName,
-                      year: res.year,
-                      columns: res.columns || titheColumns,
-                      monthlyBreakdown: res.monthlyBreakdown,
-                      memberTotals: res.memberTotals,
-                      grandTotals: res.grandTotals
-                    });
-                    setShowExportModal(false);
-                    showToast('Annual Summary PDF downloaded', 'success');
-                  } catch (err) {
-                    showToast(err.message || 'Failed to export yearly summary', 'error');
-                  }
-                }}
-                className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-              >
-                <FileText className="w-4 h-4 text-purple-600" />
-                <span>Overall PDF</span>
-              </button>
-            </div>
-          </div>
-        </Modal.Body>
-        <Modal.Footer>
-          <button
-            onClick={() => setShowExportModal(false)}
-            className="px-4 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
-          >
-            Close
-          </button>
-        </Modal.Footer>
-      </Modal>
 
       {/* Bial Member & Tithe Quick Edit Modal (Opened on Card Click) */}
       <BialMemberEditModal

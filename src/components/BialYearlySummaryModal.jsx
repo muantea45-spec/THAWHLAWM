@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Layers, Users, FileText, Search, ArrowUp, ArrowDown, ArrowUpDown, Eye, LayoutGrid, Table } from 'lucide-react';
+import { Calendar, Layers, Users, Search, ArrowUp, ArrowDown, ArrowUpDown, Eye, LayoutGrid, Table } from 'lucide-react';
 import Modal from './common/Modal';
 import { api } from '../utils/api';
-import { exportBialYearlySummaryPDF } from '../utils/exportEngine';
 import { DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 
 export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initialYear, showToast, onSelectMember }) {
@@ -168,22 +167,6 @@ export default function BialYearlySummaryModal({ isOpen, onClose, bialId, initia
               <LayoutGrid className="w-3.5 h-3.5" />
               <span>Card View</span>
             </div>
-
-            {data && (
-              <button
-                onClick={() => exportBialYearlySummaryPDF({
-                  bialName: bial?.name || 'Bial',
-                  year,
-                  columns: activeCols,
-                  monthlyBreakdown: monthly,
-                  memberTotals: members,
-                  grandTotals: grand
-                })}
-                className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 text-xs font-bold border border-rose-300 transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-              >
-                <FileText className="w-3.5 h-3.5 text-rose-600" /> PDF
-              </button>
-            )}
           </div>
         </div>
 

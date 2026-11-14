@@ -26,7 +26,8 @@ export default function MemberHistoryModal({
   memberId,
   initialYear,
   showToast,
-  onUpdate
+  onUpdate,
+  canExport = true
 }) {
   const [year, setYear] = useState(initialYear || new Date().getFullYear());
   const [financialYears, setFinancialYears] = useState([2024, 2025, 2026, 2027]);
@@ -261,7 +262,7 @@ export default function MemberHistoryModal({
           </div>
 
           {/* PDF Export Button */}
-          {data && (
+          {canExport && data && (
             <button
               onClick={() => exportMemberHistoryPDF(data)}
               className="px-3 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 text-xs font-bold border border-rose-300 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"

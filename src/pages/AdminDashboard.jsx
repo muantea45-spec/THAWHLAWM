@@ -16,7 +16,6 @@ import {
 import { api, setAuthToken, setAuthUser } from '../utils/api';
 import Modal from '../components/common/Modal';
 import BialModal from '../components/BialModal';
-import BialCredentialsModal from '../components/BialCredentialsModal';
 import MonthMatrixModal from '../components/MonthMatrixModal';
 import FinancialYearModal from '../components/FinancialYearModal';
 import AdminMemberEditModal from '../components/AdminMemberEditModal';
@@ -60,8 +59,6 @@ export default function AdminDashboard({ user, showToast }) {
   // Modals
   const [showBialModal, setShowBialModal] = useState(false);
   const [bialToEdit, setBialToEdit] = useState(null);
-  const [showCredentialsModal, setShowCredentialsModal] = useState(false);
-  const [credentialsModalSection, setCredentialsModalSection] = useState('bials'); // 'bials' | 'admin_google'
   const [showMatrixModal, setShowMatrixModal] = useState(false);
   const [showYearModal, setShowYearModal] = useState(false);
   const [showRolloverModal, setShowRolloverModal] = useState(false);
@@ -806,19 +803,6 @@ export default function AdminDashboard({ user, showToast }) {
                   FY {year}
                 </span>
               </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setCredentialsModalSection('admin_google');
-                  setShowCredentialsModal(true);
-                }}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition-all cursor-pointer shadow-2xs shrink-0"
-                title="Make another admin or authorize Google logins"
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-indigo-600" />
-                <span>Manage Admins</span>
-              </button>
             </div>
 
             {/* Dropdowns */}
@@ -2643,23 +2627,6 @@ export default function AdminDashboard({ user, showToast }) {
         onClose={() => setShowBialModal(false)}
         onSave={handleSaveBial}
         bialToEdit={bialToEdit}
-      />
-
-      <BialCredentialsModal
-        isOpen={showCredentialsModal}
-        onClose={() => setShowCredentialsModal(false)}
-        bials={bials}
-        onRefresh={loadAdminData}
-        initialSection={credentialsModalSection}
-        onEditBial={(b) => {
-          setBialToEdit(b);
-          setShowBialModal(true);
-        }}
-        onAddNewBial={() => {
-          setBialToEdit(null);
-          setShowBialModal(true);
-        }}
-        showToast={showToast}
       />
 
       <MonthMatrixModal

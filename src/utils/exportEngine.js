@@ -1167,7 +1167,9 @@ export function printCertificateDirectly(element, title = 'Pathian_Ram_Report', 
   iframe.style.position = 'fixed';
   iframe.style.left = '-9999px';
   iframe.style.top = '0';
-  iframe.style.width = orientation === 'landscape' ? '1200px' : '900px';
+  iframe.style.width = pageSize === 'a5' 
+    ? (orientation === 'landscape' ? '800px' : '620px')
+    : (orientation === 'landscape' ? '1200px' : '900px');
   iframe.style.height = '1400px';
   iframe.style.border = '0';
   iframe.style.visibility = 'hidden';
@@ -1183,9 +1185,13 @@ export function printCertificateDirectly(element, title = 'Pathian_Ram_Report', 
 
   const pageHeightCss = pageSize === 'legal'
     ? (orientation === 'landscape' ? '215.9mm' : '355.6mm')
-    : (orientation === 'landscape' ? '210mm' : '297mm');
+    : pageSize === 'a5'
+      ? (orientation === 'landscape' ? '148mm' : '210mm')
+      : (orientation === 'landscape' ? '210mm' : '297mm');
 
-  const viewportWidth = orientation === 'landscape' ? '1122' : '794';
+  const viewportWidth = pageSize === 'a5'
+    ? (orientation === 'landscape' ? '794' : '559')
+    : (orientation === 'landscape' ? '1122' : '794');
 
   pri.document.open();
   pri.document.write(`
@@ -1795,49 +1801,46 @@ export function exportOfficialCertificateExcel({
 }
 
 /**
- * Consolidated Annual Member Contribution Booklet (2-Column Landscape A4 Layout with Continuous Sl No)
+ * Consolidated Annual Member Contribution Booklet (A5 Portrait Layout, Single Column, Sequential Bial Order)
  */
 export function exportConsolidatedBookletPDF({
   year = new Date().getFullYear(),
   bialsData = [],
   churchTotals = {}
 }) {
-  // Explicitly initialize jsPDF in landscape mode for A4 (297mm x 210mm)
+  // Explicitly initialize jsPDF in portrait mode for A5 paper (148mm x 210mm)
   const doc = new jsPDF({
-    orientation: 'landscape',
+    orientation: 'portrait',
     unit: 'mm',
-    format: 'a4'
+    format: 'a5'
   });
 
-  const pageWidth = 297;
+  const pageWidth = 148;
   const pageHeight = 210;
-  const marginTop = 18;
+  const marginLeft = 10;
+  const marginRight = 10;
+  const marginTop = 16;
   const marginBottom = 12;
-  const colWidth = 128;
-  const colGap = 11;
-  const leftColX = 15;
-  const rightColX = leftColX + colWidth + colGap; // 154mm
+  const colWidth = pageWidth - marginLeft - marginRight; // 128mm
+  const colX = marginLeft; // 10mm
 
-  let currentCol = 0; // 0 = Left Column (Col 1), 1 = Right Column (Col 2)
   let currentY = marginTop;
   let pageNum = 1;
   let globalSlNo = 1;
 
-  const getColX = () => (currentCol === 0 ? leftColX : rightColX);
-
   const drawPageHeader = () => {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10.5);
+    doc.setFontSize(9.5);
     doc.setTextColor(0, 0, 0);
-    doc.text('BETHLEHEM KOHHRAN', pageWidth / 2, 7.5, { align: 'center' });
+    doc.text('BETHLEHEM KOHHRAN', pageWidth / 2, 6.5, { align: 'center' });
 
-    doc.setFontSize(8.5);
+    doc.setFontSize(7.5);
     doc.setTextColor(0, 0, 0);
-    doc.text(`PATHIAN RAM — CONSOLIDATED ANNUAL MEMBER BOOKLET (FY ${year}-${year + 1})`, pageWidth / 2, 12, { align: 'center' });
+    doc.text(`PATHIAN RAM — ANNUAL MEMBER BOOKLET (FY ${year}-${year + 1})`, pageWidth / 2, 10.5, { align: 'center' });
 
     doc.setLineWidth(0.3);
-    doc.setDrawColor(203, 213, 225);
-    doc.line(12, 14.5, pageWidth - 12, 14.5);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(marginLeft, 12.8, pageWidth - marginRight, 12.8);
   };
 
   const drawPageFooter = () => {
@@ -1845,25 +1848,19 @@ export function exportConsolidatedBookletPDF({
     for (let p = 1; p <= totalPages; p++) {
       doc.setPage(p);
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(7.5);
+      doc.setFontSize(6.5);
       doc.setTextColor(0, 0, 0);
-      doc.text(`Consolidated Annual Booklet (12-Month Aggregated) • FY ${year}-${year + 1}`, 15, pageHeight - 5);
-      doc.text(`Page ${p} of ${totalPages}`, pageWidth - 15, pageHeight - 5, { align: 'right' });
+      doc.text(`Consolidated Annual Booklet • FY ${year}-${year + 1}`, marginLeft, pageHeight - 5);
+      doc.text(`Page ${p} of ${totalPages}`, pageWidth - marginRight, pageHeight - 5, { align: 'right' });
     }
   };
 
   const checkSpace = (neededHeight) => {
     if (currentY + neededHeight > pageHeight - marginBottom) {
-      if (currentCol === 0) {
-        currentCol = 1; // Fill second column (Col 2) on current page
-        currentY = marginTop;
-      } else {
-        doc.addPage('a4', 'landscape'); // Add new Landscape A4 page
-        pageNum++;
-        drawPageHeader();
-        currentCol = 0; // Fill first column (Col 1) on new page
-        currentY = marginTop;
-      }
+      doc.addPage('a5', 'portrait');
+      pageNum++;
+      drawPageHeader();
+      currentY = marginTop;
     }
   };
 
@@ -1873,11 +1870,21 @@ export function exportConsolidatedBookletPDF({
   let churchTotalHH = 0;
   let churchReturnedHH = 0;
 
-  // Process Bials in natural order (B1, B2, B3...)
-  bialsData.forEach((bialGroup) => {
+  // Sort Bials strictly starting from the First Bial (Bial 1 / B1) in natural sequential order
+  const sortedBials = [...bialsData].sort((a, b) => {
+    const codeA = a.bial_code || a.code || '';
+    const codeB = b.bial_code || b.code || '';
+    const numA = parseInt(codeA.replace(/\D/g, '') || a.bial_id || a.id) || 0;
+    const numB = parseInt(codeB.replace(/\D/g, '') || b.bial_id || b.id) || 0;
+    if (numA !== numB) return numA - numB;
+    return (a.bial_name || a.name || '').localeCompare(b.bial_name || b.name || '', undefined, { numeric: true });
+  });
+
+  // Process Bials in natural order (Bial 1, Bial 2, Bial 3...)
+  sortedBials.forEach((bialGroup) => {
     const bialName = bialGroup.bial_name || bialGroup.name || 'Bial';
     const bialCode = bialGroup.bial_code || bialGroup.code || '';
-    const members = bialGroup.members || [];
+    const members = [...(bialGroup.members || [])].sort((m1, m2) => (parseInt(m1.sl_no) || 0) - (parseInt(m2.sl_no) || 0));
     const bialTotalHH = members.length;
     const bialReturnedHH = members.filter(m => (parseFloat(m.grand_total || m.total) || 0) > 0).length;
     const bialReturnRate = bialTotalHH > 0 ? Math.round((bialReturnedHH / bialTotalHH) * 1000) / 10 : 0;
@@ -1885,46 +1892,43 @@ export function exportConsolidatedBookletPDF({
     churchTotalHH += bialTotalHH;
     churchReturnedHH += bialReturnedHH;
 
-    // Draw Bial Header Banner
-    checkSpace(12);
-    const curX = getColX();
-    doc.setFillColor(238, 242, 255); // indigo-50
-    doc.setDrawColor(199, 210, 254); // indigo-200
-    doc.roundedRect(curX, currentY, colWidth, 6, 1, 1, 'FD');
+    // Draw Bial Header Banner (Single column)
+    checkSpace(14);
+    doc.setFillColor(241, 245, 249); // slate-100
+    doc.setDrawColor(0, 0, 0);
+    doc.roundedRect(colX, currentY, colWidth, 5.5, 1, 1, 'FD');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(0, 0, 0);
     const headerTitle = `${bialCode ? `${bialCode} - ` : ''}${bialName} (${bialTotalHH} HH • ${bialReturnedHH} Ret • ${bialReturnRate}% Return Rate)`;
-    doc.text(headerTitle, curX + 2.5, currentY + 4.2);
+    doc.text(headerTitle, colX + 2.5, currentY + 3.8);
 
-    currentY += 7.5;
+    currentY += 6.5;
 
-    // Draw Table Sub-header (Compacted column positions & Rs. currency notation)
+    // Draw Table Sub-header (Single column, Rs. currency notation)
     checkSpace(6);
-    const colX = getColX();
-    doc.setFillColor(241, 245, 249); // slate-100
-    doc.rect(colX, currentY, colWidth, 4.8, 'F');
+    doc.setFillColor(226, 232, 240); // slate-200
+    doc.rect(colX, currentY, colWidth, 4.6, 'F');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6.2);
     doc.setTextColor(0, 0, 0);
-    doc.text('Sl', colX + 1.5, currentY + 3.2);
-    doc.text('Member Name', colX + 8, currentY + 3.2);
-    doc.text('PTR (Rs)', colX + 58, currentY + 3.2, { align: 'right' });
-    doc.text('RT (Rs)', colX + 74, currentY + 3.2, { align: 'right' });
-    doc.text('Tch (Rs)', colX + 90, currentY + 3.2, { align: 'right' });
-    doc.text('Bldg (Rs)', colX + 104, currentY + 3.2, { align: 'right' });
-    doc.text('Total (Rs)', colX + 126, currentY + 3.2, { align: 'right' });
+    doc.text('Sl', colX + 1.5, currentY + 3.1);
+    doc.text('Member Name', colX + 8, currentY + 3.1);
+    doc.text('PTR (Rs)', colX + 58, currentY + 3.1, { align: 'right' });
+    doc.text('RT (Rs)', colX + 74, currentY + 3.1, { align: 'right' });
+    doc.text('Tch (Rs)', colX + 90, currentY + 3.1, { align: 'right' });
+    doc.text('Bldg (Rs)', colX + 104, currentY + 3.1, { align: 'right' });
+    doc.text('Total (Rs)', colX + 126, currentY + 3.1, { align: 'right' });
 
-    currentY += 5.2;
+    currentY += 4.8;
 
     let bialPR = 0, bialRT = 0, bialTch = 0, bialBldg = 0, bialTotal = 0;
 
     // Loop Members
     members.forEach((m, idx) => {
-      checkSpace(4.5);
-      const rowX = getColX();
+      checkSpace(4.2);
 
       const pr = parseFloat(m.total_pathian_ram || m.pathian_ram) || 0;
       const rt = parseFloat(m.total_ramthar || m.ramthar) || 0;
@@ -1941,85 +1945,84 @@ export function exportConsolidatedBookletPDF({
       // Alternating row background
       if (idx % 2 === 1) {
         doc.setFillColor(248, 250, 252);
-        doc.rect(rowX, currentY - 0.5, colWidth, 4.2, 'F');
+        doc.rect(colX, currentY - 0.4, colWidth, 4.0, 'F');
       }
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.5);
+      doc.setFontSize(6.2);
       doc.setTextColor(0, 0, 0);
 
       // Continuous Sl No across all Bials
-      doc.text(String(globalSlNo++), rowX + 1.5, currentY + 2.5);
+      doc.text(String(globalSlNo++), colX + 1.5, currentY + 2.4);
 
       const mName = String(m.member_name || m.name || '');
-      doc.text(mName.length > 24 ? mName.substring(0, 24) + '..' : mName, rowX + 8, currentY + 2.5);
+      doc.text(mName.length > 24 ? mName.substring(0, 24) + '..' : mName, colX + 8, currentY + 2.4);
 
       doc.setFont('helvetica', 'bold');
-      doc.text(pr > 0 ? pr.toLocaleString('en-IN') : '-', rowX + 58, currentY + 2.5, { align: 'right' });
-      doc.text(rt > 0 ? rt.toLocaleString('en-IN') : '-', rowX + 74, currentY + 2.5, { align: 'right' });
-      doc.text(tch > 0 ? tch.toLocaleString('en-IN') : '-', rowX + 90, currentY + 2.5, { align: 'right' });
-      doc.text(bldg > 0 ? bldg.toLocaleString('en-IN') : '-', rowX + 104, currentY + 2.5, { align: 'right' });
+      doc.text(pr > 0 ? pr.toLocaleString('en-IN') : '-', colX + 58, currentY + 2.4, { align: 'right' });
+      doc.text(rt > 0 ? rt.toLocaleString('en-IN') : '-', colX + 74, currentY + 2.4, { align: 'right' });
+      doc.text(tch > 0 ? tch.toLocaleString('en-IN') : '-', colX + 90, currentY + 2.4, { align: 'right' });
+      doc.text(bldg > 0 ? bldg.toLocaleString('en-IN') : '-', colX + 104, currentY + 2.4, { align: 'right' });
 
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(0, 0, 0);
-      doc.text(total > 0 ? `Rs. ${total.toLocaleString('en-IN')}` : '0', rowX + 126, currentY + 2.5, { align: 'right' });
+      doc.text(total > 0 ? `Rs. ${total.toLocaleString('en-IN')}` : '0', colX + 126, currentY + 2.4, { align: 'right' });
 
-      currentY += 4.5;
+      currentY += 4.2;
     });
 
     // Draw Bial Subtotal Row
     checkSpace(5.5);
-    const subX = getColX();
     doc.setFillColor(224, 231, 255); // indigo-100
-    doc.rect(subX, currentY, colWidth, 5, 'F');
+    doc.rect(colX, currentY, colWidth, 4.8, 'F');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.5);
+    doc.setFontSize(6.2);
     doc.setTextColor(0, 0, 0);
-    doc.text(`Subtotal (${bialCode || bialName}) • ${bialReturnRate}% Ret (${bialReturnedHH}/${bialTotalHH} HH)`, subX + 2.5, currentY + 3.4);
+    doc.text(`Subtotal (${bialCode || bialName}) • ${bialReturnRate}% Ret (${bialReturnedHH}/${bialTotalHH} HH)`, colX + 2.5, currentY + 3.2);
 
-    doc.text(bialPR.toLocaleString('en-IN'), subX + 58, currentY + 3.4, { align: 'right' });
-    doc.text(bialRT.toLocaleString('en-IN'), subX + 74, currentY + 3.4, { align: 'right' });
-    doc.text(bialTch.toLocaleString('en-IN'), subX + 90, currentY + 3.4, { align: 'right' });
-    doc.text(bialBldg.toLocaleString('en-IN'), subX + 104, currentY + 3.4, { align: 'right' });
-    doc.text(`Rs. ${bialTotal.toLocaleString('en-IN')}`, subX + 126, currentY + 3.4, { align: 'right' });
+    doc.text(bialPR.toLocaleString('en-IN'), colX + 58, currentY + 3.2, { align: 'right' });
+    doc.text(bialRT.toLocaleString('en-IN'), colX + 74, currentY + 3.2, { align: 'right' });
+    doc.text(bialTch.toLocaleString('en-IN'), colX + 90, currentY + 3.2, { align: 'right' });
+    doc.text(bialBldg.toLocaleString('en-IN'), colX + 104, currentY + 3.2, { align: 'right' });
+    doc.text(`Rs. ${bialTotal.toLocaleString('en-IN')}`, colX + 126, currentY + 3.2, { align: 'right' });
 
-    currentY += 7.8;
+    currentY += 7.0;
   });
 
   // Final Church Grand Total Box (100% Black Text)
   checkSpace(14);
-  const finalX = getColX();
+  const finalX = colX;
   doc.setFillColor(241, 245, 249); // slate-100
   doc.setDrawColor(0, 0, 0);
-  doc.roundedRect(finalX, currentY, colWidth, 12, 1.5, 1.5, 'FD');
+  doc.roundedRect(finalX, currentY, colWidth, 12, 1.2, 1.2, 'FD');
 
-  const gPR = churchTotals.total_pathian_ram || bialsData.reduce((acc, b) => acc + (b.subtotal?.total_pathian_ram || 0), 0);
-  const gRT = churchTotals.total_ramthar || bialsData.reduce((acc, b) => acc + (b.subtotal?.total_ramthar || 0), 0);
-  const gTch = churchTotals.total_tualchhung || bialsData.reduce((acc, b) => acc + (b.subtotal?.total_tualchhung || 0), 0);
-  const gBldg = churchTotals.total_building || bialsData.reduce((acc, b) => acc + (b.subtotal?.total_building || 0), 0);
-  const gTotal = churchTotals.grand_total || bialsData.reduce((acc, b) => acc + (b.subtotal?.grand_total || 0), 0);
+  const gPR = churchTotals.total_pathian_ram || sortedBials.reduce((acc, b) => acc + (b.subtotal?.total_pathian_ram || 0), 0);
+  const gRT = churchTotals.total_ramthar || sortedBials.reduce((acc, b) => acc + (b.subtotal?.total_ramthar || 0), 0);
+  const gTch = churchTotals.total_tualchhung || sortedBials.reduce((acc, b) => acc + (b.subtotal?.total_tualchhung || 0), 0);
+  const gBldg = churchTotals.total_building || sortedBials.reduce((acc, b) => acc + (b.subtotal?.total_building || 0), 0);
+  const gTotal = churchTotals.grand_total || sortedBials.reduce((acc, b) => acc + (b.subtotal?.grand_total || 0), 0);
 
   const overallChurchReturnRate = churchTotalHH > 0 ? Math.round((churchReturnedHH / churchTotalHH) * 1000) / 10 : 0;
   const avgPerHH = churchReturnedHH > 0 ? Math.round(gTotal / churchReturnedHH) : 0;
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7.2);
   doc.setTextColor(0, 0, 0);
-  doc.text(`KOHHRAN GRAND TOTAL (${churchTotalHH} HH • ${churchReturnedHH} Ret • ${overallChurchReturnRate}% Return Rate)`, finalX + 3.5, currentY + 4.8);
+  doc.text(`KOHHRAN GRAND TOTAL (${churchTotalHH} HH • ${churchReturnedHH} Ret • ${overallChurchReturnRate}% Return Rate)`, finalX + 3, currentY + 4.5);
 
-  doc.setFontSize(6.5);
+  doc.setFontSize(6.2);
   doc.setTextColor(0, 0, 0);
-  doc.text(`PTR: Rs.${gPR.toLocaleString('en-IN')} | RT: Rs.${gRT.toLocaleString('en-IN')} | Tch: Rs.${gTch.toLocaleString('en-IN')} | Bldg: Rs.${gBldg.toLocaleString('en-IN')} | Avg/HH: Rs.${avgPerHH.toLocaleString('en-IN')}`, finalX + 3.5, currentY + 9);
+  doc.text(`PTR: Rs.${gPR.toLocaleString('en-IN')} | RT: Rs.${gRT.toLocaleString('en-IN')} | Tch: Rs.${gTch.toLocaleString('en-IN')} | Bldg: Rs.${gBldg.toLocaleString('en-IN')} | Avg/HH: Rs.${avgPerHH.toLocaleString('en-IN')}`, finalX + 3, currentY + 8.8);
 
-  doc.setFontSize(9.5);
+  doc.setFontSize(9.0);
   doc.setTextColor(0, 0, 0);
-  doc.text(`Rs. ${gTotal.toLocaleString('en-IN')}`, finalX + 126, currentY + 7, { align: 'right' });
+  doc.text(`Rs. ${gTotal.toLocaleString('en-IN')}`, finalX + 125, currentY + 6.8, { align: 'right' });
 
   // Draw Page Footers on all pages
   drawPageFooter();
 
-  doc.save(`Consolidated_Annual_Booklet_Landscape_${year}.pdf`);
+  doc.save(`Consolidated_Annual_Booklet_A5_${year}.pdf`);
 }
 
 /**
@@ -2044,10 +2047,20 @@ export function exportConsolidatedBookletExcel({
   let churchTotalHH = 0;
   let churchReturnedHH = 0;
 
-  bialsData.forEach((bialGroup) => {
+  // Sort Bials strictly starting from the First Bial (Bial 1 / B1) in natural sequential order
+  const sortedBials = [...bialsData].sort((a, b) => {
+    const codeA = a.bial_code || a.code || '';
+    const codeB = b.bial_code || b.code || '';
+    const numA = parseInt(codeA.replace(/\D/g, '') || a.bial_id || a.id) || 0;
+    const numB = parseInt(codeB.replace(/\D/g, '') || b.bial_id || b.id) || 0;
+    if (numA !== numB) return numA - numB;
+    return (a.bial_name || a.name || '').localeCompare(b.bial_name || b.name || '', undefined, { numeric: true });
+  });
+
+  sortedBials.forEach((bialGroup) => {
     const bialName = bialGroup.bial_name || bialGroup.name || 'Bial';
     const bialCode = bialGroup.bial_code || bialGroup.code || '';
-    const members = bialGroup.members || [];
+    const members = [...(bialGroup.members || [])].sort((m1, m2) => (parseInt(m1.sl_no) || 0) - (parseInt(m2.sl_no) || 0));
     const bialTotalHH = members.length;
     const bialReturnedHH = members.filter(m => (parseFloat(m.grand_total || m.total) || 0) > 0).length;
     const bialReturnRate = bialTotalHH > 0 ? Math.round((bialReturnedHH / bialTotalHH) * 1000) / 10 : 0;

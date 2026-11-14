@@ -107,12 +107,23 @@ export default function OfficialReportModal({
     }
   }, [selectedYear, showToast]);
 
-  // Compute continuous global Sl No starting from Bial 1 upwards across all Bials
+  // Compute continuous global Sl No starting from First Bial upwards across all Bials
   const processedBookletBials = useMemo(() => {
     if (!bookletData?.bials) return [];
+    // Sort Bials strictly starting from the First Bial (Bial 1 / B1) in natural sequential order
+    const sortedBials = [...bookletData.bials].sort((a, b) => {
+      const codeA = a.bial_code || a.code || '';
+      const codeB = b.bial_code || b.code || '';
+      const numA = parseInt(codeA.replace(/\D/g, '') || a.bial_id || a.id) || 0;
+      const numB = parseInt(codeB.replace(/\D/g, '') || b.bial_id || b.id) || 0;
+      if (numA !== numB) return numA - numB;
+      return (a.bial_name || a.name || '').localeCompare(b.bial_name || b.name || '', undefined, { numeric: true });
+    });
+
     let globalSl = 1;
-    return bookletData.bials.map(b => {
-      const members = (b.members || []).map(m => ({
+    return sortedBials.map(b => {
+      const sortedMembers = [...(b.members || [])].sort((m1, m2) => (parseInt(m1.sl_no) || 0) - (parseInt(m2.sl_no) || 0));
+      const members = sortedMembers.map(m => ({
         ...m,
         booklet_sl_no: globalSl++
       }));
@@ -523,7 +534,7 @@ export default function OfficialReportModal({
       showToast('Opening print dialog...', 'info');
 
       if (previewTab === 'booklet' && bookletRef.current) {
-        printCertificateDirectly(bookletRef.current, `Pathian_Ram_Booklet_FY_${selectedYear}`, 'a4', 'landscape');
+        printCertificateDirectly(bookletRef.current, `Pathian_Ram_Booklet_A5_FY_${selectedYear}`, 'a5', 'portrait');
       } else if (certificateRef.current) {
         const safeScope = scopeName ? `_${scopeName.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
         const safeTitle = `Pathian_Ram_Official_Report_${reportType.replace(/[^a-zA-Z0-9]/g, '_')}${safeScope}_${selectedYear}`;
@@ -570,7 +581,7 @@ export default function OfficialReportModal({
   const handleExportConsolidatedBookletPDF = async () => {
     try {
       setIsExportingBooklet(true);
-      showToast('Compiling 12-Month Consolidated Booklet (2-Column A4)...', 'info');
+      showToast('Compiling 12-Month Consolidated Booklet (A5 Single-Column)...', 'info');
 
       const res = await api.getOverallMemberContributions(selectedYear);
       if (!res || !res.bials || res.bials.length === 0) {
@@ -831,11 +842,11 @@ export default function OfficialReportModal({
                   <span>3. YEARLY REPORT BOOKLET</span>
                 </div>
                 <span className="px-2 py-0.5 bg-indigo-600 text-white text-[9.5px] font-black rounded-md uppercase tracking-wider">
-                  2-Column Landscape A4
+                  A5 Single Column
                 </span>
               </div>
               <p className="text-[10.5px] text-slate-600 font-medium leading-normal">
-                Generates a 12-month consolidated booklet on Landscape A4 paper in 2 Columns (fills Column 1 first, then Column 2). Continuous Sl No starts at Bial 1 (Sl 1) and continues seamlessly across B2, B3... B12.
+                Generates a 12-month consolidated booklet on A5 paper in a clean single-column format. Continuous Sl No starts at First Bial (B1) and follows sequentially across B2, B3... B12.
               </p>
 
               {/* Live Preview Button */}
@@ -848,7 +859,7 @@ export default function OfficialReportModal({
                   }
                 }}
                 className="flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-xs shadow-xs transition-all cursor-pointer"
-                title="Open interactive 2-column landscape preview of the Yearly Report Booklet"
+                title="Open interactive preview of the Yearly Report Booklet (A5 Format)"
               >
                 <BookOpen className="w-4 h-4 text-amber-400" />
                 <span>{previewTab === 'booklet' ? '✓ Currently Previewing Booklet' : 'Preview Booklet Here'}</span>
@@ -860,10 +871,10 @@ export default function OfficialReportModal({
                   onClick={handleExportConsolidatedBookletPDF}
                   disabled={isExportingBooklet}
                   className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-xs shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50"
-                  title="Download 2-Column Landscape A4 Booklet PDF with continuous Sl No from B1 onwards"
+                  title="Download A5 Single-Column Booklet PDF with continuous Sl No starting from First Bial"
                 >
                   <Download className="w-3.5 h-3.5 shrink-0" />
-                  <span>Booklet PDF</span>
+                  <span>Booklet PDF (A5)</span>
                 </button>
 
                 <button
@@ -1171,7 +1182,7 @@ export default function OfficialReportModal({
                   }`}
                 >
                   <BookOpen className="w-3.5 h-3.5 text-black" />
-                  <span>Yearly Report Booklet (2-Col A4)</span>
+                  <span>Yearly Report Booklet (A5)</span>
                 </button>
               </div>
 
@@ -1497,7 +1508,7 @@ export default function OfficialReportModal({
 
               </div>
             ) : (
-              /* LIVE PREVIEW OF YEARLY REPORT BOOKLET (2-COLUMN LANDSCAPE A4) */
+              /* LIVE PREVIEW OF YEARLY REPORT BOOKLET (A5 FORMAT, SINGLE COLUMN) */
               <div
                 ref={bookletRef}
                 id="yearly-report-booklet-preview"
@@ -1527,7 +1538,7 @@ export default function OfficialReportModal({
                       CONSOLIDATED ANNUAL MEMBER BOOKLET (FY {selectedYear} - {selectedYear + 1})
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-300 text-black font-bold text-xs">
-                      2-Column Landscape A4 • Continuous Sl No across Bial 1 to Bial 12
+                      A5 Format • Single Column • Continuous Sl No across Bial 1 to Bial 12
                     </span>
                   </div>
                   <div className="w-24 h-0.5 bg-black mx-auto mt-1 rounded-full"></div>
@@ -1587,7 +1598,7 @@ export default function OfficialReportModal({
                   </div>
                 </div>
 
-                {/* Content area: 2-Column layout */}
+                {/* Content area: Single-Column layout */}
                 <div className="relative z-10 flex-1 overflow-y-auto max-h-[560px] pr-1 space-y-3">
                   {loadingBooklet ? (
                     <div className="py-20 flex flex-col items-center justify-center text-center text-black">
@@ -1611,8 +1622,8 @@ export default function OfficialReportModal({
                     </div>
                   ) : (
                     <>
-                      {/* 2-COLUMN BOOKLET GRID (A4 LANDSCAPE SIMULATION) */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                      {/* SINGLE-COLUMN A5 BOOKLET FORMAT */}
+                      <div className="flex flex-col gap-4 max-w-[660px] mx-auto w-full">
                         {filteredBookletBials.map((bial) => {
                           const sub = bial.subtotal || {};
                           return (
@@ -1732,7 +1743,7 @@ export default function OfficialReportModal({
         <div className="px-4 sm:px-6 py-3 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-500 font-medium">
             {previewTab === 'booklet' ? (
-              <>Viewing <span className="font-bold text-slate-800">Consolidated Annual Booklet (2-Col A4)</span> • Landscape • FY {selectedYear}-{selectedYear + 1}</>
+              <>Viewing <span className="font-bold text-slate-800">Consolidated Annual Booklet (A5)</span> • Single Column • FY {selectedYear}-{selectedYear + 1}</>
             ) : (
               <>Export formatted in <span className="font-bold text-slate-800">{pageSize.toUpperCase()}</span> ({orientation}) • <span className="text-indigo-600 font-semibold">{scopeName}</span></>
             )}
@@ -1745,7 +1756,7 @@ export default function OfficialReportModal({
                   onClick={handlePrint}
                   disabled={loadingBooklet}
                   className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
-                  title="Direct Print Booklet (Landscape A4)"
+                  title="Direct Print Booklet (A5 Portrait)"
                 >
                   <Printer className="w-4 h-4 text-slate-200" />
                   <span>Print</span>
@@ -1765,10 +1776,10 @@ export default function OfficialReportModal({
                   onClick={handleExportConsolidatedBookletPDF}
                   disabled={isExportingBooklet}
                   className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50 cursor-pointer"
-                  title="Download Consolidated Booklet PDF (2-Column Landscape A4)"
+                  title="Download Consolidated Booklet PDF (A5 Single-Column)"
                 >
                   <Download className="w-4 h-4" />
-                  <span>{isExportingBooklet ? 'Downloading...' : 'Download Booklet PDF (A4)'}</span>
+                  <span>{isExportingBooklet ? 'Downloading...' : 'Download Booklet PDF (A5)'}</span>
                 </button>
               </>
             ) : (

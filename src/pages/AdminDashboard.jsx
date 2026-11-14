@@ -578,17 +578,18 @@ export default function AdminDashboard({ user, showToast }) {
   const ramtharTotal = grandTotals[ramtharKey] || grandTotals[`total_${ramtharKey}`] || 0;
   const missionRatio = grandTotalVal > 0 ? Math.round((ramtharTotal / grandTotalVal) * 1000) / 10 : 0;
 
-  const categoryShares = titheColumns.map(cat => {
+  const categoryShares = titheColumns.map((cat, idx) => {
     const val = grandTotals[cat.field_key] || grandTotals[`total_${cat.field_key}`] || 0;
     const pct = grandTotalVal > 0 ? Math.round((val / grandTotalVal) * 1000) / 10 : 0;
     return {
       ...cat,
       amount: val,
-      percentage: pct
+      percentage: pct,
+      color: cat.color || CATEGORY_COLORS[idx % CATEGORY_COLORS.length]
     };
-  }).sort((a, b) => b.amount - a.amount);
+  });
 
-  const dominantCategory = categoryShares[0] || null;
+  const dominantCategory = [...categoryShares].sort((a, b) => b.amount - a.amount)[0] || null;
 
   // Financial Months Definition & Month-over-Month Comparison Data
   const FINANCIAL_MONTH_ORDER = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
@@ -1712,52 +1713,64 @@ export default function AdminDashboard({ user, showToast }) {
                 </div>
               </div>
 
-              {/* Feature 6: Fund Allocation Metrics */}
-              <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
+              {/* Feature 6: Fund Allocation Metrics (All Column Heads Percentage-Wise) */}
+              <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1.5">
                 {/* Header Box */}
                 <div className="pb-1 border-b border-slate-100 flex items-center justify-between">
                   <span className="text-[10px] font-bold text-slate-700 flex items-center gap-1.5 truncate">
                     <PieChartIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
                     <span className="truncate">Fund Allocation</span>
                   </span>
-                  <span className="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                    {missionRatio}% Mission
+                  <span className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                    100% Total
                   </span>
                 </div>
 
-                {/* Data Box 1: Mission / Ramthar Giving Ratio */}
-                <div className="bg-white p-1.5 rounded-xl border border-slate-200 space-y-0.5">
-                  <div className="flex items-center justify-between text-[8px] font-bold text-slate-500">
-                    <span>Ramthar / Mission</span>
-                    <span className="font-mono text-slate-700">₹{ramtharTotal.toLocaleString('en-IN')}</span>
-                  </div>
-                  <div className="flex items-baseline justify-between font-mono">
-                    <span className="text-xs sm:text-xs font-black text-emerald-700">
-                      {missionRatio}%
-                    </span>
-                    <span className="text-[8px] sm:text-[8.5px] font-bold text-slate-500 font-sans">
-                      of total funds
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                {/* Composite Multi-Segment Progress Bar */}
+                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden flex shadow-2xs">
+                  {categoryShares.map((cat, idx) => (
                     <div
-                      className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, missionRatio)}%` }}
+                      key={cat.id || cat.field_key || idx}
+                      className="h-full first:rounded-l-full last:rounded-r-full transition-all duration-500"
+                      style={{
+                        width: `${cat.percentage}%`,
+                        backgroundColor: cat.color
+                      }}
+                      title={`${cat.name}: ${cat.percentage}% (₹${(cat.amount || 0).toLocaleString('en-IN')})`}
                     />
-                  </div>
+                  ))}
                 </div>
 
-                {/* Data Box 2: Category Dominance Ratio */}
-                <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
-                  <div className="flex items-center justify-between text-[8px] sm:text-[9px] font-bold text-slate-600">
-                    <span className="truncate">Top: {dominantCategory?.name || 'N/A'}</span>
-                    <span className="font-mono font-black text-indigo-700 shrink-0 ml-1">
-                      {dominantCategory?.percentage || 0}%
-                    </span>
-                  </div>
-                  <span className="text-[8px] text-slate-500 block font-mono truncate">
-                    ₹{(dominantCategory?.amount || 0).toLocaleString('en-IN')}
-                  </span>
+                {/* All Column Heads Percentage-Wise List */}
+                <div className="space-y-1 pt-0.5 max-h-[140px] overflow-y-auto no-scrollbar">
+                  {categoryShares.map((cat, idx) => (
+                    <div
+                      key={cat.id || cat.field_key || idx}
+                      className="bg-slate-50/90 hover:bg-slate-100/70 px-1.5 py-1 rounded-lg border border-slate-200/80 transition-colors space-y-0.5"
+                    >
+                      <div className="flex items-center justify-between text-[8px] sm:text-[8.5px] font-semibold leading-tight">
+                        <span className="flex items-center gap-1 min-w-0 truncate text-slate-700" title={cat.name}>
+                          <span
+                            className="w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{ backgroundColor: cat.color }}
+                          />
+                          <span className="truncate">{cat.name}</span>
+                        </span>
+                        <div className="flex items-baseline gap-1 font-mono shrink-0 ml-1">
+                          <span className="font-black text-slate-900">{cat.percentage}%</span>
+                        </div>
+                      </div>
+                      <div className="w-full bg-slate-200/80 rounded-full h-1 overflow-hidden">
+                        <div
+                          className="h-1 rounded-full transition-all duration-500"
+                          style={{
+                            width: `${Math.min(100, Math.max(1, cat.percentage))}%`,
+                            backgroundColor: cat.color
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
@@ -2532,6 +2545,24 @@ export default function AdminDashboard({ user, showToast }) {
                       <Legend wrapperStyle={{ color: '#475569', fontSize: '11px' }} />
                     </PieChart>
                   </ResponsiveContainer>
+                </div>
+
+                {/* Column Heads Percentage Breakdown */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-slate-100 mt-2">
+                  {categoryShares.map((cat, idx) => (
+                    <div key={cat.id || cat.field_key || idx} className="bg-slate-50/80 p-2 rounded-xl border border-slate-200/80 text-center space-y-0.5">
+                      <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-700 truncate">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                        <span className="truncate">{cat.name}</span>
+                      </div>
+                      <div className="text-sm font-mono font-black text-slate-900">
+                        {cat.percentage}%
+                      </div>
+                      <div className="text-[10px] font-mono text-slate-500 truncate">
+                        ₹{(cat.amount || 0).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 

@@ -42,10 +42,17 @@ export default function AdminSidebar({
     },
     {
       id: 'columns',
-      label: 'Tithe Headers & Columns',
+      label: 'Tithe Columns',
       shortLabel: 'Columns',
       icon: SlidersHorizontal,
       desc: 'PTR, RT, Bldg & custom'
+    },
+    {
+      id: 'credentials',
+      label: 'Passwords & Admins',
+      shortLabel: 'Logins',
+      icon: KeyRound,
+      desc: 'Bial logins & Google admins'
     },
     {
       id: 'analytics',
@@ -108,24 +115,6 @@ export default function AdminSidebar({
       tooltip: 'Lock & unlock month entries'
     },
     {
-      id: 'admins',
-      label: 'Manage Admins (Google)',
-      shortLabel: 'Admins',
-      icon: ShieldCheck,
-      color: 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border-indigo-200',
-      action: onOpenAdmins,
-      tooltip: 'Authorize another church admin to sign in using Google Mail'
-    },
-    {
-      id: 'credentials',
-      label: 'Bial User Passwords',
-      shortLabel: 'Bial Logins',
-      icon: KeyRound,
-      color: 'text-purple-700 bg-purple-50 hover:bg-purple-100 border-purple-200',
-      action: onOpenCredentials,
-      tooltip: 'Manage bial collector logins & reset passwords'
-    },
-    {
       id: 'years',
       label: 'Financial Years',
       shortLabel: 'Years',
@@ -133,15 +122,6 @@ export default function AdminSidebar({
       color: 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border-indigo-200',
       action: onOpenYears,
       tooltip: 'Manage financial years & active FY'
-    },
-    {
-      id: 'columns',
-      label: 'Tithe Headers & Columns',
-      shortLabel: 'Headers',
-      icon: SlidersHorizontal,
-      color: 'text-teal-700 bg-teal-50 hover:bg-teal-100 border-teal-200',
-      action: () => onSelectTab('columns'),
-      tooltip: 'Add, rename, edit or delete tithe columns'
     }
   ];
 

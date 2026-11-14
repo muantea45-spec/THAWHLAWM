@@ -219,14 +219,14 @@ export default function TitheColumnsTab({ onColumnsChanged, showToast = () => {}
               <SlidersHorizontal className="w-5 h-5" />
             </span>
             <h2 className="text-lg sm:text-xl font-heading font-black text-slate-900 tracking-tight">
-              Tithe Headers & Columns Management
+              Tithe Columns Management
             </h2>
             <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono">
               {columns.length} Active Columns
             </span>
           </div>
           <p className="text-xs text-slate-500 max-w-2xl leading-relaxed">
-            All tithe collection headers (e.g. PTR, RT, Tch, Bldg) are dynamic and fully customizable.
+            All tithe collection columns (e.g. PTR, RT, Tch, Bldg) are dynamic and fully customizable.
             Any category you add, rename, recolor, or delete here will <span className="font-bold text-slate-700">simultaneously reflect in all 12 Bial collector windows</span> and official reports.
           </p>
         </div>

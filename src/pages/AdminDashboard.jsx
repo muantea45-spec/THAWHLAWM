@@ -26,6 +26,7 @@ import MemberRolloverModal from '../components/MemberRolloverModal';
 import OfficialReportModal from '../components/OfficialReportModal';
 import ManageColumnsModal from '../components/ManageColumnsModal';
 import TitheColumnsTab from '../components/TitheColumnsTab';
+import CredentialsTab from '../components/CredentialsTab';
 import churchLogo from '../assets/church_logo.jpg';
 import {
   exportAdminConsolidatedPDF,
@@ -763,14 +764,8 @@ export default function AdminDashboard({ user, showToast }) {
           onOpenConsolidated={() => setShowConsolidatedModal(true)}
           onOpenReportForm={() => setShowReportFormModal(true)}
           onOpenMatrix={() => setShowMatrixModal(true)}
-          onOpenCredentials={() => {
-            setCredentialsModalSection('bials');
-            setShowCredentialsModal(true);
-          }}
-          onOpenAdmins={() => {
-            setCredentialsModalSection('admin_google');
-            setShowCredentialsModal(true);
-          }}
+          onOpenCredentials={() => setActiveTab('credentials')}
+          onOpenAdmins={() => setActiveTab('credentials')}
           onOpenYears={() => setShowYearModal(true)}
           onOpenColumns={() => setActiveTab('columns')}
           year={year}
@@ -1475,6 +1470,25 @@ export default function AdminDashboard({ user, showToast }) {
                   setTitheColumns(updatedCols);
                 }
                 await loadAdminData();
+              }}
+              showToast={showToast}
+            />
+          </div>
+        )}
+
+        {/* TAB: PASSWORDS & ADMIN ACCESS (COMBINED BIAL PASSWORDS & GOOGLE ADMINS) */}
+        {activeTab === 'credentials' && (
+          <div className="animate-in fade-in duration-150">
+            <CredentialsTab
+              bials={bials}
+              onRefresh={loadAdminData}
+              onEditBial={(b) => {
+                setBialToEdit(b);
+                setShowBialModal(true);
+              }}
+              onAddNewBial={() => {
+                setBialToEdit(null);
+                setShowBialModal(true);
               }}
               showToast={showToast}
             />

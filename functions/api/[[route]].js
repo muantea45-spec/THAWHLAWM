@@ -626,8 +626,17 @@ app.get('/admin/google-emails', authMiddleware, requireAdmin, async (c) => {
     try {
       await db.prepare("CREATE TABLE IF NOT EXISTS admin_google_emails (id INTEGER PRIMARY KEY AUTOINCREMENT, email TEXT UNIQUE NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP)").run();
     } catch (e) {}
-    const { results: emails } = await db.prepare("SELECT id, email, created_at FROM admin_google_emails ORDER BY id ASC").all();
-    const primaryAdmin = await db.prepare("SELECT email FROM users WHERE role = 'ADMIN' AND email IS NOT NULL ORDER BY id ASC LIMIT 1").first();
+
+    // Exclude any Google emails where the corresponding admin account is locked or deactivated
+    const { results: emails } = await db.prepare(`
+      SELECT g.id, g.email, g.created_at
+      FROM admin_google_emails g
+      LEFT JOIN users u ON LOWER(g.email) = LOWER(u.email) AND u.role = 'ADMIN'
+      WHERE u.status IS NULL OR u.status != 'locked'
+      ORDER BY g.id ASC
+    `).all();
+
+    const primaryAdmin = await db.prepare("SELECT email FROM users WHERE role = 'ADMIN' AND status = 'active' AND email IS NOT NULL ORDER BY id ASC LIMIT 1").first();
     return c.json({
       emails: emails || [],
       primaryAdminEmail: primaryAdmin ? primaryAdmin.email : null
@@ -693,6 +702,8 @@ app.delete('/admin/google-emails/:id', authMiddleware, requireAdmin, async (c) =
     const target = await db.prepare("SELECT email FROM admin_google_emails WHERE id = ?").bind(id).first();
     await db.prepare("DELETE FROM admin_google_emails WHERE id = ?").bind(id).run();
     if (target?.email) {
+      // Also clean up any duplicate or case-variant rows for this email
+      await db.prepare("DELETE FROM admin_google_emails WHERE LOWER(email) = ?").bind(target.email.toLowerCase()).run();
       // Lock any secondary user with this email (keeping primary admin id=1 safe)
       await db.prepare("UPDATE users SET status = 'locked' WHERE LOWER(email) = ? AND id != 1").bind(target.email.toLowerCase()).run();
       await logAudit(db, c.get('user'), 'REVOKE_ADMIN_EMAIL', `Revoked Google email: ${target.email}`, c);

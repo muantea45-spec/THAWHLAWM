@@ -135,6 +135,13 @@ export default function BialCredentialsModal({
     b.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const secondaryGoogleAdmins = googleEmails.filter(i => {
+    const email = (typeof i === 'string' ? i : i.email || '').toLowerCase();
+    return email && email !== (primaryAdminEmail || '').toLowerCase();
+  });
+
+  const activeGoogleAdminsCount = (primaryAdminEmail ? 1 : 0) + secondaryGoogleAdmins.length;
+
   const handleToggleStatus = async (bial) => {
     const newStatus = bial.status === 'active' ? 'locked' : 'active';
     try {
@@ -424,7 +431,7 @@ export default function BialCredentialsModal({
             <div className="space-y-2 max-h-[38vh] overflow-y-auto pr-0.5">
               <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                 <span className="text-[10.5px] font-bold text-slate-600 uppercase tracking-wider block">
-                  Authorized Church Administrators ({googleEmails.length + (primaryAdminEmail ? 1 : 0)})
+                  Authorized Church Administrators ({activeGoogleAdminsCount})
                 </span>
                 <span className="text-[10px] font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
                   Full Admin Rights
@@ -486,33 +493,31 @@ export default function BialCredentialsModal({
                       </p>
 
                       <div className="space-y-2">
-                        {googleEmails.filter(i => i.email !== primaryAdminEmail).length > 0 && (
+                        {secondaryGoogleAdmins.length > 0 && (
                           <div className="space-y-1">
                             <span className="text-[10px] font-bold text-amber-900/80 uppercase block">
                               Option A: Choose from Authorized Admins:
                             </span>
                             <div className="flex flex-wrap gap-1.5">
-                              {googleEmails
-                                .filter(i => i.email !== primaryAdminEmail)
-                                .map(item => (
-                                  <button
-                                    key={item.id}
-                                    type="button"
-                                    onClick={() => handleTransferOwner(item.email)}
-                                    disabled={transferringOwner}
-                                    className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-white hover:bg-amber-100 text-amber-950 border border-amber-300 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                                  >
-                                    <Crown className="w-3 h-3 text-amber-500" />
-                                    <span>{item.email}</span>
-                                  </button>
-                                ))}
+                              {secondaryGoogleAdmins.map(item => (
+                                <button
+                                  key={item.id}
+                                  type="button"
+                                  onClick={() => handleTransferOwner(item.email)}
+                                  disabled={transferringOwner}
+                                  className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-white hover:bg-amber-100 text-amber-950 border border-amber-300 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                                >
+                                  <Crown className="w-3 h-3 text-amber-500" />
+                                  <span>{item.email}</span>
+                                </button>
+                              ))}
                             </div>
                           </div>
                         )}
 
                         <div className="space-y-1">
                           <span className="text-[10px] font-bold text-amber-900/80 uppercase block">
-                            {googleEmails.filter(i => i.email !== primaryAdminEmail).length > 0 ? 'Option B: Or Enter Another Gmail:' : 'Enter New Owner Gmail:'}
+                            {secondaryGoogleAdmins.length > 0 ? 'Option B: Or Enter Another Gmail:' : 'Enter New Owner Gmail:'}
                           </span>
                           <div className="flex gap-2">
                             <input
@@ -543,7 +548,7 @@ export default function BialCredentialsModal({
                 <div className="py-6 text-center text-xs text-indigo-600 font-bold animate-pulse">
                   Loading authorized Google emails...
                 </div>
-              ) : googleEmails.length === 0 && !primaryAdminEmail ? (
+              ) : secondaryGoogleAdmins.length === 0 && !primaryAdminEmail ? (
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center space-y-1">
                   <p className="text-xs text-slate-600 font-medium">No Google accounts linked yet.</p>
                   <p className="text-[11px] text-slate-400">
@@ -551,8 +556,7 @@ export default function BialCredentialsModal({
                   </p>
                 </div>
               ) : (
-                googleEmails
-                  .filter(item => item.email !== primaryAdminEmail)
+                secondaryGoogleAdmins
                   .map((item) => (
                     <div
                       key={item.id}

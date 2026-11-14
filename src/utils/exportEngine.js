@@ -1771,11 +1771,11 @@ export function exportConsolidatedBookletPDF({
   const drawPageHeader = () => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10.5);
-    doc.setTextColor(15, 23, 42); // slate-900
+    doc.setTextColor(0, 0, 0);
     doc.text('BETHLEHEM KOHHRAN', pageWidth / 2, 7.5, { align: 'center' });
 
     doc.setFontSize(8.5);
-    doc.setTextColor(67, 56, 202); // indigo-700
+    doc.setTextColor(0, 0, 0);
     doc.text(`PATHIAN RAM — CONSOLIDATED ANNUAL MEMBER BOOKLET (FY ${year}-${year + 1})`, pageWidth / 2, 12, { align: 'center' });
 
     doc.setLineWidth(0.3);
@@ -1789,7 +1789,7 @@ export function exportConsolidatedBookletPDF({
       doc.setPage(p);
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7.5);
-      doc.setTextColor(148, 163, 184);
+      doc.setTextColor(0, 0, 0);
       doc.text(`Consolidated Annual Booklet (12-Month Aggregated) • FY ${year}-${year + 1}`, 15, pageHeight - 5);
       doc.text(`Page ${p} of ${totalPages}`, pageWidth - 15, pageHeight - 5, { align: 'right' });
     }
@@ -1828,7 +1828,7 @@ export function exportConsolidatedBookletPDF({
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    doc.setTextColor(30, 27, 75); // indigo-950
+    doc.setTextColor(0, 0, 0);
     const headerTitle = `${bialCode ? `${bialCode} - ` : ''}${bialName} (${members.length} Members)`;
     doc.text(headerTitle, curX + 2.5, currentY + 4.2);
 
@@ -1842,7 +1842,7 @@ export function exportConsolidatedBookletPDF({
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
-    doc.setTextColor(71, 85, 105);
+    doc.setTextColor(0, 0, 0);
     doc.text('Sl', colX + 1.5, currentY + 3.2);
     doc.text('Member Name', colX + 8, currentY + 3.2);
     doc.text('PTR (Rs)', colX + 58, currentY + 3.2, { align: 'right' });
@@ -1880,7 +1880,7 @@ export function exportConsolidatedBookletPDF({
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
-      doc.setTextColor(30, 41, 59);
+      doc.setTextColor(0, 0, 0);
 
       // Continuous Sl No across all Bials
       doc.text(String(globalSlNo++), rowX + 1.5, currentY + 2.5);
@@ -1895,7 +1895,7 @@ export function exportConsolidatedBookletPDF({
       doc.text(bldg > 0 ? bldg.toLocaleString('en-IN') : '-', rowX + 104, currentY + 2.5, { align: 'right' });
 
       doc.setFont('helvetica', 'bold');
-      doc.setTextColor(5, 150, 105);
+      doc.setTextColor(0, 0, 0);
       doc.text(total > 0 ? `Rs. ${total.toLocaleString('en-IN')}` : '0', rowX + 126, currentY + 2.5, { align: 'right' });
 
       currentY += 4.5;
@@ -1909,7 +1909,7 @@ export function exportConsolidatedBookletPDF({
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
-    doc.setTextColor(30, 27, 75);
+    doc.setTextColor(0, 0, 0);
     doc.text(`Subtotal (${bialCode || bialName})`, subX + 2.5, currentY + 3.4);
 
     doc.text(bialPR.toLocaleString('en-IN'), subX + 58, currentY + 3.4, { align: 'right' });
@@ -1921,11 +1921,12 @@ export function exportConsolidatedBookletPDF({
     currentY += 7.8;
   });
 
-  // Final Church Grand Total Box
+  // Final Church Grand Total Box (100% Black Text)
   checkSpace(14);
   const finalX = getColX();
-  doc.setFillColor(15, 23, 42); // slate-900
-  doc.roundedRect(finalX, currentY, colWidth, 12, 2, 2, 'F');
+  doc.setFillColor(241, 245, 249); // slate-100
+  doc.setDrawColor(0, 0, 0);
+  doc.roundedRect(finalX, currentY, colWidth, 12, 1.5, 1.5, 'FD');
 
   const gPR = churchTotals.total_pathian_ram || bialsData.reduce((acc, b) => acc + (b.subtotal?.total_pathian_ram || 0), 0);
   const gRT = churchTotals.total_ramthar || bialsData.reduce((acc, b) => acc + (b.subtotal?.total_ramthar || 0), 0);
@@ -1935,15 +1936,15 @@ export function exportConsolidatedBookletPDF({
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(7.5);
-  doc.setTextColor(255, 255, 255);
+  doc.setTextColor(0, 0, 0);
   doc.text(`KOHHRAN GRAND TOTAL (${globalSlNo - 1} Members)`, finalX + 3.5, currentY + 4.8);
 
   doc.setFontSize(6.8);
-  doc.setTextColor(226, 232, 240);
+  doc.setTextColor(0, 0, 0);
   doc.text(`PTR: Rs.${gPR.toLocaleString('en-IN')} | RT: Rs.${gRT.toLocaleString('en-IN')} | Tch: Rs.${gTch.toLocaleString('en-IN')} | Bldg: Rs.${gBldg.toLocaleString('en-IN')}`, finalX + 3.5, currentY + 9);
 
   doc.setFontSize(9.5);
-  doc.setTextColor(52, 211, 153); // emerald-400
+  doc.setTextColor(0, 0, 0);
   doc.text(`Rs. ${gTotal.toLocaleString('en-IN')}`, finalX + 126, currentY + 7, { align: 'right' });
 
   // Draw Page Footers on all pages

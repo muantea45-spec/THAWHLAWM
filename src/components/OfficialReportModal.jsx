@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   FileText, Download, FileSpreadsheet, Printer, X,
   Calendar, Building2, User, Award, Shield, CheckCircle2,
   Sliders, Layers, Sparkles, Loader2, RefreshCw, Upload, Image as ImageIcon,
-  Bold, Italic, Underline, Users, BookOpen
+  Bold, Italic, Underline, Users, BookOpen, Search
 } from 'lucide-react';
 import churchLogo from '../assets/church_logo.jpg';
 import { FINANCIAL_MONTHS } from '../utils/constants';
@@ -67,11 +67,19 @@ export default function OfficialReportModal({
 
   // Dynamic Data & Loading State
   const certificateRef = useRef(null);
+  const bookletRef = useRef(null);
   const [loadingData, setLoadingData] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isExportingPNG, setIsExportingPNG] = useState(false);
   const [isExportingBooklet, setIsExportingBooklet] = useState(false);
   const [logoBase64, setLogoBase64] = useState(null);
+
+  // Preview Mode: 'certificate' | 'booklet'
+  const [previewTab, setPreviewTab] = useState('certificate');
+  const [bookletData, setBookletData] = useState(null);
+  const [loadingBooklet, setLoadingBooklet] = useState(false);
+  const [bookletSearch, setBookletSearch] = useState('');
+  const [bookletBialFilter, setBookletBialFilter] = useState('all');
 
   // Dynamic Content state
   const [dynamicBreakdown, setDynamicBreakdown] = useState([]);
@@ -84,6 +92,59 @@ export default function OfficialReportModal({
   });
   const [tableType, setTableType] = useState('bials'); // 'bials' | 'monthly_breakdown' | 'members' | 'member_annual_summary'
   const [scopeName, setScopeName] = useState('All Bials Combined');
+
+  // Load 12-month consolidated booklet data
+  const loadBookletData = useCallback(async () => {
+    try {
+      setLoadingBooklet(true);
+      const res = await api.getOverallMemberContributions(selectedYear);
+      setBookletData(res);
+    } catch (err) {
+      console.error('Failed to load booklet data:', err);
+      showToast(err.message || 'Failed to load consolidated booklet data', 'error');
+    } finally {
+      setLoadingBooklet(false);
+    }
+  }, [selectedYear, showToast]);
+
+  // Compute continuous global Sl No starting from Bial 1 upwards across all Bials
+  const processedBookletBials = useMemo(() => {
+    if (!bookletData?.bials) return [];
+    let globalSl = 1;
+    return bookletData.bials.map(b => {
+      const members = (b.members || []).map(m => ({
+        ...m,
+        booklet_sl_no: globalSl++
+      }));
+      return {
+        ...b,
+        members
+      };
+    });
+  }, [bookletData]);
+
+  // Filtered booklet bials based on search query and bial dropdown
+  const filteredBookletBials = useMemo(() => {
+    if (!processedBookletBials.length) return [];
+    return processedBookletBials
+      .filter(b => bookletBialFilter === 'all' || String(b.bial_id) === String(bookletBialFilter))
+      .map(b => {
+        if (!bookletSearch.trim()) return b;
+        const q = bookletSearch.toLowerCase().trim();
+        const filtered = b.members.filter(m =>
+          (m.member_name || '').toLowerCase().includes(q)
+        );
+        return {
+          ...b,
+          members: filtered
+        };
+      })
+      .filter(b => b.members.length > 0 || !bookletSearch.trim());
+  }, [processedBookletBials, bookletBialFilter, bookletSearch]);
+
+  const totalFilteredMembers = useMemo(() => {
+    return filteredBookletBials.reduce((acc, b) => acc + (b.members?.length || 0), 0);
+  }, [filteredBookletBials]);
 
   // Pre-load Church Logo as Base64 for instant PDF embedding
   useEffect(() => {
@@ -369,10 +430,11 @@ export default function OfficialReportModal({
     try {
       showToast('Opening print dialog...', 'info');
 
-      const safeScope = scopeName ? `_${scopeName.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
-      const safeTitle = `Pathian_Ram_Official_Report_${reportType.replace(/[^a-zA-Z0-9]/g, '_')}${safeScope}_${selectedYear}`;
-
-      if (certificateRef.current) {
+      if (previewTab === 'booklet' && bookletRef.current) {
+        printCertificateDirectly(bookletRef.current, `Pathian_Ram_Booklet_FY_${selectedYear}`, 'a4', 'landscape');
+      } else if (certificateRef.current) {
+        const safeScope = scopeName ? `_${scopeName.replace(/[^a-zA-Z0-9]/g, '_')}` : '';
+        const safeTitle = `Pathian_Ram_Official_Report_${reportType.replace(/[^a-zA-Z0-9]/g, '_')}${safeScope}_${selectedYear}`;
         printCertificateDirectly(certificateRef.current, safeTitle, pageSize, orientation);
       } else {
         window.print();
@@ -683,7 +745,24 @@ export default function OfficialReportModal({
               <p className="text-[10.5px] text-slate-600 font-medium leading-normal">
                 Generates a 12-month consolidated booklet on Landscape A4 paper in 2 Columns (fills Column 1 first, then Column 2). Continuous Sl No starts at Bial 1 (Sl 1) and continues seamlessly across B2, B3... B12.
               </p>
-              <div className="grid grid-cols-2 gap-2 pt-1">
+
+              {/* Live Preview Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviewTab('booklet');
+                  if (!bookletData || bookletData.year !== selectedYear) {
+                    loadBookletData();
+                  }
+                }}
+                className="flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-xs shadow-xs transition-all cursor-pointer"
+                title="Open interactive 2-column landscape preview of the Yearly Report Booklet"
+              >
+                <BookOpen className="w-4 h-4 text-amber-400" />
+                <span>{previewTab === 'booklet' ? '✓ Currently Previewing Booklet' : 'Preview Booklet Here'}</span>
+              </button>
+
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
                 <button
                   type="button"
                   onClick={handleExportConsolidatedBookletPDF}
@@ -714,7 +793,7 @@ export default function OfficialReportModal({
                 <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-700">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>3. Signatory Details</span>
+                    <span>4. Signatory Details</span>
                   </div>
                 </div>
 
@@ -967,247 +1046,512 @@ export default function OfficialReportModal({
 
           </div>
 
-          {/* RIGHT COLUMN: LIVE CERTIFICATE / LETTERHEAD PREVIEW CANVAS (8 COLS) */}
+          {/* RIGHT COLUMN: PREVIEW CANVAS (CERTIFICATE OR BOOKLET) (8 COLS) */}
           <div className="lg:col-span-8 flex flex-col">
             
-            <div className="flex items-center justify-between px-2 pb-2">
-              <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                <Award className="w-4 h-4 text-amber-600" />
-                <span>Live Certificate / Letterhead Sheet Preview ({pageSize.toUpperCase()})</span>
-              </span>
-              <div className="flex items-center gap-2">
+            {/* TAB SELECTOR: CERTIFICATE SHEET vs YEARLY REPORT BOOKLET */}
+            <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-2.5">
+              <div className="flex items-center gap-1 bg-slate-200/90 p-1 rounded-xl shadow-2xs">
                 <button
                   type="button"
-                  onClick={handlePrint}
-                  disabled={loadingData || isExporting}
-                  className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800 hover:text-indigo-700 bg-white hover:bg-indigo-50 border border-slate-300 hover:border-indigo-300 px-2.5 py-1 rounded-lg shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-                  title="Print this sheet directly"
+                  onClick={() => setPreviewTab('certificate')}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    previewTab === 'certificate'
+                      ? 'bg-white text-black shadow-xs font-black'
+                      : 'text-slate-600 hover:text-black font-semibold'
+                  }`}
                 >
-                  <Printer className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Print Sheet</span>
+                  <Award className="w-3.5 h-3.5 text-black" />
+                  <span>Report Form & Certificate</span>
                 </button>
-                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                  {scopeName} {tableType === 'member_annual_summary' ? '(Member Summation)' : ''}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewTab('booklet');
+                    if (!bookletData || bookletData.year !== selectedYear) {
+                      loadBookletData();
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    previewTab === 'booklet'
+                      ? 'bg-white text-black shadow-xs font-black'
+                      : 'text-slate-600 hover:text-black font-semibold'
+                  }`}
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-black" />
+                  <span>Yearly Report Booklet (2-Col A4)</span>
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {previewTab === 'certificate' ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      disabled={loadingData || isExporting}
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-black hover:bg-slate-100 bg-white border border-slate-300 px-2.5 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                      title="Print this sheet directly"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-black" />
+                      <span>Print Sheet</span>
+                    </button>
+                    <span className="text-[10px] font-bold text-black bg-slate-100 border border-slate-300 px-2.5 py-1 rounded-full">
+                      {scopeName} {tableType === 'member_annual_summary' ? '(Member Summation)' : ''}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handlePrint}
+                      disabled={loadingBooklet}
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-black hover:bg-slate-100 bg-white border border-slate-300 px-2.5 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                      title="Print booklet directly"
+                    >
+                      <Printer className="w-3.5 h-3.5 text-black" />
+                      <span>Print</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleExportConsolidatedBookletPDF}
+                      disabled={isExportingBooklet}
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-2.5 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                      title="Download Consolidated Booklet PDF"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Booklet PDF</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* PREVIEW CANVAS SHEET / EXACT CERTIFICATE ELEMENT */}
-            <div
-              ref={certificateRef}
-              id="official-certificate-sheet"
-              className={`flex-1 bg-white p-5 sm:p-7 rounded-2xl sm:rounded-3xl border-2 border-slate-800 shadow-lg relative flex flex-col justify-between ${pageSize === 'legal' ? 'min-h-[780px]' : 'min-h-[640px]'}`}
-            >
-              {/* Outer & Inner Decorative Certificate Borders */}
-              <div className="absolute inset-1.5 border-2 border-slate-800 rounded-2xl pointer-events-none"></div>
-              <div className="absolute inset-3 border border-amber-600/40 rounded-xl pointer-events-none"></div>
+            {/* PREVIEW CONTAINER: SWITCHES BETWEEN CERTIFICATE AND YEARLY REPORT BOOKLET */}
+            {previewTab === 'certificate' ? (
+              /* PREVIEW CANVAS SHEET / EXACT CERTIFICATE ELEMENT */
+              <div
+                ref={certificateRef}
+                id="official-certificate-sheet"
+                className={`flex-1 bg-white text-black p-5 sm:p-7 rounded-2xl sm:rounded-3xl border-2 border-black shadow-lg relative flex flex-col justify-between ${pageSize === 'legal' ? 'min-h-[780px]' : 'min-h-[640px]'}`}
+              >
+                {/* Outer & Inner Decorative Certificate Borders */}
+                <div className="absolute inset-1.5 border-2 border-black rounded-2xl pointer-events-none"></div>
+                <div className="absolute inset-3 border border-black/30 rounded-xl pointer-events-none"></div>
 
-              {/* TOP SECTION: LETTERHEAD + BODY GROUPED WITH TIGHT 1-LINE SPACING */}
-              <div className="space-y-1.5 relative z-10">
+                {/* TOP SECTION: LETTERHEAD + BODY GROUPED WITH TIGHT 1-LINE SPACING */}
+                <div className="space-y-1.5 relative z-10">
 
-                {/* LETTERHEAD SECTION */}
-                <div className="text-center space-y-0.5">
-                  <h3 className="font-heading font-black text-xs sm:text-sm uppercase tracking-wider text-slate-900 leading-tight">
-                    Presbyterian Church of India
-                  </h3>
-                  <h4 className="font-heading font-extrabold text-xs sm:text-xs text-indigo-700 leading-tight">
-                    Bethlehem Kohhran
-                  </h4>
+                  {/* LETTERHEAD SECTION (100% BLACK TEXT) */}
+                  <div className="text-center space-y-0.5">
+                    <h3 className="font-heading font-black text-xs sm:text-sm uppercase tracking-wider text-black leading-tight">
+                      Presbyterian Church of India
+                    </h3>
+                    <h4 className="font-heading font-extrabold text-xs sm:text-xs text-black leading-tight">
+                      Bethlehem Kohhran
+                    </h4>
 
-                  {/* Centered Church Logo (50% larger) */}
-                  <div className="flex justify-center my-1">
+                    {/* Centered Church Logo */}
+                    <div className="flex justify-center my-1">
+                      <img
+                        src={churchLogo}
+                        alt="Church Logo"
+                        className="w-16 h-16 sm:w-18 sm:h-18 object-contain rounded-full shadow-xs border border-black/30 bg-white p-0.5"
+                      />
+                    </div>
+
+                    <div className="space-y-0.5">
+                      <h2 className="font-heading font-black text-sm sm:text-base text-black uppercase tracking-tight leading-tight">
+                        Pathian Ram Report
+                      </h2>
+                      <div className="flex flex-col items-center justify-center gap-0.5">
+                        <span className="inline-block px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-300 text-black font-bold text-[10.5px] leading-none">
+                          {periodText}
+                        </span>
+                        {/* Centered Bial Name */}
+                        <span className="text-center font-black text-black text-xs tracking-tight leading-tight">
+                          {scopeName} {tableType === 'member_annual_summary' ? '• Member Summation' : ''}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="w-20 h-0.5 bg-black mx-auto mt-1 rounded-full"></div>
+                  </div>
+
+                  {/* EXACTLY 1 LINE GAP: DATE OF ISSUE ROW */}
+                  <div className="flex items-center justify-between text-xs px-0.5 pt-0.5 border-b border-black/30 pb-1.5 mb-1 text-black font-bold">
+                    <span className="text-xs font-bold text-black">
+                      Date of Issue: <span className="font-extrabold text-black">{issueDate}</span>
+                    </span>
+                    <span className="text-xs text-black font-bold">
+                      Currency: INR (₹)
+                    </span>
+                  </div>
+
+                  {/* BODY: CONSOLIDATED TOTALS CARDS (100% BLACK TEXT) */}
+                  <div className={`grid grid-cols-2 sm:grid-cols-5 ${orientation === 'landscape' ? 'gap-2.5 text-center' : 'gap-1.5 text-center'}`}>
+                    {/* Summary Card 1: Pathian Ram */}
+                    <div className={`bg-slate-50 rounded-xl border border-slate-300 ${orientation === 'landscape' ? 'p-2.5' : 'p-2'}`}>
+                      <span className="text-[10px] sm:text-[11px] font-extrabold text-black uppercase block tracking-wider">Pathian Ram</span>
+                      <span className={`font-bold text-black block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
+                        ₹{(dynamicTotals.total_pathian_ram || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    {/* Summary Card 2: Ramthar */}
+                    <div className={`bg-slate-50 rounded-xl border border-slate-300 ${orientation === 'landscape' ? 'p-2.5' : 'p-2'}`}>
+                      <span className="text-[10px] sm:text-[11px] font-extrabold text-black uppercase block tracking-wider">Ramthar</span>
+                      <span className={`font-bold text-black block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
+                        ₹{(dynamicTotals.total_ramthar || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    {/* Summary Card 3: Tualchhung */}
+                    <div className={`bg-slate-50 rounded-xl border border-slate-300 ${orientation === 'landscape' ? 'p-2.5' : 'p-2'}`}>
+                      <span className="text-[10px] sm:text-[11px] font-extrabold text-black uppercase block tracking-wider">Tualchhung</span>
+                      <span className={`font-bold text-black block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
+                        ₹{(dynamicTotals.total_tualchhung || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    {/* Summary Card 4: Building */}
+                    <div className={`bg-slate-50 rounded-xl border border-slate-300 ${orientation === 'landscape' ? 'p-2.5' : 'p-2'}`}>
+                      <span className="text-[10px] sm:text-[11px] font-extrabold text-black uppercase block tracking-wider">Building</span>
+                      <span className={`font-bold text-black block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
+                        ₹{(dynamicTotals.total_building || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    {/* Summary Card 5: TOTAL */}
+                    <div className={`col-span-2 sm:col-span-1 bg-white rounded-xl border-2 border-black shadow-2xs ${orientation === 'landscape' ? 'p-2.5' : 'p-2'}`}>
+                      <span className="text-[10px] sm:text-[11px] font-black text-black uppercase block tracking-wider">TOTAL</span>
+                      <span className={`font-black text-black block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
+                        ₹{(dynamicTotals.grand_total || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* DYNAMIC BREAKDOWN TABLE (100% BLACK TEXT) */}
+                  <div className="border border-slate-300 rounded-xl overflow-hidden shadow-2xs mt-2">
+                    <table className={`w-full text-left border-collapse text-black ${orientation === 'landscape' ? 'text-xs' : 'text-[11px]'}`}>
+                      <thead className={`bg-slate-100 border-b-2 border-black font-extrabold text-black uppercase tracking-wider ${orientation === 'landscape' ? 'text-[11px]' : 'text-[10px]'}`}>
+                        <tr>
+                          <th className={`text-center w-8 text-black ${orientation === 'landscape' ? 'py-2 px-2.5' : 'py-1.5 px-2'}`}>Sl</th>
+                          <th className={`text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2.5'}`}>
+                            {tableType === 'monthly_breakdown' ? 'Month' : (tableType === 'members' || tableType === 'member_annual_summary') ? 'Member Name' : 'Bial Name'}
+                          </th>
+                          {tableType === 'bials' && <th className={`text-center text-black ${orientation === 'landscape' ? 'py-2 px-2.5' : 'py-1.5 px-2'}`}>Mem</th>}
+                          <th className={`text-right text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>PTR (₹)</th>
+                          <th className={`text-right text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>RT (₹)</th>
+                          <th className={`text-right text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>Tch (₹)</th>
+                          <th className={`text-right text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>Bldg (₹)</th>
+                          <th className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3.5' : 'py-1.5 px-2.5'}`}>Total (₹)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-black font-semibold">
+                        {dynamicBreakdown.length === 0 ? (
+                          <tr>
+                            <td colSpan={tableType === 'bials' ? 8 : 7} className="py-6 text-center text-black font-bold text-xs">
+                              {loadingData ? 'Loading report data...' : 'No contribution records found for this period.'}
+                            </td>
+                          </tr>
+                        ) : (
+                          dynamicBreakdown.map((item, idx) => (
+                            <tr key={item.id || item.member_id || idx} className="hover:bg-slate-50">
+                              <td className={`text-center text-black font-bold text-[10px] ${orientation === 'landscape' ? 'py-1.5 px-2.5' : 'py-1 px-2'}`}>{item.sl_no || idx + 1}</td>
+                              <td className={`font-bold text-black ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2.5'}`}>
+                                {tableType === 'monthly_breakdown' ? item.month_name : (tableType === 'members' || tableType === 'member_annual_summary') ? (item.name || item.member_name) : (item.name || item.bial_name)}
+                              </td>
+                              {tableType === 'bials' && (
+                                <td className={`text-center text-black font-bold ${orientation === 'landscape' ? 'py-1.5 px-2.5' : 'py-1 px-2'}`}>{item.member_count || '-'}</td>
+                              )}
+                              <td className={`text-right font-medium text-black ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2'}`}>₹{(item.total_pathian_ram || item.pathian_ram || 0).toLocaleString('en-IN')}</td>
+                              <td className={`text-right font-medium text-black ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2'}`}>₹{(item.total_ramthar || item.ramthar || 0).toLocaleString('en-IN')}</td>
+                              <td className={`text-right font-medium text-black ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2'}`}>₹{(item.total_tualchhung || item.tualchhung || 0).toLocaleString('en-IN')}</td>
+                              <td className={`text-right font-medium text-black ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2'}`}>₹{(item.total_building || item.building || 0).toLocaleString('en-IN')}</td>
+                              <td className={`text-right font-bold text-black bg-slate-50 ${orientation === 'landscape' ? 'py-1.5 px-3.5' : 'py-1 px-2.5'}`}>
+                                ₹{(item.grand_total || item.total || item.total_collected || 0).toLocaleString('en-IN')}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                      <tfoot className="bg-slate-100 font-bold border-t-2 border-black text-black">
+                        <tr>
+                          <td className={`text-center font-bold text-[10px] ${orientation === 'landscape' ? 'py-2 px-2.5' : 'py-1.5 px-2'}`}></td>
+                          <td className={`font-black uppercase text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2.5'}`}>
+                            {tableType === 'monthly_breakdown' ? 'ANNUAL TOTAL' : (tableType === 'members' || tableType === 'member_annual_summary') ? `GRAND TOTAL (${dynamicBreakdown.length} Members)` : 'GRAND TOTAL'}
+                          </td>
+                          {tableType === 'bials' && (
+                            <td className={`text-center font-bold text-[10px] text-black ${orientation === 'landscape' ? 'py-2 px-2.5' : 'py-1.5 px-2'}`}>
+                              {dynamicBreakdown.reduce((acc, b) => acc + (b.member_count || 0), 0)}
+                            </td>
+                          )}
+                          <td className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_pathian_ram || 0).toLocaleString('en-IN')}</td>
+                          <td className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_ramthar || 0).toLocaleString('en-IN')}</td>
+                          <td className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_tualchhung || 0).toLocaleString('en-IN')}</td>
+                          <td className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_building || 0).toLocaleString('en-IN')}</td>
+                          <td className={`text-right font-black text-black bg-slate-200 border-l border-black/30 ${orientation === 'landscape' ? 'py-2 px-3.5' : 'py-1.5 px-2.5'}`}>
+                            ₹{(dynamicTotals.grand_total || 0).toLocaleString('en-IN')}
+                          </td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+
+                </div>
+
+                {/* FOOTER SIGNATORY & SEAL BLOCK (100% BLACK TEXT) */}
+                <div className="pt-6 mt-auto relative z-10 text-xs">
+                  <div className="flex items-end justify-between gap-4">
+                    
+                    {/* Left Column: Empty Spacer */}
+                    <div className="w-1/3 hidden sm:block"></div>
+
+                    {/* Center Column: Uploaded Stamp / Seal (Admin Only) */}
+                    <div className="w-1/3 flex items-center justify-center">
+                      {isAdmin && sealBase64 ? (
+                        <img
+                          src={sealBase64}
+                          alt="Official Seal"
+                          style={{ width: `${sealSize}px`, height: `${sealSize}px` }}
+                          className="object-contain"
+                        />
+                      ) : null}
+                    </div>
+
+                    {/* Right Column: Signatory Information (100% Black) */}
+                    <div className="w-1/3 flex flex-col items-center justify-end text-center shrink-0">
+                      {/* Uploaded Signature (Lands just above Designation/Name) */}
+                      {isAdmin && signatureBase64 && (
+                        <img
+                          src={signatureBase64}
+                          alt="Uploaded Signature"
+                          style={{ height: `${signatureSize}px` }}
+                          className="object-contain mb-1 max-w-[150px]"
+                        />
+                      )}
+
+                      {/* Signatory Name */}
+                      <div className={`text-xs sm:text-sm text-black font-black leading-normal ${nameBold ? 'font-black' : 'font-bold'} ${nameItalic ? 'italic' : ''} ${nameUnderline ? 'underline' : ''}`}>
+                        {signatoryName || 'Authorised Signatory'}
+                      </div>
+
+                      {/* Signatory Designation */}
+                      <div className={`text-xs text-black font-bold leading-normal mt-0.5 ${desigBold ? 'font-black' : 'font-bold'} ${desigItalic ? 'italic' : ''} ${desigUnderline ? 'underline' : ''}`}>
+                        {signatoryDesignation || 'Treasurer'}
+                      </div>
+
+                      {/* Signatory Organization Name */}
+                      <div className={`text-[11px] sm:text-xs text-black font-semibold leading-normal mt-0.5 ${orgBold ? 'font-black' : 'font-medium'} ${orgItalic ? 'italic' : ''} ${orgUnderline ? 'underline' : ''}`}>
+                        {signatoryOrganization || 'Presbyterian Church of India'}
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              /* LIVE PREVIEW OF YEARLY REPORT BOOKLET (2-COLUMN LANDSCAPE A4) */
+              <div
+                ref={bookletRef}
+                id="yearly-report-booklet-preview"
+                className="flex-1 bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border-2 border-black shadow-lg relative flex flex-col text-black min-h-[640px]"
+              >
+                {/* Decorative Booklet Borders */}
+                <div className="absolute inset-1.5 border-2 border-black rounded-2xl pointer-events-none"></div>
+                <div className="absolute inset-3 border border-black/30 rounded-xl pointer-events-none"></div>
+
+                {/* Booklet Sheet Header */}
+                <div className="relative z-10 text-center space-y-1 pb-2.5 border-b-2 border-black mb-3">
+                  <div className="flex justify-center mb-1">
                     <img
                       src={churchLogo}
                       alt="Church Logo"
-                      className="w-16 h-16 sm:w-18 sm:h-18 object-contain rounded-full shadow-xs border border-amber-600/30 bg-white p-0.5"
+                      className="w-14 h-14 object-contain rounded-full border border-black/30 bg-white p-0.5"
                     />
                   </div>
+                  <h3 className="font-heading font-black text-xs uppercase tracking-wider text-black">
+                    Presbyterian Church of India
+                  </h3>
+                  <h2 className="font-heading font-black text-base sm:text-lg uppercase tracking-tight text-black">
+                    BETHLEHEM KOHHRAN — PATHIAN RAM
+                  </h2>
+                  <div className="flex flex-wrap items-center justify-center gap-1.5 pt-0.5">
+                    <span className="px-3 py-0.5 rounded-full bg-slate-100 border border-slate-300 text-black font-extrabold text-xs">
+                      CONSOLIDATED ANNUAL MEMBER BOOKLET (FY {selectedYear} - {selectedYear + 1})
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-300 text-black font-bold text-xs">
+                      2-Column Landscape A4 • Continuous Sl No across Bial 1 to Bial 12
+                    </span>
+                  </div>
+                  <div className="w-24 h-0.5 bg-black mx-auto mt-1 rounded-full"></div>
+                </div>
 
-                  <div className="space-y-0.5">
-                    <h2 className="font-heading font-black text-sm sm:text-base text-slate-950 uppercase tracking-tight leading-tight">
-                      Pathian Ram Report
-                    </h2>
-                    <div className="flex flex-col items-center justify-center gap-0.5">
-                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-900 font-bold text-[10.5px] leading-none">
-                        {periodText}
-                      </span>
-                      {/* Centered Bial Name */}
-                      <span className="text-center font-black text-slate-900 text-xs tracking-tight leading-tight">
-                        {scopeName} {tableType === 'member_annual_summary' ? '• Member Summation' : ''}
-                      </span>
+                {/* Search & Bial filter toolbar */}
+                <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 mb-3 bg-slate-50 p-2.5 rounded-xl border border-slate-300">
+                  <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                    <div className="relative w-full">
+                      <Search className="w-3.5 h-3.5 text-black absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Search member name across all bials..."
+                        value={bookletSearch}
+                        onChange={(e) => setBookletSearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-white border border-slate-300 text-black font-bold placeholder:text-slate-400 focus:outline-none focus:border-black"
+                      />
                     </div>
-                  </div>
-
-                  <div className="w-20 h-0.5 bg-indigo-600 mx-auto mt-1 rounded-full"></div>
-                </div>
-
-                {/* EXACTLY 1 LINE GAP: DATE OF ISSUE ROW */}
-                <div className="flex items-center justify-between text-xs px-0.5 pt-0.5 border-b border-slate-200 pb-1.5 mb-1">
-                  <span className="text-xs font-bold text-slate-800">
-                    Date of Issue: <span className="font-semibold text-slate-950">{issueDate}</span>
-                  </span>
-                  <span className="text-xs text-slate-600 font-bold">
-                    Currency: INR (₹)
-                  </span>
-                </div>
-
-                {/* BODY: CONSOLIDATED TOTALS CARDS */}
-                <div className={`grid grid-cols-2 sm:grid-cols-5 ${orientation === 'landscape' ? 'gap-2.5 text-center' : 'gap-1.5 text-center'}`}>
-                  {/* Summary Card 1: Pathian Ram */}
-                  <div className={`bg-blue-50/90 rounded-xl border border-blue-200 ${orientation === 'landscape' ? 'p-2.5' : 'p-2'}`}>
-                    <span className="text-[10px] sm:text-[11px] font-extrabold text-blue-900 uppercase block tracking-wider">Pathian Ram</span>
-                    <span className={`font-bold text-blue-950 block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
-                      ₹{(dynamicTotals.total_pathian_ram || 0).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <div className={`bg-emerald-50/90 rounded-xl border border-emerald-200 ${orientation === 'landscape' ? 'p-2.5' : 'p-2'}`}>
-                    <span className="text-[10px] sm:text-[11px] font-extrabold text-emerald-900 uppercase block tracking-wider">Ramthar</span>
-                    <span className={`font-bold text-emerald-950 block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
-                      ₹{(dynamicTotals.total_ramthar || 0).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <div className={`bg-amber-50/90 rounded-xl border border-amber-200 ${orientation === 'landscape' ? 'p-2.5' : 'p-2'}`}>
-                    <span className="text-[10px] sm:text-[11px] font-extrabold text-amber-900 uppercase block tracking-wider">Tualchhung</span>
-                    <span className={`font-bold text-amber-950 block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
-                      ₹{(dynamicTotals.total_tualchhung || 0).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <div className={`bg-purple-50/90 rounded-xl border border-purple-200 ${orientation === 'landscape' ? 'p-2.5' : 'p-2'}`}>
-                    <span className="text-[10px] sm:text-[11px] font-extrabold text-purple-900 uppercase block tracking-wider">Building</span>
-                    <span className={`font-bold text-purple-950 block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
-                      ₹{(dynamicTotals.total_building || 0).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  {/* TOTAL Box in White with Amount in Black */}
-                  <div className={`col-span-2 sm:col-span-1 bg-white rounded-xl border-2 border-slate-400 shadow-2xs ${orientation === 'landscape' ? 'p-2.5' : 'p-2'}`}>
-                    <span className="text-[10px] sm:text-[11px] font-black text-slate-900 uppercase block tracking-wider">TOTAL</span>
-                    <span className={`font-black text-slate-950 block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
-                      ₹{(dynamicTotals.grand_total || 0).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                </div>
-
-                {/* DYNAMIC BREAKDOWN TABLE */}
-                <div className="border border-slate-300 rounded-xl overflow-hidden shadow-2xs mt-2">
-                  <table className={`w-full text-left border-collapse ${orientation === 'landscape' ? 'text-xs' : 'text-[11px]'}`}>
-                    <thead className={`bg-slate-100 border-b border-slate-300 font-extrabold text-slate-900 uppercase tracking-wider ${orientation === 'landscape' ? 'text-[11px]' : 'text-[10px]'}`}>
-                      <tr>
-                        <th className={`text-center w-8 ${orientation === 'landscape' ? 'py-2 px-2.5' : 'py-1.5 px-2'}`}>Sl</th>
-                        <th className={`${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2.5'}`}>
-                          {tableType === 'monthly_breakdown' ? 'Month' : (tableType === 'members' || tableType === 'member_annual_summary') ? 'Member Name' : 'Bial Name'}
-                        </th>
-                        {tableType === 'bials' && <th className={`text-center ${orientation === 'landscape' ? 'py-2 px-2.5' : 'py-1.5 px-2'}`}>Mem</th>}
-                        <th className={`text-right ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>PTR (₹)</th>
-                        <th className={`text-right ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>RT (₹)</th>
-                        <th className={`text-right ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>Tch (₹)</th>
-                        <th className={`text-right ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>Bldg (₹)</th>
-                        <th className={`text-right font-black text-emerald-950 ${orientation === 'landscape' ? 'py-2 px-3.5' : 'py-1.5 px-2.5'}`}>Total (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 text-slate-900 font-semibold">
-                      {dynamicBreakdown.length === 0 ? (
-                        <tr>
-                          <td colSpan={tableType === 'bials' ? 8 : 7} className="py-6 text-center text-slate-500 font-bold text-xs">
-                            {loadingData ? 'Loading report data...' : 'No contribution records found for this period.'}
-                          </td>
-                        </tr>
-                      ) : (
-                        dynamicBreakdown.map((item, idx) => (
-                          <tr key={item.id || item.member_id || idx} className="hover:bg-slate-50">
-                            <td className={`text-center text-slate-600 font-bold text-[10px] ${orientation === 'landscape' ? 'py-1.5 px-2.5' : 'py-1 px-2'}`}>{item.sl_no || idx + 1}</td>
-                            <td className={`font-bold text-slate-950 ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2.5'}`}>
-                              {tableType === 'monthly_breakdown' ? item.month_name : (tableType === 'members' || tableType === 'member_annual_summary') ? (item.name || item.member_name) : (item.name || item.bial_name)}
-                            </td>
-                            {tableType === 'bials' && (
-                              <td className={`text-center text-slate-700 font-bold ${orientation === 'landscape' ? 'py-1.5 px-2.5' : 'py-1 px-2'}`}>{item.member_count || '-'}</td>
-                            )}
-                            <td className={`text-right font-bold text-blue-900 ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2'}`}>₹{(item.total_pathian_ram || item.pathian_ram || 0).toLocaleString('en-IN')}</td>
-                            <td className={`text-right font-bold text-emerald-900 ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2'}`}>₹{(item.total_ramthar || item.ramthar || 0).toLocaleString('en-IN')}</td>
-                            <td className={`text-right font-bold text-amber-900 ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2'}`}>₹{(item.total_tualchhung || item.tualchhung || 0).toLocaleString('en-IN')}</td>
-                            <td className={`text-right font-bold text-purple-900 ${orientation === 'landscape' ? 'py-1.5 px-3' : 'py-1 px-2'}`}>₹{(item.total_building || item.building || 0).toLocaleString('en-IN')}</td>
-                            <td className={`text-right font-black text-emerald-950 bg-emerald-50/50 ${orientation === 'landscape' ? 'py-1.5 px-3.5' : 'py-1 px-2.5'}`}>
-                              ₹{(item.grand_total || item.total || item.total_collected || 0).toLocaleString('en-IN')}
-                            </td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                    <tfoot className="bg-slate-100 font-bold border-t-2 border-slate-300 text-slate-950">
-                      <tr>
-                        <td className={`text-center font-bold text-[10px] ${orientation === 'landscape' ? 'py-2 px-2.5' : 'py-1.5 px-2'}`}></td>
-                        <td className={`font-black uppercase ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2.5'}`}>
-                          {tableType === 'monthly_breakdown' ? 'ANNUAL TOTAL' : (tableType === 'members' || tableType === 'member_annual_summary') ? `GRAND TOTAL (${dynamicBreakdown.length} Members)` : 'GRAND TOTAL'}
-                        </td>
-                        {tableType === 'bials' && (
-                          <td className={`text-center font-bold text-[10px] ${orientation === 'landscape' ? 'py-2 px-2.5' : 'py-1.5 px-2'}`}>
-                            {dynamicBreakdown.reduce((acc, b) => acc + (b.member_count || 0), 0)}
-                          </td>
-                        )}
-                        <td className={`text-right font-black text-blue-950 ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_pathian_ram || 0).toLocaleString('en-IN')}</td>
-                        <td className={`text-right font-black text-emerald-950 ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_ramthar || 0).toLocaleString('en-IN')}</td>
-                        <td className={`text-right font-black text-amber-950 ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_tualchhung || 0).toLocaleString('en-IN')}</td>
-                        <td className={`text-right font-black text-purple-950 ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_building || 0).toLocaleString('en-IN')}</td>
-                        <td className={`text-right font-black text-black bg-emerald-100/90 ${orientation === 'landscape' ? 'py-2 px-3.5' : 'py-1.5 px-2.5'}`}>
-                          ₹{(dynamicTotals.grand_total || 0).toLocaleString('en-IN')}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-
-              </div>
-
-              {/* FOOTER SIGNATORY & SEAL BLOCK */}
-              <div className="pt-6 mt-auto relative z-10 text-xs">
-                <div className="flex items-end justify-between gap-4">
-                  
-                  {/* Left Column: Empty Spacer */}
-                  <div className="w-1/3 hidden sm:block"></div>
-
-                  {/* Center Column: Uploaded Stamp / Seal (Admin Only) */}
-                  <div className="w-1/3 flex items-center justify-center">
-                    {isAdmin && sealBase64 ? (
-                      <img
-                        src={sealBase64}
-                        alt="Official Seal"
-                        style={{ width: `${sealSize}px`, height: `${sealSize}px` }}
-                        className="object-contain"
-                      />
-                    ) : null}
-                  </div>
-
-                  {/* Right Column: Signatory Information */}
-                  <div className="w-1/3 flex flex-col items-center justify-end text-center shrink-0">
-                    {/* Uploaded Signature (Lands just above Designation/Name) */}
-                    {isAdmin && signatureBase64 && (
-                      <img
-                        src={signatureBase64}
-                        alt="Uploaded Signature"
-                        style={{ height: `${signatureSize}px` }}
-                        className="object-contain mb-1 max-w-[150px]"
-                      />
+                    {bookletSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setBookletSearch('')}
+                        className="text-xs text-black font-bold hover:underline shrink-0 px-1 cursor-pointer"
+                      >
+                        Clear
+                      </button>
                     )}
-
-                    {/* Signatory Name */}
-                    <div className={`text-xs sm:text-sm text-slate-950 font-black leading-normal ${nameBold ? 'font-black' : 'font-bold'} ${nameItalic ? 'italic' : ''} ${nameUnderline ? 'underline' : ''}`}>
-                      {signatoryName || 'Authorised Signatory'}
-                    </div>
-
-                    {/* Signatory Designation */}
-                    <div className={`text-xs text-slate-900 font-bold leading-normal mt-0.5 ${desigBold ? 'font-black' : 'font-bold'} ${desigItalic ? 'italic' : ''} ${desigUnderline ? 'underline' : ''}`}>
-                      {signatoryDesignation || 'Treasurer'}
-                    </div>
-
-                    {/* Signatory Organization Name */}
-                    <div className={`text-[11px] sm:text-xs text-slate-800 font-bold leading-normal mt-0.5 ${orgBold ? 'font-black' : 'font-medium'} ${orgItalic ? 'italic' : ''} ${orgUnderline ? 'underline' : ''}`}>
-                      {signatoryOrganization || 'Presbyterian Church of India'}
-                    </div>
                   </div>
 
+                  <div className="flex items-center gap-2 shrink-0">
+                    <select
+                      value={bookletBialFilter}
+                      onChange={(e) => setBookletBialFilter(e.target.value)}
+                      className="px-2.5 py-1.5 text-xs rounded-lg bg-white border border-slate-300 text-black font-bold focus:outline-none focus:border-black cursor-pointer"
+                    >
+                      <option value="all">🌟 All Bials (1 to 12)</option>
+                      {processedBookletBials.map(b => (
+                        <option key={b.bial_id} value={b.bial_id}>
+                          📍 {b.bial_code ? `${b.bial_code} - ` : ''}{b.bial_name} ({b.members?.length || 0})
+                        </option>
+                      ))}
+                    </select>
+
+                    <button
+                      type="button"
+                      onClick={loadBookletData}
+                      disabled={loadingBooklet}
+                      className="p-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-black cursor-pointer shadow-2xs"
+                      title="Refresh booklet data"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${loadingBooklet ? 'animate-spin' : ''}`} />
+                    </button>
+
+                    <span className="text-[11px] font-bold text-black bg-white border border-slate-300 px-2.5 py-1 rounded-lg">
+                      {totalFilteredMembers} Members
+                    </span>
+                  </div>
+                </div>
+
+                {/* Content area: 2-Column layout */}
+                <div className="relative z-10 flex-1 overflow-y-auto max-h-[560px] pr-1 space-y-3">
+                  {loadingBooklet ? (
+                    <div className="py-20 flex flex-col items-center justify-center text-center text-black">
+                      <Loader2 className="w-8 h-8 animate-spin text-black mb-3" />
+                      <span className="font-bold text-sm">Compiling 12-Month Consolidated Booklet...</span>
+                      <span className="text-xs text-black font-medium mt-1">Aggregating records across all 12 Bials</span>
+                    </div>
+                  ) : !bookletData || !bookletData.bials || filteredBookletBials.length === 0 ? (
+                    <div className="py-20 flex flex-col items-center justify-center text-center text-black">
+                      <BookOpen className="w-10 h-10 text-slate-400 mb-2" />
+                      <span className="font-bold text-sm">
+                        {bookletSearch ? 'No members found matching your search.' : 'No booklet data available.'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={loadBookletData}
+                        className="mt-3 px-4 py-1.5 rounded-xl bg-black text-white text-xs font-bold hover:bg-slate-800 cursor-pointer"
+                      >
+                        Load 12-Month Booklet Data
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* 2-COLUMN BOOKLET GRID (A4 LANDSCAPE SIMULATION) */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                        {filteredBookletBials.map((bial) => {
+                          const sub = bial.subtotal || {};
+                          return (
+                            <div
+                              key={bial.bial_id}
+                              className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-2xs"
+                            >
+                              {/* Bial Banner Header */}
+                              <div className="bg-slate-100 border-b border-black/40 px-3 py-1.5 flex items-center justify-between text-black font-black text-xs">
+                                <span>📍 {bial.bial_code ? `${bial.bial_code} - ` : ''}{bial.bial_name}</span>
+                                <span className="text-[10px] font-bold bg-white px-2 py-0.5 rounded border border-slate-300">
+                                  {bial.members.length} Members
+                                </span>
+                              </div>
+
+                              {/* Table with continuous Sl No */}
+                              <table className="w-full text-left border-collapse text-black text-[10px]">
+                                <thead className="bg-slate-50 border-b border-black/30 font-extrabold uppercase text-[9px]">
+                                  <tr>
+                                    <th className="py-1 px-1.5 text-center w-8">Sl</th>
+                                    <th className="py-1 px-2">Member Name</th>
+                                    <th className="py-1 px-1 text-right">PTR (₹)</th>
+                                    <th className="py-1 px-1 text-right">RT (₹)</th>
+                                    <th className="py-1 px-1 text-right">Tch (₹)</th>
+                                    <th className="py-1 px-1 text-right">Bldg (₹)</th>
+                                    <th className="py-1 px-2 text-right">Total (₹)</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200">
+                                  {bial.members.map((m) => (
+                                    <tr key={m.member_id} className="hover:bg-slate-50 even:bg-slate-50/50">
+                                      <td className="py-1 px-1.5 text-center font-bold text-black">{m.booklet_sl_no}</td>
+                                      <td className="py-1 px-2 font-semibold text-black truncate max-w-[130px]">{m.member_name}</td>
+                                      <td className="py-1 px-1 text-right text-black font-medium">{m.pathian_ram ? m.pathian_ram.toLocaleString('en-IN') : '-'}</td>
+                                      <td className="py-1 px-1 text-right text-black font-medium">{m.ramthar ? m.ramthar.toLocaleString('en-IN') : '-'}</td>
+                                      <td className="py-1 px-1 text-right text-black font-medium">{m.tualchhung ? m.tualchhung.toLocaleString('en-IN') : '-'}</td>
+                                      <td className="py-1 px-1 text-right text-black font-medium">{m.building ? m.building.toLocaleString('en-IN') : '-'}</td>
+                                      <td className="py-1 px-2 text-right text-black font-bold">{m.grand_total ? `₹${m.grand_total.toLocaleString('en-IN')}` : '₹0'}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                                <tfoot className="bg-slate-100 border-t-2 border-black text-black font-black text-[9.5px]">
+                                  <tr>
+                                    <td colSpan={2} className="py-1 px-2 uppercase font-extrabold">Subtotal ({bial.bial_code || bial.bial_name})</td>
+                                    <td className="py-1 px-1 text-right">{(sub.total_pathian_ram || 0).toLocaleString('en-IN')}</td>
+                                    <td className="py-1 px-1 text-right">{(sub.total_ramthar || 0).toLocaleString('en-IN')}</td>
+                                    <td className="py-1 px-1 text-right">{(sub.total_tualchhung || 0).toLocaleString('en-IN')}</td>
+                                    <td className="py-1 px-1 text-right">{(sub.total_building || 0).toLocaleString('en-IN')}</td>
+                                    <td className="py-1 px-2 text-right font-black bg-slate-200">₹{(sub.grand_total || 0).toLocaleString('en-IN')}</td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* KOHHRAN GRAND TOTAL BANNER AT BOTTOM (100% BLACK TEXT) */}
+                      <div className="mt-4 bg-slate-100 text-black rounded-xl p-3.5 border-2 border-black flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
+                        <div>
+                          <h4 className="font-heading font-black text-sm uppercase tracking-wider text-black">
+                            KOHHRAN GRAND TOTAL ({bookletData.totalMemberCount || processedBookletBials.reduce((a, b) => a + (b.members?.length || 0), 0)} Members)
+                          </h4>
+                          <p className="text-[11px] text-black font-semibold mt-0.5">
+                            PTR: ₹{(bookletData.churchGrandTotal?.total_pathian_ram || 0).toLocaleString('en-IN')} • 
+                            RT: ₹{(bookletData.churchGrandTotal?.total_ramthar || 0).toLocaleString('en-IN')} • 
+                            Tch: ₹{(bookletData.churchGrandTotal?.total_tualchhung || 0).toLocaleString('en-IN')} • 
+                            Bldg: ₹{(bookletData.churchGrandTotal?.total_building || 0).toLocaleString('en-IN')}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] uppercase font-bold text-black block">Total Collections</span>
+                          <span className="text-base sm:text-lg font-black text-black">
+                            ₹{(bookletData.churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Booklet Footer Note */}
+                      <div className="mt-2 text-center text-[10px] text-black font-semibold">
+                        Bethlehem Kohhran • Consolidated Annual Booklet (12-Month Aggregated) • FY {selectedYear}-{selectedYear + 1}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
-
-            </div>
+            )}
 
           </div>
 
@@ -1216,40 +1560,80 @@ export default function OfficialReportModal({
         {/* MODAL ACTION FOOTER */}
         <div className="px-4 sm:px-6 py-3 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-500 font-medium">
-            Export formatted in <span className="font-bold text-slate-800">{pageSize.toUpperCase()}</span> ({orientation}) • <span className="text-indigo-600 font-semibold">{scopeName}</span>
+            {previewTab === 'booklet' ? (
+              <>Viewing <span className="font-bold text-slate-800">Consolidated Annual Booklet (2-Col A4)</span> • Landscape • FY {selectedYear}-{selectedYear + 1}</>
+            ) : (
+              <>Export formatted in <span className="font-bold text-slate-800">{pageSize.toUpperCase()}</span> ({orientation}) • <span className="text-indigo-600 font-semibold">{scopeName}</span></>
+            )}
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={handlePrint}
-              disabled={loadingData || isExporting}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
-              title={`Direct Print in ${pageSize.toUpperCase()} (${orientation})`}
-            >
-              <Printer className="w-4 h-4 text-slate-200" />
-              <span>Print</span>
-            </button>
+            {previewTab === 'booklet' ? (
+              <>
+                <button
+                  onClick={handlePrint}
+                  disabled={loadingBooklet}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+                  title="Direct Print Booklet (Landscape A4)"
+                >
+                  <Printer className="w-4 h-4 text-slate-200" />
+                  <span>Print</span>
+                </button>
 
-            <button
-              onClick={handleExportExcel}
-              disabled={loadingData}
-              className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
-              title="Export formatted Excel file"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              <span>Export Excel</span>
-            </button>
+                <button
+                  onClick={handleExportConsolidatedBookletExcel}
+                  disabled={isExportingBooklet}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+                  title="Download Consolidated Booklet Excel"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Booklet Excel</span>
+                </button>
 
-            {isAdmin && (
-              <button
-                onClick={handleExportPDF}
-                disabled={isExporting || loadingData}
-                className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50 cursor-pointer"
-                title="Download official certificate PDF in A4 / Legal size"
-              >
-                <Download className="w-4 h-4" />
-                <span>{isExporting ? 'Downloading PDF...' : `Download PDF (${pageSize.toUpperCase()})`}</span>
-              </button>
+                <button
+                  onClick={handleExportConsolidatedBookletPDF}
+                  disabled={isExportingBooklet}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50 cursor-pointer"
+                  title="Download Consolidated Booklet PDF (2-Column Landscape A4)"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>{isExportingBooklet ? 'Downloading...' : 'Download Booklet PDF (A4)'}</span>
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handlePrint}
+                  disabled={loadingData || isExporting}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+                  title={`Direct Print in ${pageSize.toUpperCase()} (${orientation})`}
+                >
+                  <Printer className="w-4 h-4 text-slate-200" />
+                  <span>Print</span>
+                </button>
+
+                <button
+                  onClick={handleExportExcel}
+                  disabled={loadingData}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+                  title="Export formatted Excel file"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Export Excel</span>
+                </button>
+
+                {isAdmin && (
+                  <button
+                    onClick={handleExportPDF}
+                    disabled={isExporting || loadingData}
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50 cursor-pointer"
+                    title="Download official certificate PDF in A4 / Legal size"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>{isExporting ? 'Downloading PDF...' : `Download PDF (${pageSize.toUpperCase()})`}</span>
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

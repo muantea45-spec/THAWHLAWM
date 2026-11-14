@@ -36,14 +36,14 @@ const styles = StyleSheet.create({
   denominationText: {
     fontSize: 10,
     fontFamily: 'Helvetica-Bold',
-    color: '#1e293b',
+    color: '#000000',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   churchText: {
     fontSize: 9.5,
     fontFamily: 'Helvetica-Bold',
-    color: '#4338ca',
+    color: '#000000',
     marginTop: 1,
   },
   logoImage: {
@@ -56,15 +56,15 @@ const styles = StyleSheet.create({
   reportTitle: {
     fontSize: 11,
     fontFamily: 'Helvetica-Bold',
-    color: '#0f172a',
+    color: '#000000',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginTop: 1,
   },
   periodBadge: {
-    backgroundColor: '#fffbeb',
+    backgroundColor: '#f8fafc',
     borderWidth: 0.75,
-    borderColor: '#fde68a',
+    borderColor: '#cbd5e1',
     borderRadius: 8,
     paddingVertical: 1.5,
     paddingHorizontal: 7,
@@ -74,18 +74,18 @@ const styles = StyleSheet.create({
   periodBadgeText: {
     fontSize: 7.5,
     fontFamily: 'Helvetica-Bold',
-    color: '#92400e',
+    color: '#000000',
   },
   scopeText: {
     fontSize: 8.5,
     fontFamily: 'Helvetica-Bold',
-    color: '#0f172a',
+    color: '#000000',
     marginTop: 2,
   },
   dividerLine: {
     width: 50,
     height: 1.5,
-    backgroundColor: '#4f46e5',
+    backgroundColor: '#000000',
     alignSelf: 'center',
     marginTop: 3,
     borderRadius: 1,
@@ -95,19 +95,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 0.75,
-    borderBottomColor: '#e2e8f0',
+    borderBottomColor: '#cbd5e1',
     paddingBottom: 2.5,
     marginBottom: 4,
     marginTop: 2,
   },
   issueDateText: {
     fontSize: 7.5,
-    color: '#334155',
+    color: '#000000',
   },
   currencyText: {
     fontSize: 7.5,
     fontFamily: 'Helvetica-Bold',
-    color: '#475569',
+    color: '#000000',
   },
   cardsContainer: {
     flexDirection: 'row',
@@ -126,14 +126,16 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica-Bold',
     textTransform: 'uppercase',
     marginBottom: 1,
+    color: '#000000',
   },
   cardValue: {
     fontSize: 8.5,
     fontFamily: 'Helvetica-Bold',
+    color: '#000000',
   },
   tableContainer: {
     borderWidth: 0.75,
-    borderColor: '#cbd5e1',
+    borderColor: '#94a3b8',
     borderRadius: 4,
     overflow: 'hidden',
     marginTop: 2,
@@ -143,14 +145,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#f1f5f9',
     borderBottomWidth: 0.75,
-    borderBottomColor: '#cbd5e1',
+    borderBottomColor: '#94a3b8',
     alignItems: 'center',
     paddingVertical: 2.5,
   },
   tableHeaderCell: {
     fontSize: 6.5,
     fontFamily: 'Helvetica-Bold',
-    color: '#1e293b',
+    color: '#000000',
     textTransform: 'uppercase',
     paddingHorizontal: 2,
   },
@@ -169,7 +171,7 @@ const styles = StyleSheet.create({
   },
   tableCell: {
     fontSize: 6.5,
-    color: '#0f172a',
+    color: '#000000',
     paddingHorizontal: 2,
   },
   tableFooterRow: {
@@ -183,7 +185,7 @@ const styles = StyleSheet.create({
   tableFooterCell: {
     fontSize: 6.5,
     fontFamily: 'Helvetica-Bold',
-    color: '#0f172a',
+    color: '#000000',
     paddingHorizontal: 2,
   },
   footerSection: {
@@ -249,14 +251,14 @@ export default function OfficialReportPDFDocument({
         total: '14%',
       };
 
-  // Signatory font styles
+  // Signatory font styles (Pure Black)
   const nameStyle = {
     fontSize: 8.5,
     fontFamily: signatory.nameBold
       ? (signatory.nameItalic ? 'Helvetica-BoldOblique' : 'Helvetica-Bold')
       : (signatory.nameItalic ? 'Helvetica-Oblique' : 'Helvetica'),
     textDecoration: signatory.nameUnderline ? 'underline' : 'none',
-    color: '#020617',
+    color: '#000000',
     textAlign: 'center',
   };
 
@@ -266,7 +268,7 @@ export default function OfficialReportPDFDocument({
       ? (signatory.desigItalic ? 'Helvetica-BoldOblique' : 'Helvetica-Bold')
       : (signatory.desigItalic ? 'Helvetica-Oblique' : 'Helvetica'),
     textDecoration: signatory.desigUnderline ? 'underline' : 'none',
-    color: '#0f172a',
+    color: '#000000',
     marginTop: 1,
     textAlign: 'center',
   };
@@ -277,7 +279,7 @@ export default function OfficialReportPDFDocument({
       ? (signatory.orgItalic ? 'Helvetica-BoldOblique' : 'Helvetica-Bold')
       : (signatory.orgItalic ? 'Helvetica-Oblique' : 'Helvetica'),
     textDecoration: signatory.orgUnderline ? 'underline' : 'none',
-    color: '#1e293b',
+    color: '#000000',
     marginTop: 1,
     textAlign: 'center',
   };
@@ -314,48 +316,48 @@ export default function OfficialReportPDFDocument({
               {/* Date of Issue & Currency row */}
               <View style={styles.issueDateRow}>
                 <Text style={styles.issueDateText}>
-                  Date of Issue: <Text style={{ fontFamily: 'Helvetica-Bold', color: '#0f172a' }}>{issueDate}</Text>
+                  Date of Issue: <Text style={{ fontFamily: 'Helvetica-Bold', color: '#000000' }}>{issueDate}</Text>
                 </Text>
                 <Text style={styles.currencyText}>Currency: INR (₹)</Text>
               </View>
 
-              {/* 5 Financial Totals Cards */}
+              {/* 5 Financial Totals Cards (All Black Text) */}
               <View style={styles.cardsContainer}>
                 {/* Pathian Ram */}
-                <View style={[styles.card, { backgroundColor: '#eff6ff', borderWidth: 1, borderColor: '#bfdbfe' }]}>
-                  <Text style={[styles.cardLabel, { color: '#1e3a8a' }]}>Pathian Ram</Text>
-                  <Text style={[styles.cardValue, { color: '#172554' }]}>
+                <View style={[styles.card, { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1' }]}>
+                  <Text style={[styles.cardLabel, { color: '#000000' }]}>Pathian Ram</Text>
+                  <Text style={[styles.cardValue, { color: '#000000' }]}>
                     ₹{formatINR(totals.total_pathian_ram)}
                   </Text>
                 </View>
 
                 {/* Ramthar */}
-                <View style={[styles.card, { backgroundColor: '#ecfdf5', borderWidth: 1, borderColor: '#a7f3d0' }]}>
-                  <Text style={[styles.cardLabel, { color: '#065f46' }]}>Ramthar</Text>
-                  <Text style={[styles.cardValue, { color: '#022c22' }]}>
+                <View style={[styles.card, { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1' }]}>
+                  <Text style={[styles.cardLabel, { color: '#000000' }]}>Ramthar</Text>
+                  <Text style={[styles.cardValue, { color: '#000000' }]}>
                     ₹{formatINR(totals.total_ramthar)}
                   </Text>
                 </View>
 
                 {/* Tualchhung */}
-                <View style={[styles.card, { backgroundColor: '#fffbeb', borderWidth: 1, borderColor: '#fde68a' }]}>
-                  <Text style={[styles.cardLabel, { color: '#92400e' }]}>Tualchhung</Text>
-                  <Text style={[styles.cardValue, { color: '#451a03' }]}>
+                <View style={[styles.card, { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1' }]}>
+                  <Text style={[styles.cardLabel, { color: '#000000' }]}>Tualchhung</Text>
+                  <Text style={[styles.cardValue, { color: '#000000' }]}>
                     ₹{formatINR(totals.total_tualchhung)}
                   </Text>
                 </View>
 
                 {/* Building */}
-                <View style={[styles.card, { backgroundColor: '#faf5ff', borderWidth: 1, borderColor: '#e9d5ff' }]}>
-                  <Text style={[styles.cardLabel, { color: '#6b21a8' }]}>Building</Text>
-                  <Text style={[styles.cardValue, { color: '#3b0764' }]}>
+                <View style={[styles.card, { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#cbd5e1' }]}>
+                  <Text style={[styles.cardLabel, { color: '#000000' }]}>Building</Text>
+                  <Text style={[styles.cardValue, { color: '#000000' }]}>
                     ₹{formatINR(totals.total_building)}
                   </Text>
                 </View>
 
                 {/* Grand Total */}
-                <View style={[styles.card, { backgroundColor: '#ffffff', borderWidth: 1.5, borderColor: '#94a3b8' }]}>
-                  <Text style={[styles.cardLabel, { color: '#0f172a' }]}>TOTAL</Text>
+                <View style={[styles.card, { backgroundColor: '#ffffff', borderWidth: 1.5, borderColor: '#000000' }]}>
+                  <Text style={[styles.cardLabel, { color: '#000000' }]}>TOTAL</Text>
                   <Text style={[styles.cardValue, { color: '#000000', fontFamily: 'Helvetica-Bold' }]}>
                     ₹{formatINR(totals.grand_total)}
                   </Text>
@@ -366,8 +368,8 @@ export default function OfficialReportPDFDocument({
               <View style={styles.tableContainer}>
                 {/* Table Header */}
                 <View style={styles.tableHeaderRow}>
-                  <Text style={[styles.tableHeaderCell, { width: colWidths.sl, textAlign: 'center' }]}>Sl</Text>
-                  <Text style={[styles.tableHeaderCell, { width: colWidths.name, textAlign: 'left' }]}>
+                  <Text style={[styles.tableHeaderCell, { width: colWidths.sl, textAlign: 'center', color: '#000000' }]}>Sl</Text>
+                  <Text style={[styles.tableHeaderCell, { width: colWidths.name, textAlign: 'left', color: '#000000' }]}>
                     {tableType === 'monthly_breakdown'
                       ? 'Month'
                       : tableType === 'members' || tableType === 'member_annual_summary'
@@ -375,13 +377,13 @@ export default function OfficialReportPDFDocument({
                       : 'Bial Name'}
                   </Text>
                   {isBials && (
-                    <Text style={[styles.tableHeaderCell, { width: colWidths.mem, textAlign: 'center' }]}>Mem</Text>
+                    <Text style={[styles.tableHeaderCell, { width: colWidths.mem, textAlign: 'center', color: '#000000' }]}>Mem</Text>
                   )}
-                  <Text style={[styles.tableHeaderCell, { width: colWidths.ptr, textAlign: 'right' }]}>PTR (₹)</Text>
-                  <Text style={[styles.tableHeaderCell, { width: colWidths.rt, textAlign: 'right' }]}>RT (₹)</Text>
-                  <Text style={[styles.tableHeaderCell, { width: colWidths.tch, textAlign: 'right' }]}>Tch (₹)</Text>
-                  <Text style={[styles.tableHeaderCell, { width: colWidths.bldg, textAlign: 'right' }]}>Bldg (₹)</Text>
-                  <Text style={[styles.tableHeaderCell, { width: colWidths.total, textAlign: 'right', color: '#064e3b' }]}>
+                  <Text style={[styles.tableHeaderCell, { width: colWidths.ptr, textAlign: 'right', color: '#000000' }]}>PTR (₹)</Text>
+                  <Text style={[styles.tableHeaderCell, { width: colWidths.rt, textAlign: 'right', color: '#000000' }]}>RT (₹)</Text>
+                  <Text style={[styles.tableHeaderCell, { width: colWidths.tch, textAlign: 'right', color: '#000000' }]}>Tch (₹)</Text>
+                  <Text style={[styles.tableHeaderCell, { width: colWidths.bldg, textAlign: 'right', color: '#000000' }]}>Bldg (₹)</Text>
+                  <Text style={[styles.tableHeaderCell, { width: colWidths.total, textAlign: 'right', color: '#000000', fontFamily: 'Helvetica-Bold' }]}>
                     Total (₹)
                   </Text>
                 </View>
@@ -389,12 +391,12 @@ export default function OfficialReportPDFDocument({
                 {/* Table Rows */}
                 {breakdown.length === 0 ? (
                   <View style={{ paddingVertical: 12, alignItems: 'center' }}>
-                    <Text style={{ fontSize: 8, color: '#64748b' }}>No contribution records found for this period.</Text>
+                    <Text style={{ fontSize: 8, color: '#000000' }}>No contribution records found for this period.</Text>
                   </View>
                 ) : (
                   breakdown.map((item, idx) => {
                     const rowName =
-                      tableType === 'monthly_breakdown'
+                       tableType === 'monthly_breakdown'
                         ? item.month_name
                         : tableType === 'members' || tableType === 'member_annual_summary'
                         ? item.name || item.member_name
@@ -410,33 +412,33 @@ export default function OfficialReportPDFDocument({
                         key={item.id || idx}
                         style={[styles.tableRow, idx % 2 === 0 ? styles.tableRowEven : styles.tableRowOdd]}
                       >
-                        <Text style={[styles.tableCell, { width: colWidths.sl, textAlign: 'center', color: '#64748b' }]}>
+                        <Text style={[styles.tableCell, { width: colWidths.sl, textAlign: 'center', color: '#000000' }]}>
                           {item.sl_no || idx + 1}
                         </Text>
-                        <Text style={[styles.tableCell, { width: colWidths.name, fontFamily: 'Helvetica-Bold', color: '#0f172a' }]}>
+                        <Text style={[styles.tableCell, { width: colWidths.name, fontFamily: 'Helvetica-Bold', color: '#000000' }]}>
                           {rowName}
                         </Text>
                         {isBials && (
-                          <Text style={[styles.tableCell, { width: colWidths.mem, textAlign: 'center', color: '#475569' }]}>
+                          <Text style={[styles.tableCell, { width: colWidths.mem, textAlign: 'center', color: '#000000' }]}>
                             {item.member_count || '-'}
                           </Text>
                         )}
-                        <Text style={[styles.tableCell, { width: colWidths.ptr, textAlign: 'right', color: '#1e3a8a' }]}>
+                        <Text style={[styles.tableCell, { width: colWidths.ptr, textAlign: 'right', color: '#000000' }]}>
                           ₹{formatINR(ptr)}
                         </Text>
-                        <Text style={[styles.tableCell, { width: colWidths.rt, textAlign: 'right', color: '#065f46' }]}>
+                        <Text style={[styles.tableCell, { width: colWidths.rt, textAlign: 'right', color: '#000000' }]}>
                           ₹{formatINR(rt)}
                         </Text>
-                        <Text style={[styles.tableCell, { width: colWidths.tch, textAlign: 'right', color: '#92400e' }]}>
+                        <Text style={[styles.tableCell, { width: colWidths.tch, textAlign: 'right', color: '#000000' }]}>
                           ₹{formatINR(tch)}
                         </Text>
-                        <Text style={[styles.tableCell, { width: colWidths.bldg, textAlign: 'right', color: '#6b21a8' }]}>
+                        <Text style={[styles.tableCell, { width: colWidths.bldg, textAlign: 'right', color: '#000000' }]}>
                           ₹{formatINR(bldg)}
                         </Text>
                         <Text
                           style={[
                             styles.tableCell,
-                            { width: colWidths.total, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: '#064e3b' },
+                            { width: colWidths.total, textAlign: 'right', fontFamily: 'Helvetica-Bold', color: '#000000' },
                           ]}
                         >
                           ₹{formatINR(tot)}
@@ -449,7 +451,7 @@ export default function OfficialReportPDFDocument({
                 {/* Table Footer Grand Totals */}
                 <View style={styles.tableFooterRow}>
                   <Text style={[styles.tableFooterCell, { width: colWidths.sl, textAlign: 'center' }]}></Text>
-                  <Text style={[styles.tableFooterCell, { width: colWidths.name, fontFamily: 'Helvetica-Bold' }]}>
+                  <Text style={[styles.tableFooterCell, { width: colWidths.name, fontFamily: 'Helvetica-Bold', color: '#000000' }]}>
                     {tableType === 'monthly_breakdown'
                       ? 'ANNUAL TOTAL'
                       : tableType === 'members' || tableType === 'member_annual_summary'
@@ -457,20 +459,20 @@ export default function OfficialReportPDFDocument({
                       : 'GRAND TOTAL'}
                   </Text>
                   {isBials && (
-                    <Text style={[styles.tableFooterCell, { width: colWidths.mem, textAlign: 'center' }]}>
+                    <Text style={[styles.tableFooterCell, { width: colWidths.mem, textAlign: 'center', color: '#000000' }]}>
                       {breakdown.reduce((acc, b) => acc + (b.member_count || 0), 0)}
                     </Text>
                   )}
-                  <Text style={[styles.tableFooterCell, { width: colWidths.ptr, textAlign: 'right', color: '#172554' }]}>
+                  <Text style={[styles.tableFooterCell, { width: colWidths.ptr, textAlign: 'right', color: '#000000' }]}>
                     ₹{formatINR(totals.total_pathian_ram)}
                   </Text>
-                  <Text style={[styles.tableFooterCell, { width: colWidths.rt, textAlign: 'right', color: '#022c22' }]}>
+                  <Text style={[styles.tableFooterCell, { width: colWidths.rt, textAlign: 'right', color: '#000000' }]}>
                     ₹{formatINR(totals.total_ramthar)}
                   </Text>
-                  <Text style={[styles.tableFooterCell, { width: colWidths.tch, textAlign: 'right', color: '#451a03' }]}>
+                  <Text style={[styles.tableFooterCell, { width: colWidths.tch, textAlign: 'right', color: '#000000' }]}>
                     ₹{formatINR(totals.total_tualchhung)}
                   </Text>
-                  <Text style={[styles.tableFooterCell, { width: colWidths.bldg, textAlign: 'right', color: '#3b0764' }]}>
+                  <Text style={[styles.tableFooterCell, { width: colWidths.bldg, textAlign: 'right', color: '#000000' }]}>
                     ₹{formatINR(totals.total_building)}
                   </Text>
                   <Text
@@ -489,7 +491,7 @@ export default function OfficialReportPDFDocument({
             <View style={styles.footerSection}>
               {/* Left Column: Spacer */}
               <View style={styles.footerCol}>
-                <Text style={{ fontSize: 6.5, color: '#94a3b8' }}>
+                <Text style={{ fontSize: 6.5, color: '#000000' }}>
                   Pathian Ram Financial Report
                 </Text>
               </View>

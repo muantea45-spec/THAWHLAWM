@@ -6,7 +6,7 @@ import {
   FileSpreadsheet, FileText, Search, RefreshCw, Eye, ArrowUp, ArrowDown, ArrowUpDown,
   CalendarDays, LogOut, LayoutGrid, LayoutList, Shield, Users, CheckCircle2, Edit3,
   ArrowRightLeft, Trophy, Percent, Wallet, ChevronDown, ChevronUp, IndianRupee,
-  ArrowUpRight, ArrowDownRight, Menu
+  ArrowUpRight, ArrowDownRight, Menu, Loader2
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -79,6 +79,14 @@ export default function AdminDashboard({ user, showToast }) {
   const [compareMonthTarget, setCompareMonthTarget] = useState(5); // Month A (Target: May)
   const [compareMonthBase, setCompareMonthBase] = useState(4); // Month B (Base: April)
 
+  // Analytics Comparison Mode & Year Comparison State
+  const [compareMode, setCompareMode] = useState('month'); // 'month' | 'year'
+  const [compareYearTarget, setCompareYearTarget] = useState(new Date().getFullYear());
+  const [compareYearBase, setCompareYearBase] = useState(new Date().getFullYear() - 1);
+  const [compareYearTargetData, setCompareYearTargetData] = useState(null);
+  const [compareYearBaseData, setCompareYearBaseData] = useState(null);
+  const [loadingYearCompare, setLoadingYearCompare] = useState(false);
+
   // Inspector Tab State
   const [inspectorBialId, setInspectorBialId] = useState('all');
   const [inspectorMonth, setInspectorMonth] = useState(4); // Default to April
@@ -126,6 +134,14 @@ export default function AdminDashboard({ user, showToast }) {
         if (!yearsList.includes(year)) {
           setYear(actYear);
         }
+        if (yearsList.length >= 2) {
+          const sorted = [...yearsList].sort((a, b) => b - a);
+          setCompareYearTarget(sorted[0]);
+          setCompareYearBase(sorted[1]);
+        } else if (yearsList.length === 1) {
+          setCompareYearTarget(yearsList[0]);
+          setCompareYearBase(yearsList[0]);
+        }
       }
     } catch (err) {
       console.error('Error loading financial years:', err);
@@ -166,6 +182,35 @@ export default function AdminDashboard({ user, showToast }) {
   useEffect(() => {
     loadAdminData();
   }, [year, overallBialFilter, overallMonthFilter]);
+
+  // Fetch Financial Year Comparison Data when activeTab is analytics and compareMode is year
+  useEffect(() => {
+    if (activeTab !== 'analytics' || compareMode !== 'year') return;
+    let isMounted = true;
+    const fetchFYData = async () => {
+      setLoadingYearCompare(true);
+      try {
+        const [targetRes, baseRes] = await Promise.all([
+          api.getAdminDashboard(compareYearTarget),
+          api.getAdminDashboard(compareYearBase)
+        ]);
+        if (isMounted) {
+          setCompareYearTargetData(targetRes);
+          setCompareYearBaseData(baseRes);
+        }
+      } catch (err) {
+        console.error('Failed to load FY comparison data:', err);
+      } finally {
+        if (isMounted) {
+          setLoadingYearCompare(false);
+        }
+      }
+    };
+    fetchFYData();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab, compareMode, compareYearTarget, compareYearBase]);
 
   // Real-time synchronization for Tithe Columns and Headers across all tabs, inspector, and devices
   useEffect(() => {
@@ -563,6 +608,70 @@ export default function AdminDashboard({ user, showToast }) {
     }))
   ];
 
+  // Financial Year Comparison Calculations
+  const fyTargetTotals = compareYearTargetData?.grandTotals || {};
+  const fyBaseTotals = compareYearBaseData?.grandTotals || {};
+
+  const fyTargetTotal = fyTargetTotals.grand_total || 0;
+  const fyBaseTotal = fyBaseTotals.grand_total || 0;
+  const fyMonetaryDiff = fyTargetTotal - fyBaseTotal;
+  const fyMonetaryDiffPercent = fyBaseTotal > 0
+    ? Math.round(((fyTargetTotal - fyBaseTotal) / fyBaseTotal) * 1000) / 10
+    : (fyTargetTotal > 0 ? 100 : 0);
+
+  const fyTargetHH = fyTargetTotals.total_system_members || 0;
+  const fyBaseHH = fyBaseTotals.total_system_members || 0;
+  const fyTargetReturned = fyTargetTotals.total_returned_members || 0;
+  const fyBaseReturned = fyBaseTotals.total_returned_members || 0;
+  const fyTargetReturnRate = fyTargetTotals.overall_return_rate || 0;
+  const fyBaseReturnRate = fyBaseTotals.overall_return_rate || 0;
+  const fyReturnedDiff = fyTargetReturned - fyBaseReturned;
+  const fyReturnRateDiff = Math.round((fyTargetReturnRate - fyBaseReturnRate) * 10) / 10;
+  const fyTargetAvg = fyTargetTotals.avg_contribution_per_member || 0;
+  const fyBaseAvg = fyBaseTotals.avg_contribution_per_member || 0;
+  const fyAvgDiff = fyTargetAvg - fyBaseAvg;
+
+  const baseYearKey = `FY ${compareYearBase}`;
+  const targetYearKey = compareYearTarget === compareYearBase ? `FY ${compareYearTarget} (A)` : `FY ${compareYearTarget}`;
+
+  const fyComparisonBarData = [
+    {
+      category: 'Total',
+      [baseYearKey]: fyBaseTotal,
+      [targetYearKey]: fyTargetTotal
+    },
+    ...titheColumns.map(col => ({
+      category: col.code,
+      [baseYearKey]: fyBaseTotals[col.field_key] || fyBaseTotals[`total_${col.field_key}`] || 0,
+      [targetYearKey]: fyTargetTotals[col.field_key] || fyTargetTotals[`total_${col.field_key}`] || 0
+    }))
+  ];
+
+  // Bial YoY comparison rows
+  const fyBialComparison = React.useMemo(() => {
+    if (!compareYearTargetData?.bialBreakdown || !compareYearBaseData?.bialBreakdown) return [];
+    const baseMap = new Map();
+    (compareYearBaseData.bialBreakdown || []).forEach(b => {
+      baseMap.set(b.id, b);
+    });
+    return (compareYearTargetData.bialBreakdown || []).map(tb => {
+      const bb = baseMap.get(tb.id) || { total: 0, returned_members: 0, total_members: 0, return_rate: 0 };
+      const diff = tb.total - bb.total;
+      const pct = bb.total > 0 ? Math.round((diff / bb.total) * 1000) / 10 : (tb.total > 0 ? 100 : 0);
+      return {
+        id: tb.id,
+        name: tb.name,
+        code: tb.code,
+        baseTotal: bb.total,
+        targetTotal: tb.total,
+        diff,
+        pct,
+        baseReturnRate: bb.return_rate,
+        targetReturnRate: tb.return_rate
+      };
+    }).sort((a, b) => b.targetTotal - a.targetTotal);
+  }, [compareYearTargetData, compareYearBaseData]);
+
   const pieChartData = titheColumns.map(col => ({
     name: col.code,
     value: grandTotals[col.field_key] || grandTotals[`total_${col.field_key}`] || 0,
@@ -650,7 +759,7 @@ export default function AdminDashboard({ user, showToast }) {
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
                 title="Open Admin Menu"
               >
                 <Menu className="w-3.5 h-3.5" />
@@ -1459,253 +1568,604 @@ export default function AdminDashboard({ user, showToast }) {
 
             </div>
 
-            {/* MONTH-OVER-MONTH PERFORMANCE COMPARISON (Current Month vs Previous Month) */}
+            {/* PERFORMANCE COMPARISON (Month-over-Month OR Financial Year-over-Year) */}
             <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
               
-              {/* Header & Comparison Month Selector */}
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+              {/* Header & Comparison Selector */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 border-b border-slate-100 pb-3">
                 <div>
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
-                    <TrendingUp className="w-4 h-4 text-slate-700" />
-                    <span>Month-over-Month Performance Comparison</span>
-                  </h3>
-                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-normal">
-                    Comparing <strong className="text-slate-800 font-semibold">Month A ({currMonthFullName})</strong> vs <strong className="text-slate-700 font-semibold">Month B ({prevMonthFullName})</strong>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                      <TrendingUp className="w-4 h-4 text-indigo-600" />
+                      <span>{compareMode === 'month' ? 'Month-over-Month Performance Comparison' : 'Financial Year Comparison'}</span>
+                    </h3>
+                    
+                    {/* Mode Toggle Switch */}
+                    <div className="inline-flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setCompareMode('month')}
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                          compareMode === 'month'
+                            ? 'bg-white text-indigo-700 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        📅 Monthly
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCompareMode('year')}
+                        className={`px-2 py-0.5 rounded-md text-[11px] font-bold transition-all cursor-pointer ${
+                          compareMode === 'year'
+                            ? 'bg-white text-indigo-700 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        🏛️ Financial Year
+                      </button>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] sm:text-[11px] text-slate-500 font-normal mt-0.5">
+                    {compareMode === 'month' ? (
+                      <>Comparing <strong className="text-slate-800 font-semibold">Month A ({currMonthFullName})</strong> vs <strong className="text-slate-700 font-semibold">Month B ({prevMonthFullName})</strong> in FY {year}</>
+                    ) : (
+                      <>Comparing <strong className="text-indigo-800 font-semibold">FY {compareYearTarget}-{compareYearTarget + 1} (Year A)</strong> vs <strong className="text-slate-700 font-semibold">FY {compareYearBase}-{compareYearBase + 1} (Year B)</strong></>
+                    )}
                   </p>
                 </div>
 
-                {/* Flexible Month A & Month B Comparison Selectors */}
-                <div className="flex items-center gap-2 text-xs font-bold shrink-0 bg-white px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs flex-wrap self-end sm:self-center">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-indigo-900 text-[10.5px] uppercase font-black tracking-tight">Month A :</span>
-                    <select
-                      value={compareMonthTarget}
-                      onChange={(e) => setCompareMonthTarget(parseInt(e.target.value))}
-                      className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs"
-                    >
-                      {FINANCIAL_MONTH_ORDER.map(mNum => (
-                        <option key={mNum} value={mNum}>{FINANCIAL_FULL_NAMES[mNum]}</option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Dropdown Selectors for Month or Year */}
+                {compareMode === 'month' ? (
+                  <div className="flex items-center gap-2 text-xs font-bold shrink-0 bg-white px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs flex-wrap self-end sm:self-center">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-indigo-900 text-[10.5px] uppercase font-black tracking-tight">Month A :</span>
+                      <select
+                        value={compareMonthTarget}
+                        onChange={(e) => setCompareMonthTarget(parseInt(e.target.value))}
+                        className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs"
+                      >
+                        {FINANCIAL_MONTH_ORDER.map(mNum => (
+                          <option key={mNum} value={mNum}>{FINANCIAL_FULL_NAMES[mNum]}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <span className="text-slate-400 text-xs font-black px-1">VS</span>
+                    <span className="text-slate-400 text-xs font-black px-1">VS</span>
 
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-slate-600 text-[10.5px] uppercase font-black tracking-tight">Month B :</span>
-                    <select
-                      value={compareMonthBase}
-                      onChange={(e) => setCompareMonthBase(parseInt(e.target.value))}
-                      className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs"
-                    >
-                      {FINANCIAL_MONTH_ORDER.map(mNum => (
-                        <option key={mNum} value={mNum}>{FINANCIAL_FULL_NAMES[mNum]}</option>
-                      ))}
-                    </select>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-600 text-[10.5px] uppercase font-black tracking-tight">Month B :</span>
+                      <select
+                        value={compareMonthBase}
+                        onChange={(e) => setCompareMonthBase(parseInt(e.target.value))}
+                        className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs"
+                      >
+                        {FINANCIAL_MONTH_ORDER.map(mNum => (
+                          <option key={mNum} value={mNum}>{FINANCIAL_FULL_NAMES[mNum]}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-xs font-bold shrink-0 bg-white px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs flex-wrap self-end sm:self-center">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-indigo-900 text-[10.5px] uppercase font-black tracking-tight">Year A :</span>
+                      <select
+                        value={compareYearTarget}
+                        onChange={(e) => setCompareYearTarget(parseInt(e.target.value))}
+                        className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs"
+                      >
+                        {financialYears.map(y => (
+                          <option key={y} value={y}>FY {y}-{y + 1}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <span className="text-slate-400 text-xs font-black px-1">VS</span>
+
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-slate-600 text-[10.5px] uppercase font-black tracking-tight">Year B :</span>
+                      <select
+                        value={compareYearBase}
+                        onChange={(e) => setCompareYearBase(parseInt(e.target.value))}
+                        className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs"
+                      >
+                        {financialYears.map(y => (
+                          <option key={y} value={y}>FY {y}-{y + 1}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Side-by-Side Monetary and Household Return Panels */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                
-                {/* 1. Monetary Comparison Card */}
-                <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1">
-                      <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Monetary Contribution</span>
-                    </span>
-                    {/* Growth Indicator */}
-                    <span className={`px-2 py-0.5 rounded-lg text-[9.5px] font-mono font-bold border flex items-center gap-1 ${
-                      monetaryDiff >= 0 
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                        : 'bg-rose-50 text-rose-700 border-rose-200'
-                    }`}>
-                      {monetaryDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
-                      <span>{monetaryDiff >= 0 ? `+₹${monetaryDiff.toLocaleString('en-IN')} (+${monetaryDiffPercent}%)` : `-₹${Math.abs(monetaryDiff).toLocaleString('en-IN')} (${monetaryDiffPercent}%)`}</span>
-                    </span>
-                  </div>
+              {/* MONTH-OVER-MONTH VIEW */}
+              {compareMode === 'month' && (
+                <>
+                  {/* Side-by-Side Monetary and Household Return Panels */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    
+                    {/* 1. Monetary Comparison Card */}
+                    <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                          <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Monetary Contribution</span>
+                        </span>
+                        {/* Growth Indicator */}
+                        <span className={`px-2 py-0.5 rounded-lg text-[9.5px] font-mono font-bold border flex items-center gap-1 ${
+                          monetaryDiff >= 0 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                        }`}>
+                          {monetaryDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
+                          <span>{monetaryDiff >= 0 ? `+₹${monetaryDiff.toLocaleString('en-IN')} (+${monetaryDiffPercent}%)` : `-₹${Math.abs(monetaryDiff).toLocaleString('en-IN')} (${monetaryDiffPercent}%)`}</span>
+                        </span>
+                      </div>
 
-                  {/* Previous vs Current Boxes */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5">
-                      <span className="text-[8.5px] font-bold text-slate-500 uppercase block font-sans">
-                        {prevMonthLabel} (Previous)
-                      </span>
-                      <span className="text-xs sm:text-sm font-black text-slate-700 block">
-                        ₹{prevTotal.toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5">
-                      <span className="text-[8.5px] font-bold text-indigo-700 uppercase block font-sans">
-                        {currMonthLabel} (Current)
-                      </span>
-                      <span className="text-xs sm:text-sm font-black text-indigo-900 block">
-                        ₹{currTotal.toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                  </div>
+                      {/* Previous vs Current Boxes */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5">
+                          <span className="text-[8.5px] font-bold text-slate-500 uppercase block font-sans">
+                            {prevMonthLabel} (Previous)
+                          </span>
+                          <span className="text-xs sm:text-sm font-black text-slate-700 block">
+                            ₹{prevTotal.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5">
+                          <span className="text-[8.5px] font-bold text-indigo-700 uppercase block font-sans">
+                            {currMonthLabel} (Current)
+                          </span>
+                          <span className="text-xs sm:text-sm font-black text-indigo-900 block">
+                            ₹{currTotal.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      </div>
 
-                  {/* Category Breakdown Comparison Bars */}
-                  <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[10px]">
-                    <div className="flex items-center justify-between text-slate-500 font-bold text-[9px] uppercase tracking-wider">
-                      <span>Category</span>
-                      <div className="flex items-center gap-3">
-                        <span className="text-slate-600">{prevMonthLabel}</span>
-                        <span className="text-indigo-700">{currMonthLabel}</span>
+                      {/* Category Breakdown Comparison Bars */}
+                      <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[10px]">
+                        <div className="flex items-center justify-between text-slate-500 font-bold text-[9px] uppercase tracking-wider">
+                          <span>Category</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-slate-600">{prevMonthLabel}</span>
+                            <span className="text-indigo-700">{currMonthLabel}</span>
+                          </div>
+                        </div>
+
+                        {titheColumns.map((cat) => {
+                          const prevVal = prevMonthTrend[cat.field_key] || 0;
+                          const currVal = currMonthTrend[cat.field_key] || 0;
+                          const maxVal = Math.max(1, prevVal, currVal);
+                          return (
+                            <div key={cat.id || cat.field_key} className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
+                              <div className="flex items-center justify-between font-mono font-bold text-[10px]">
+                                <span className="text-slate-700 font-sans font-semibold truncate pr-2">
+                                  {cat.name} ({cat.code})
+                                </span>
+                                <div className="flex items-center gap-2.5 shrink-0">
+                                  <span className="text-slate-500">₹{prevVal.toLocaleString('en-IN')}</span>
+                                  <span className="text-indigo-700 font-black">₹{currVal.toLocaleString('en-IN')}</span>
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
+                                  <div className="bg-slate-400 h-1 rounded-full" style={{ width: `${(prevVal / maxVal) * 100}%` }} />
+                                </div>
+                                <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
+                                  <div className="h-1 rounded-full" style={{ backgroundColor: cat.color || '#6366f1', width: `${(currVal / maxVal) * 100}%` }} />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    {titheColumns.map((cat) => {
-                      const prevVal = prevMonthTrend[cat.field_key] || 0;
-                      const currVal = currMonthTrend[cat.field_key] || 0;
-                      const maxVal = Math.max(1, prevVal, currVal);
-                      return (
-                        <div key={cat.id || cat.field_key} className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
-                          <div className="flex items-center justify-between font-mono font-bold text-[10px]">
-                            <span className="text-slate-700 font-sans font-semibold truncate pr-2">
-                              {cat.name} ({cat.code})
+                    {/* 2. Household Return Comparison Card */}
+                    <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                          <Users className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Household Return Rate</span>
+                        </span>
+                        {/* Compliance Change Indicator */}
+                        <span className={`px-2 py-0.5 rounded-lg text-[9.5px] font-mono font-bold border flex items-center gap-1 ${
+                          returnedDiff >= 0 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                        }`}>
+                          {returnedDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
+                          <span>{returnedDiff >= 0 ? `+${returnedDiff} HH (+${returnRateDiff}%)` : `${returnedDiff} HH (${returnRateDiff}%)`}</span>
+                        </span>
+                      </div>
+
+                      {/* Previous vs Current Boxes */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5">
+                          <span className="text-[8.5px] font-bold text-slate-500 uppercase block font-sans">
+                            {prevMonthLabel} (Previous)
+                          </span>
+                          <span className="text-xs sm:text-sm font-black text-slate-700 block">
+                            {prevReturned} <span className="text-[9px] font-sans text-slate-500 font-normal">/ {totalSystemMembers} HH</span>
+                          </span>
+                          <span className="text-[9.5px] font-bold text-slate-600 block">
+                            {prevReturnRate}% compliance
+                          </span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5">
+                          <span className="text-[8.5px] font-bold text-emerald-700 uppercase block font-sans">
+                            {currMonthLabel} (Current)
+                          </span>
+                          <span className="text-xs sm:text-sm font-black text-emerald-900 block">
+                            {currReturned} <span className="text-[9px] font-sans text-emerald-600 font-normal">/ {totalSystemMembers} HH</span>
+                          </span>
+                          <span className="text-[9.5px] font-bold text-emerald-700 block">
+                            {currReturnRate}% compliance
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Dual Visual Progress Comparison */}
+                      <div className="space-y-2 pt-1 border-t border-slate-100">
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[10px] font-mono">
+                            <span className="text-slate-600 font-sans font-bold">{prevMonthFullName} Return Progress</span>
+                            <span className="text-slate-700 font-bold">{prevReturnRate}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-slate-400 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${Math.min(100, prevReturnRate)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-[10px] font-mono">
+                            <span className="text-indigo-950 font-sans font-bold">{currMonthFullName} Return Progress</span>
+                            <span className="text-emerald-700 font-black">{currReturnRate}%</span>
+                          </div>
+                          <div className="w-full bg-emerald-100/60 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                              style={{ width: `${Math.min(100, currReturnRate)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Summary Comparison Callout */}
+                      <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[10px] flex items-center justify-between">
+                        <span className="text-slate-600 font-medium">Compliance Shift:</span>
+                        <span className={`font-mono font-bold ${returnRateDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                          {returnRateDiff >= 0 ? `+${returnRateDiff}% higher participation` : `${returnRateDiff}% lower participation`}
+                        </span>
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                  {/* Grouped Comparison Bar Chart */}
+                  <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                        <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Category-wise Breakdown Comparison (₹)</span>
+                      </h4>
+                      <div className="flex items-center gap-3 text-[10px] font-bold">
+                        <div className="flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded bg-slate-400 inline-block" />
+                          <span className="text-slate-600">{prevMonthLabel}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded bg-indigo-600 inline-block" />
+                          <span className="text-indigo-700">{currMonthLabel}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="h-44 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={comparisonBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                          <XAxis dataKey="category" stroke="#64748b" tick={{ fontSize: 10 }} />
+                          <YAxis stroke="#64748b" tick={{ fontSize: 9 }} />
+                          <Tooltip
+                            contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', fontSize: '11px' }}
+                            formatter={(val, name) => [`₹${Number(val).toLocaleString('en-IN')}`, name]}
+                          />
+                          <Bar dataKey={prevMonthLabel} fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey={currMonthLabel} fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* FINANCIAL YEAR COMPARISON VIEW */}
+              {compareMode === 'year' && (
+                <>
+                  {loadingYearCompare ? (
+                    <div className="py-14 flex flex-col items-center justify-center gap-2.5 text-slate-500">
+                      <Loader2 className="w-7 h-7 animate-spin text-indigo-600" />
+                      <span className="text-xs font-bold text-slate-700">Loading Financial Year Comparison Data...</span>
+                      <span className="text-[11px] text-slate-400">Comparing FY {compareYearTarget} vs FY {compareYearBase}</span>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Side-by-Side Monetary and Household Return Panels */}
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        
+                        {/* 1. Annual Monetary Comparison Card */}
+                        <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                              <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Annual Monetary Contribution</span>
                             </span>
-                            <div className="flex items-center gap-2.5 shrink-0">
-                              <span className="text-slate-500">₹{prevVal.toLocaleString('en-IN')}</span>
-                              <span className="text-indigo-700 font-black">₹{currVal.toLocaleString('en-IN')}</span>
+                            {/* Growth Indicator */}
+                            <span className={`px-2 py-0.5 rounded-lg text-[9.5px] font-mono font-bold border flex items-center gap-1 ${
+                              fyMonetaryDiff >= 0 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}>
+                              {fyMonetaryDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
+                              <span>{fyMonetaryDiff >= 0 ? `+₹${fyMonetaryDiff.toLocaleString('en-IN')} (+${fyMonetaryDiffPercent}%)` : `-₹${Math.abs(fyMonetaryDiff).toLocaleString('en-IN')} (${fyMonetaryDiffPercent}%)`}</span>
+                            </span>
+                          </div>
+
+                          {/* Base Year vs Target Year Boxes */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5">
+                              <span className="text-[8.5px] font-bold text-slate-500 uppercase block font-sans">
+                                FY {compareYearBase}-{compareYearBase + 1} (Year B)
+                              </span>
+                              <span className="text-xs sm:text-sm font-black text-slate-700 block">
+                                ₹{fyBaseTotal.toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                            <div className="p-2 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5">
+                              <span className="text-[8.5px] font-bold text-indigo-700 uppercase block font-sans">
+                                FY {compareYearTarget}-{compareYearTarget + 1} (Year A)
+                              </span>
+                              <span className="text-xs sm:text-sm font-black text-indigo-900 block">
+                                ₹{fyTargetTotal.toLocaleString('en-IN')}
+                              </span>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-1.5">
-                            <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
-                              <div className="bg-slate-400 h-1 rounded-full" style={{ width: `${(prevVal / maxVal) * 100}%` }} />
+
+                          {/* Category Breakdown Comparison Bars */}
+                          <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[10px]">
+                            <div className="flex items-center justify-between text-slate-500 font-bold text-[9px] uppercase tracking-wider">
+                              <span>Category</span>
+                              <div className="flex items-center gap-3 font-mono">
+                                <span className="text-slate-600">FY {compareYearBase}</span>
+                                <span className="text-indigo-700">FY {compareYearTarget}</span>
+                              </div>
                             </div>
-                            <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
-                              <div className="h-1 rounded-full" style={{ backgroundColor: cat.color || '#6366f1', width: `${(currVal / maxVal) * 100}%` }} />
+
+                            {titheColumns.map((cat) => {
+                              const prevVal = fyBaseTotals[cat.field_key] || fyBaseTotals[`total_${cat.field_key}`] || 0;
+                              const currVal = fyTargetTotals[cat.field_key] || fyTargetTotals[`total_${cat.field_key}`] || 0;
+                              const maxVal = Math.max(1, prevVal, currVal);
+                              return (
+                                <div key={cat.id || cat.field_key} className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
+                                  <div className="flex items-center justify-between font-mono font-bold text-[10px]">
+                                    <span className="text-slate-700 font-sans font-semibold truncate pr-2">
+                                      {cat.name} ({cat.code})
+                                    </span>
+                                    <div className="flex items-center gap-2.5 shrink-0">
+                                      <span className="text-slate-500">₹{prevVal.toLocaleString('en-IN')}</span>
+                                      <span className="text-indigo-700 font-black">₹{currVal.toLocaleString('en-IN')}</span>
+                                    </div>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
+                                      <div className="bg-slate-400 h-1 rounded-full" style={{ width: `${(prevVal / maxVal) * 100}%` }} />
+                                    </div>
+                                    <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
+                                      <div className="h-1 rounded-full" style={{ backgroundColor: cat.color || '#6366f1', width: `${(currVal / maxVal) * 100}%` }} />
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* 2. Annual Household Return & Participation Card */}
+                        <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                              <Users className="w-3.5 h-3.5 text-indigo-600" />
+                              <span>Household Participation & Rates</span>
+                            </span>
+                            {/* Compliance Change Indicator */}
+                            <span className={`px-2 py-0.5 rounded-lg text-[9.5px] font-mono font-bold border flex items-center gap-1 ${
+                              fyReturnedDiff >= 0 
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}>
+                              {fyReturnedDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
+                              <span>{fyReturnedDiff >= 0 ? `+${fyReturnedDiff} HH (+${fyReturnRateDiff}%)` : `${fyReturnedDiff} HH (${fyReturnRateDiff}%)`}</span>
+                            </span>
+                          </div>
+
+                          {/* Base vs Target Household Boxes */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5">
+                              <span className="text-[8.5px] font-bold text-slate-500 uppercase block font-sans">
+                                FY {compareYearBase} (Year B)
+                              </span>
+                              <span className="text-xs sm:text-sm font-black text-slate-700 block">
+                                {fyBaseReturned} <span className="text-[9px] font-sans text-slate-500 font-normal">/ {fyBaseHH} HH</span>
+                              </span>
+                              <span className="text-[9.5px] font-bold text-slate-600 block">
+                                {fyBaseReturnRate}% return rate
+                              </span>
+                              <span className="text-[9px] text-slate-500 block">
+                                Avg: ₹{fyBaseAvg.toLocaleString('en-IN')}/HH
+                              </span>
+                            </div>
+                            <div className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5">
+                              <span className="text-[8.5px] font-bold text-emerald-700 uppercase block font-sans">
+                                FY {compareYearTarget} (Year A)
+                              </span>
+                              <span className="text-xs sm:text-sm font-black text-emerald-900 block">
+                                {fyTargetReturned} <span className="text-[9px] font-sans text-emerald-600 font-normal">/ {fyTargetHH} HH</span>
+                              </span>
+                              <span className="text-[9.5px] font-bold text-emerald-700 block">
+                                {fyTargetReturnRate}% return rate
+                              </span>
+                              <span className="text-[9px] text-emerald-800 font-semibold block">
+                                Avg: ₹{fyTargetAvg.toLocaleString('en-IN')}/HH
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Dual Visual Progress Comparison */}
+                          <div className="space-y-2 pt-1 border-t border-slate-100">
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[10px] font-mono">
+                                <span className="text-slate-600 font-sans font-bold">FY {compareYearBase} Overall Participation</span>
+                                <span className="text-slate-700 font-bold">{fyBaseReturnRate}%</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="bg-slate-400 h-2 rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.min(100, fyBaseReturnRate)}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[10px] font-mono">
+                                <span className="text-indigo-950 font-sans font-bold">FY {compareYearTarget} Overall Participation</span>
+                                <span className="text-emerald-700 font-black">{fyTargetReturnRate}%</span>
+                              </div>
+                              <div className="w-full bg-emerald-100/60 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                                  style={{ width: `${Math.min(100, fyTargetReturnRate)}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Summary Comparison Callouts */}
+                          <div className="grid grid-cols-2 gap-2 text-[10px]">
+                            <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                              <span className="text-slate-500 text-[9px] font-semibold">Participation Shift</span>
+                              <span className={`font-mono font-bold ${fyReturnRateDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                {fyReturnRateDiff >= 0 ? `+${fyReturnRateDiff}% participation` : `${fyReturnRateDiff}% participation`}
+                              </span>
+                            </div>
+                            <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                              <span className="text-slate-500 text-[9px] font-semibold">Avg Ticket Shift</span>
+                              <span className={`font-mono font-bold ${fyAvgDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                {fyAvgDiff >= 0 ? `+₹${fyAvgDiff.toLocaleString('en-IN')}/HH` : `-₹${Math.abs(fyAvgDiff).toLocaleString('en-IN')}/HH`}
+                              </span>
+                            </div>
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                      {/* Grouped Comparison Bar Chart for FY */}
+                      <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                            <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Financial Year Category Breakdown Comparison (₹)</span>
+                          </h4>
+                          <div className="flex items-center gap-3 text-[10px] font-bold">
+                            <div className="flex items-center gap-1">
+                              <span className="w-2.5 h-2.5 rounded bg-slate-400 inline-block" />
+                              <span className="text-slate-600">FY {compareYearBase}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="w-2.5 h-2.5 rounded bg-indigo-600 inline-block" />
+                              <span className="text-indigo-700">FY {compareYearTarget}</span>
                             </div>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                </div>
 
-                {/* 2. Household Return Comparison Card */}
-                <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wider text-slate-700 flex items-center gap-1">
-                      <Users className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Household Return Rate</span>
-                    </span>
-                    {/* Compliance Change Indicator */}
-                    <span className={`px-2 py-0.5 rounded-lg text-[9.5px] font-mono font-bold border flex items-center gap-1 ${
-                      returnedDiff >= 0 
-                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                        : 'bg-rose-50 text-rose-700 border-rose-200'
-                    }`}>
-                      {returnedDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
-                      <span>{returnedDiff >= 0 ? `+${returnedDiff} HH (+${returnRateDiff}%)` : `${returnedDiff} HH (${returnRateDiff}%)`}</span>
-                    </span>
-                  </div>
-
-                  {/* Previous vs Current Boxes */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5">
-                      <span className="text-[8.5px] font-bold text-slate-500 uppercase block font-sans">
-                        {prevMonthLabel} (Previous)
-                      </span>
-                      <span className="text-xs sm:text-sm font-black text-slate-700 block">
-                        {prevReturned} <span className="text-[9px] font-sans text-slate-500 font-normal">/ {totalSystemMembers} HH</span>
-                      </span>
-                      <span className="text-[9.5px] font-bold text-slate-600 block">
-                        {prevReturnRate}% compliance
-                      </span>
-                    </div>
-                    <div className="p-2 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5">
-                      <span className="text-[8.5px] font-bold text-emerald-700 uppercase block font-sans">
-                        {currMonthLabel} (Current)
-                      </span>
-                      <span className="text-xs sm:text-sm font-black text-emerald-900 block">
-                        {currReturned} <span className="text-[9px] font-sans text-emerald-600 font-normal">/ {totalSystemMembers} HH</span>
-                      </span>
-                      <span className="text-[9.5px] font-bold text-emerald-700 block">
-                        {currReturnRate}% compliance
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Dual Visual Progress Comparison */}
-                  <div className="space-y-2 pt-1 border-t border-slate-100">
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-[10px] font-mono">
-                        <span className="text-slate-600 font-sans font-bold">{prevMonthFullName} Return Progress</span>
-                        <span className="text-slate-700 font-bold">{prevReturnRate}%</span>
+                        <div className="h-44 w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={fyComparisonBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                              <XAxis dataKey="category" stroke="#64748b" tick={{ fontSize: 10 }} />
+                              <YAxis stroke="#64748b" tick={{ fontSize: 9 }} />
+                              <Tooltip
+                                contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', fontSize: '11px' }}
+                                formatter={(val, name) => [`₹${Number(val).toLocaleString('en-IN')}`, name]}
+                              />
+                              <Bar dataKey={baseYearKey} fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey={targetYearKey} fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
                       </div>
-                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="bg-slate-400 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, prevReturnRate)}%` }}
-                        />
-                      </div>
-                    </div>
 
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between text-[10px] font-mono">
-                        <span className="text-indigo-950 font-sans font-bold">{currMonthFullName} Return Progress</span>
-                        <span className="text-emerald-700 font-black">{currReturnRate}%</span>
-                      </div>
-                      <div className="w-full bg-emerald-100/60 rounded-full h-2 overflow-hidden">
-                        <div
-                          className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                          style={{ width: `${Math.min(100, currReturnRate)}%` }}
-                        />
-                      </div>
-                    </div>
-                  </div>
+                      {/* Bial Year-over-Year Performance Breakdown */}
+                      {fyBialComparison.length > 0 && (
+                        <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                            <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                              <Trophy className="w-3.5 h-3.5 text-amber-500" />
+                              <span>Bial-by-Bial Annual Performance Growth</span>
+                            </h4>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                              {fyBialComparison.length} Bials
+                            </span>
+                          </div>
 
-                  {/* Summary Comparison Callout */}
-                  <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[10px] flex items-center justify-between">
-                    <span className="text-slate-600 font-medium">Compliance Shift:</span>
-                    <span className={`font-mono font-bold ${returnRateDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                      {returnRateDiff >= 0 ? `+${returnRateDiff}% higher participation` : `${returnRateDiff}% lower participation`}
-                    </span>
-                  </div>
-
-                </div>
-
-              </div>
-
-              {/* Grouped Comparison Bar Chart */}
-              <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Category-wise Breakdown Comparison (₹)</span>
-                  </h4>
-                  <div className="flex items-center gap-3 text-[10px] font-bold">
-                    <div className="flex items-center gap-1">
-                      <span className="w-2.5 h-2.5 rounded bg-slate-400 inline-block" />
-                      <span className="text-slate-600">{prevMonthLabel}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <span className="w-2.5 h-2.5 rounded bg-indigo-600 inline-block" />
-                      <span className="text-indigo-700">{currMonthLabel}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={comparisonBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                      <XAxis dataKey="category" stroke="#64748b" tick={{ fontSize: 10 }} />
-                      <YAxis stroke="#64748b" tick={{ fontSize: 9 }} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', fontSize: '11px' }}
-                        formatter={(val, name) => [`₹${Number(val).toLocaleString('en-IN')}`, name]}
-                      />
-                      <Bar dataKey={prevMonthLabel} fill="#94a3b8" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey={currMonthLabel} fill="#4f46e5" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left text-[11px]">
+                              <thead>
+                                <tr className="border-b border-slate-100 text-slate-500 font-bold uppercase text-[9px]">
+                                  <th className="py-1 px-1.5">Bial</th>
+                                  <th className="py-1 px-1.5 text-right font-mono">FY {compareYearBase}</th>
+                                  <th className="py-1 px-1.5 text-right font-mono">FY {compareYearTarget}</th>
+                                  <th className="py-1 px-1.5 text-right font-mono">Growth</th>
+                                  <th className="py-1 px-1.5 text-right font-mono">Rate</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 font-mono">
+                                {fyBialComparison.map((b) => (
+                                  <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                                    <td className="py-1.5 px-1.5 font-sans font-bold text-slate-800 truncate max-w-[140px]">
+                                      {b.name} <span className="text-slate-400 font-mono text-[9.5px]">({b.code})</span>
+                                    </td>
+                                    <td className="py-1.5 px-1.5 text-right text-slate-500">
+                                      ₹{b.baseTotal.toLocaleString('en-IN')}
+                                    </td>
+                                    <td className="py-1.5 px-1.5 text-right font-bold text-indigo-950">
+                                      ₹{b.targetTotal.toLocaleString('en-IN')}
+                                    </td>
+                                    <td className={`py-1.5 px-1.5 text-right font-bold ${b.diff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                      {b.diff >= 0 ? `+₹${b.diff.toLocaleString('en-IN')}` : `-₹${Math.abs(b.diff).toLocaleString('en-IN')}`}
+                                      <span className="text-[9px] ml-1">({b.diff >= 0 ? `+${b.pct}%` : `${b.pct}%`})</span>
+                                    </td>
+                                    <td className="py-1.5 px-1.5 text-right text-slate-600 text-[10px]">
+                                      {b.targetReturnRate}%
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </>
+              )}
 
             </div>
 

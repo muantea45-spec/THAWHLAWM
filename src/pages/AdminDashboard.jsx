@@ -27,6 +27,7 @@ const MemberTransferModal = React.lazy(() => import('../components/MemberTransfe
 const MemberRolloverModal = React.lazy(() => import('../components/MemberRolloverModal'));
 const OfficialReportModal = React.lazy(() => import('../components/OfficialReportModal'));
 const ManageColumnsModal = React.lazy(() => import('../components/ManageColumnsModal'));
+const ExportOptionsModal = React.lazy(() => import('../components/ExportOptionsModal'));
 import churchLogo from '../assets/church_logo.jpg';
 import {
   exportAdminConsolidatedPDF,
@@ -34,7 +35,8 @@ import {
   exportToExcel,
   exportToPDF,
   exportOverallMemberExcel,
-  exportOverallMemberPDF
+  exportOverallMemberPDF,
+  exportCleanPDF
 } from '../utils/exportEngine';
 import { FINANCIAL_MONTHS, DEFAULT_TITHE_COLUMNS } from '../utils/constants';
 
@@ -66,6 +68,8 @@ export default function AdminDashboard({ user, showToast }) {
   const [showConsolidatedModal, setShowConsolidatedModal] = useState(false);
   const [showReportFormModal, setShowReportFormModal] = useState(false);
   const [showInspectorExportModal, setShowInspectorExportModal] = useState(false);
+  const [pdfExportConfig, setPdfExportConfig] = useState(null);
+  const [isExportingCleanPDF, setIsExportingCleanPDF] = useState(false);
   const [selectedMemberToEdit, setSelectedMemberToEdit] = useState(null);
   const [showMemberEditModal, setShowMemberEditModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
@@ -121,16 +125,48 @@ export default function AdminDashboard({ user, showToast }) {
 
   const handleExportOverall = async (format = 'excel') => {
     try {
-      showToast(`Generating Overall Ledger ${format.toUpperCase()} export...`, 'info');
       if (format === 'excel') {
+        showToast('Generating Overall Ledger EXCEL export...', 'info');
         await exportOverallMemberExcel({ year, bialsData: stats?.bialsData || [], churchGrandTotal: stats?.grandTotals || {}, columns: titheColumns });
+        showToast('Overall Ledger exported successfully!', 'success');
       } else {
-        await exportOverallMemberPDF({ year, bialsData: stats?.bialsData || [], churchGrandTotal: stats?.grandTotals || {}, columns: titheColumns });
+        setPdfExportConfig({
+          title: 'PATHIAN RAM OVERALL CHURCH LEDGER',
+          subtitle: `Annual Member Summation across All Bials - FY ${year}`,
+          defaultPreset: 'ledger',
+          recordCount: (stats?.bialsData || []).reduce((acc, b) => acc + (b.members?.length || 0), 0),
+          columnCount: titheColumns.length,
+          data: {
+            title: 'PATHIAN RAM OVERALL CHURCH LEDGER',
+            year,
+            bialsData: stats?.bialsData || [],
+            churchGrandTotal: stats?.grandTotals?.grand_total || grandTotals?.grand_total || 0,
+            columns: titheColumns,
+            categoryShares,
+            scopeName: 'All Bials (Church Total)',
+            periodText: `Financial Year ${year}-${year + 1}`
+          }
+        });
       }
-      showToast(`Overall Ledger exported successfully!`, 'success');
     } catch (err) {
       console.error('Export error:', err);
       showToast(err.message || 'Export failed', 'error');
+    }
+  };
+
+  const handleTriggerCleanPDF = async (options) => {
+    if (!pdfExportConfig) return;
+    try {
+      setIsExportingCleanPDF(true);
+      showToast('Generating clean PDF in selected format...', 'info');
+      await exportCleanPDF({ options, data: pdfExportConfig.data });
+      showToast('PDF downloaded successfully!', 'success');
+      setPdfExportConfig(null);
+    } catch (err) {
+      console.error('Clean PDF export error:', err);
+      showToast(err.message || 'Failed to export PDF', 'error');
+    } finally {
+      setIsExportingCleanPDF(false);
     }
   };
 
@@ -2835,9 +2871,24 @@ export default function AdminDashboard({ user, showToast }) {
 
                 <button
                   onClick={() => {
-                    exportAdminConsolidatedPDF({ year, grandTotals, bialBreakdown: stats?.bialBreakdown || [] });
                     setShowConsolidatedModal(false);
-                    showToast('PDF report downloaded', 'success');
+                    setPdfExportConfig({
+                      title: 'PATHIAN RAM TITHE COLLECTION SUMMARY',
+                      subtitle: `Consolidated Church Summary - FY ${year}`,
+                      defaultPreset: 'summary',
+                      recordCount: (stats?.bialBreakdown || []).length,
+                      data: {
+                        title: 'PATHIAN RAM TITHE COLLECTION SUMMARY',
+                        year,
+                        grandTotals,
+                        bialBreakdown: stats?.bialBreakdown || [],
+                        columns: titheColumns,
+                        categoryShares,
+                        returnedMembers: totalReturnedMembers,
+                        totalMembers: totalSystemMembers,
+                        overallReturnRate
+                      }
+                    });
                   }}
                   className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
@@ -2870,7 +2921,10 @@ export default function AdminDashboard({ user, showToast }) {
                 </button>
 
                 <button
-                  onClick={() => handleExportOverall('pdf')}
+                  onClick={() => {
+                    setShowConsolidatedModal(false);
+                    handleExportOverall('pdf');
+                  }}
                   className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
                   <FileText className="w-4 h-4 text-purple-600" />
@@ -2940,16 +2994,27 @@ export default function AdminDashboard({ user, showToast }) {
 
                 <button
                   onClick={() => {
-                    exportToPDF({
-                      bialName: selectedBialObj ? selectedBialObj.name : 'Bial',
-                      year,
-                      month: inspectorMonth,
-                      members: sortedInspectorMembers,
-                      summary: inspectorLedger?.summary || {},
-                      columns: titheColumns
-                    });
                     setShowInspectorExportModal(false);
-                    showToast('PDF ledger downloaded', 'success');
+                    const monthName = FINANCIAL_MONTHS.find(m => m.id === inspectorMonth)?.name || '';
+                    const bialTitle = selectedBialObj ? selectedBialObj.name : 'Bial';
+                    setPdfExportConfig({
+                      title: `${bialTitle.toUpperCase()} TITHE LEDGER`,
+                      subtitle: `${monthName} FY ${year} — Member tithe contributions`,
+                      defaultPreset: 'ledger',
+                      recordCount: sortedInspectorMembers.length,
+                      columnCount: titheColumns.length,
+                      data: {
+                        title: `${bialTitle.toUpperCase()} TITHE LEDGER`,
+                        bialName: bialTitle,
+                        scopeName: bialTitle,
+                        year,
+                        periodText: `${monthName} FY ${year}`,
+                        members: sortedInspectorMembers,
+                        summary: inspectorLedger?.summary || {},
+                        columns: titheColumns,
+                        categoryShares
+                      }
+                    });
                   }}
                   className="p-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-300 text-rose-800 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
@@ -2982,7 +3047,10 @@ export default function AdminDashboard({ user, showToast }) {
                 </button>
 
                 <button
-                  onClick={() => handleExportOverall('pdf')}
+                  onClick={() => {
+                    setShowConsolidatedModal(false);
+                    handleExportOverall('pdf');
+                  }}
                   className="p-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-300 text-purple-900 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                 >
                   <FileText className="w-4 h-4 text-purple-600" />
@@ -3091,6 +3159,21 @@ export default function AdminDashboard({ user, showToast }) {
             onUpdate={() => {
               if (activeTab === 'inspector') loadInspectorLedger();
             }}
+          />
+        )}
+
+        {/* Clean PDF Export Studio Options Modal */}
+        {pdfExportConfig && (
+          <ExportOptionsModal
+            isOpen={Boolean(pdfExportConfig)}
+            onClose={() => setPdfExportConfig(null)}
+            onExport={handleTriggerCleanPDF}
+            title={pdfExportConfig.title}
+            subtitle={pdfExportConfig.subtitle}
+            defaultPreset={pdfExportConfig.defaultPreset || 'ledger'}
+            columnCount={pdfExportConfig.columnCount || titheColumns.length}
+            recordCount={pdfExportConfig.recordCount || 0}
+            isExporting={isExportingCleanPDF}
           />
         )}
       </React.Suspense>

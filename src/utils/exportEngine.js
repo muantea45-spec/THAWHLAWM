@@ -2334,6 +2334,395 @@ export function exportConsolidatedBookletExcel({
   XLSX.writeFile(workbook, `Consolidated_Annual_Booklet_FY_${year}.xlsx`);
 }
 
+/**
+ * Unified Clean PDF Generation Engine with Dynamic Format Selection
+ * Supports:
+ * - Layout Presets: 'ledger' | 'certificate' | 'summary' | 'booklet'
+ * - Paper Sizes: 'a4' | 'legal' | 'a5'
+ * - Orientations: 'portrait' | 'landscape'
+ * - Print Tones: 'monochrome' (Risograph/Copy B&W) | 'color' (Bethlehem Kohhran Presentation)
+ * - Typography Densities: 'compact' (8pt) | 'standard' (10pt)
+ * - Inclusions: Signatures, Fund Allocation % Breakdown, Zero-Giving Members, Page Numbers
+ */
+export function exportCleanPDF({ options = {}, data = {} }) {
+  const {
+    preset = 'ledger',
+    pageSize = 'a4',
+    orientation = 'portrait',
+    tone = 'monochrome',
+    density = 'compact',
+    includeSealSignatures = true,
+    includeAllocation = true,
+    includeZeroGiving = false,
+    includePageNumbers = true
+  } = options;
+
+  const cols = (data.columns && data.columns.length > 0) ? data.columns : DEFAULT_TITHE_COLUMNS;
+  const isMono = tone === 'monochrome';
+  const isCompact = density === 'compact';
+  const format = pageSize === 'legal' ? 'legal' : pageSize === 'a5' ? 'a5' : 'a4';
+
+  // Preset 1: Official Certificate Route
+  if (preset === 'certificate') {
+    return exportOfficialCertificatePDF({
+      title: data.title || 'PATHIAN RAM REPORT',
+      denomination: 'Presbyterian Church of India',
+      churchName: 'Bethlehem Kohhran',
+      periodText: data.periodText || `Financial Year ${data.year || new Date().getFullYear()}`,
+      reportType: data.reportType || 'Annual',
+      year: data.year || new Date().getFullYear(),
+      grandTotals: data.grandTotals || {},
+      bialsBreakdown: data.bialsBreakdown || data.bialsData || [],
+      pageSize: format,
+      orientation,
+      scopeName: data.scopeName || data.bialName || '',
+      tableType: data.tableType || 'bials'
+    });
+  }
+
+  // Preset 2: Booklet Route
+  if (preset === 'booklet' && (data.bialsData || data.processedBials)) {
+    return exportConsolidatedBookletPDF({
+      year: data.year || new Date().getFullYear(),
+      processedBials: data.bialsData || data.processedBials || [],
+      financialYears: data.financialYears || [data.year || new Date().getFullYear()],
+      bials: data.bials || []
+    });
+  }
+
+  // Preset 3 & 4: Clean Vector Ledger or Executive 1-Page Summary
+  const doc = new jsPDF({
+    orientation,
+    unit: 'mm',
+    format
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 12;
+
+  // Visual Colors based on Tone
+  const primaryTextColor = isMono ? [0, 0, 0] : [15, 23, 42];
+  const mutedTextColor = isMono ? [90, 90, 90] : [100, 116, 139];
+  const headFillColor = isMono ? [24, 24, 27] : [30, 41, 59];
+  const headTextColor = [255, 255, 255];
+  const footFillColor = isMono ? [245, 245, 245] : [241, 245, 249];
+  const footTextColor = isMono ? [0, 0, 0] : [15, 23, 42];
+  const subtotalFillColor = isMono ? [235, 235, 235] : [238, 242, 255];
+  const subtotalTextColor = isMono ? [0, 0, 0] : [67, 56, 202];
+
+  // Document Letterhead
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(isCompact ? 13 : 15);
+  doc.setTextColor(...primaryTextColor);
+  doc.text('BETHLEHEM KOHHRAN', pageWidth / 2, 13, { align: 'center' });
+
+  doc.setFontSize(isCompact ? 8.5 : 9.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...mutedTextColor);
+  doc.text('PRESBYTERIAN CHURCH OF INDIA • AIZAWL, MIZORAM', pageWidth / 2, 18, { align: 'center' });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(isCompact ? 10 : 11.5);
+  doc.setTextColor(...primaryTextColor);
+  doc.text(data.title || 'PATHIAN RAM TITHE LEDGER', pageWidth / 2, 23.5, { align: 'center' });
+
+  // Period & Scope Meta Line
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...mutedTextColor);
+  const leftMeta = data.scopeName ? `Scope: ${data.scopeName}` : (data.bialName ? `Bial: ${data.bialName}` : `Church Roster`);
+  const rightMeta = data.periodText ? data.periodText : (data.year ? `FY ${data.year}-${data.year + 1}` : '');
+  doc.text(leftMeta, margin, 29);
+  doc.text(rightMeta, pageWidth - margin, 29, { align: 'right' });
+
+  // Hairline Divider
+  doc.setDrawColor(isMono ? 180 : 203, isMono ? 180 : 213, isMono ? 180 : 225);
+  doc.setLineWidth(0.35);
+  doc.line(margin, 31, pageWidth - margin, 31);
+
+  let currentY = 34;
+
+  // Optional: Fund Allocation Percentage Breakdown Banner
+  if (includeAllocation && data.categoryShares && data.categoryShares.length > 0) {
+    doc.setFillColor(isMono ? 250 : 248, isMono ? 250 : 250, isMono ? 250 : 252);
+    doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 7.5, 1, 1, 'FD');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryTextColor);
+    doc.text('FUND ALLOCATION:', margin + 2.5, currentY + 4.8);
+
+    const allocText = data.categoryShares.map(c => `${c.name} (${c.percentage}%)`).join('   •   ');
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...mutedTextColor);
+    doc.text(allocText, margin + 35, currentY + 4.8);
+    currentY += 10;
+  }
+
+  // --- SUB-CASE A: EXECUTIVE 1-PAGE SUMMARY ---
+  if (preset === 'summary') {
+    // 1. KPI Cards Row
+    const kpiCardWidth = (pageWidth - (margin * 2) - 6) / 3;
+    const kpiHeight = 16;
+
+    // Card 1: Total Church Tithes
+    doc.setFillColor(isMono ? 255 : 255, isMono ? 255 : 255, isMono ? 255 : 255);
+    doc.setDrawColor(isMono ? 180 : 203, isMono ? 180 : 213, isMono ? 180 : 225);
+    doc.rect(margin, currentY, kpiCardWidth, kpiHeight, 'FD');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...mutedTextColor);
+    doc.text('TOTAL CHURCH TITHES', margin + 3, currentY + 5);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryTextColor);
+    const grandTotalVal = data.grandTotals?.grand_total || data.grandTotal || 0;
+    doc.text(`₹${grandTotalVal.toLocaleString('en-IN')}`, margin + 3, currentY + 12);
+
+    // Card 2: Households Returned
+    const card2X = margin + kpiCardWidth + 3;
+    doc.rect(card2X, currentY, kpiCardWidth, kpiHeight, 'FD');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...mutedTextColor);
+    doc.text('HOUSEHOLDS PARTICIPATING', card2X + 3, currentY + 5);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryTextColor);
+    doc.text(`${data.returnedMembers || 0} / ${data.totalMembers || 0} HH`, card2X + 3, currentY + 12);
+
+    // Card 3: Overall Return Rate
+    const card3X = card2X + kpiCardWidth + 3;
+    doc.rect(card3X, currentY, kpiCardWidth, kpiHeight, 'FD');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...mutedTextColor);
+    doc.text('OVERALL RETURN RATE', card3X + 3, currentY + 5);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...primaryTextColor);
+    const rateVal = data.overallReturnRate || (data.totalMembers ? Math.round((data.returnedMembers / data.totalMembers) * 1000) / 10 : 0);
+    doc.text(`${rateVal}%`, card3X + 3, currentY + 12);
+
+    currentY += kpiHeight + 5;
+
+    // 2. Bial Summary Table
+    if (data.bialBreakdown && data.bialBreakdown.length > 0) {
+      const summaryHead = [['Code', 'Bial Name', 'Returned HH', ...cols.map(c => c.name), 'Total (₹)']];
+      const summaryBody = data.bialBreakdown.map(b => [
+        b.code || '',
+        b.name || '',
+        `${b.returned_members || 0} / ${b.total_members || 0} (${b.return_rate || 0}%)`,
+        ...cols.map(c => (b[c.field_key] || 0).toLocaleString('en-IN')),
+        (b.total || 0).toLocaleString('en-IN')
+      ]);
+
+      const summaryFoot = [[
+        'ALL',
+        'CHURCH TOTAL',
+        `${data.returnedMembers || 0} / ${data.totalMembers || 0} (${rateVal}%)`,
+        ...cols.map(c => ((data.grandTotals?.[c.field_key] ?? data.grandTotals?.[`total_${c.field_key}`] ?? 0)).toLocaleString('en-IN')),
+        grandTotalVal.toLocaleString('en-IN')
+      ]];
+
+      const colStyles = {
+        0: { halign: 'center', cellWidth: 14 },
+        1: { halign: 'left' },
+        2: { halign: 'center' }
+      };
+      cols.forEach((_, i) => {
+        colStyles[3 + i] = { halign: 'right' };
+      });
+      colStyles[3 + cols.length] = { halign: 'right', fontStyle: 'bold' };
+
+      doc.autoTable({
+        startY: currentY,
+        head: summaryHead,
+        body: summaryBody,
+        foot: summaryFoot,
+        theme: 'grid',
+        headStyles: { fillColor: headFillColor, textColor: headTextColor, fontStyle: 'bold', fontSize: 8 },
+        footStyles: { fillColor: footFillColor, textColor: footTextColor, fontStyle: 'bold', fontSize: 8 },
+        bodyStyles: { fontSize: 7.5, cellPadding: 1.5, textColor: primaryTextColor },
+        columnStyles: colStyles
+      });
+
+      currentY = doc.lastAutoTable.finalY + 10;
+    }
+  }
+
+  // --- SUB-CASE B: MULTI-BIAL OVERALL LEDGER ---
+  else if (data.bialsData && data.bialsData.length > 0) {
+    data.bialsData.forEach((b) => {
+      let bialMembers = b.members || [];
+      if (!includeZeroGiving) {
+        bialMembers = bialMembers.filter(m => (parseFloat(m.grand_total || m.total) || 0) > 0);
+      }
+
+      if (bialMembers.length === 0 && !includeZeroGiving) return;
+
+      if (currentY > pageHeight - 35) {
+        doc.addPage();
+        currentY = 16;
+      }
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(isCompact ? 9 : 10);
+      doc.setTextColor(...primaryTextColor);
+      doc.text(`${b.bial_name} (${b.bial_code}) — ${bialMembers.length} Members`, margin, currentY);
+      currentY += 2;
+
+      const head = [['Sl', 'Hming (Member Name)', ...cols.map(c => `${c.code} (₹)`), 'Total (₹)']];
+      const body = bialMembers.map((m, idx) => [
+        m.sl_no || idx + 1,
+        m.member_name || m.name,
+        ...cols.map(c => ((m[c.field_key] ?? m[`total_${c.field_key}`] ?? 0)).toLocaleString('en-IN')),
+        ((parseFloat(m.grand_total || m.total)) || 0).toLocaleString('en-IN')
+      ]);
+
+      const foot = [[
+        'TOT',
+        `${b.bial_name} Subtotal`,
+        ...cols.map(c => ((b.subtotal?.[c.field_key] ?? b.subtotal?.[`total_${c.field_key}`] ?? 0)).toLocaleString('en-IN')),
+        (b.subtotal?.grand_total || 0).toLocaleString('en-IN')
+      ]];
+
+      const colStyles = {
+        0: { halign: 'center', cellWidth: 10 },
+        1: { halign: 'left' }
+      };
+      cols.forEach((_, i) => {
+        colStyles[2 + i] = { halign: 'right' };
+      });
+      colStyles[2 + cols.length] = { halign: 'right', fontStyle: 'bold' };
+
+      doc.autoTable({
+        startY: currentY,
+        head,
+        body,
+        foot,
+        theme: 'grid',
+        headStyles: { fillColor: headFillColor, textColor: headTextColor, fontStyle: 'bold', fontSize: isCompact ? 7.5 : 8.5 },
+        footStyles: { fillColor: subtotalFillColor, textColor: subtotalTextColor, fontStyle: 'bold', fontSize: isCompact ? 7.5 : 8.5 },
+        bodyStyles: { fontSize: isCompact ? 7 : 8, cellPadding: isCompact ? 1.2 : 1.8, textColor: primaryTextColor },
+        columnStyles: colStyles
+      });
+
+      currentY = doc.lastAutoTable.finalY + 8;
+    });
+
+    // Grand Total Summary Box at End
+    if (currentY > pageHeight - 40) {
+      doc.addPage();
+      currentY = 16;
+    }
+
+    const churchGrandTotal = data.churchGrandTotal || data.grandTotals?.grand_total || 0;
+    doc.setFillColor(...headFillColor);
+    doc.roundedRect(margin, currentY, pageWidth - (margin * 2), 12, 1.5, 1.5, 'FD');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...headTextColor);
+    doc.text('CHURCH GRAND TOTAL (ALL BIALS)', margin + 4, currentY + 7.5);
+    doc.setFontSize(11);
+    doc.text(`₹${churchGrandTotal.toLocaleString('en-IN')}`, pageWidth - margin - 4, currentY + 7.5, { align: 'right' });
+    currentY += 18;
+  }
+  // --- SUB-CASE C: SINGLE BIAL MEMBER LEDGER ---
+  else if (data.members && data.members.length > 0) {
+    let memberList = data.members;
+    if (!includeZeroGiving) {
+      memberList = memberList.filter(m => (m.total || 0) > 0);
+    }
+
+    const tableHead = [['Sl No', 'Member Name', ...cols.map(c => c.code), 'Total (₹)']];
+    const tableBody = memberList.map((m, idx) => {
+      const rowAmounts = cols.map(c => (m[c.field_key] || 0).toLocaleString('en-IN'));
+      return [
+        m.sl_no || idx + 1,
+        m.name,
+        ...rowAmounts,
+        (m.total || 0).toLocaleString('en-IN')
+      ];
+    });
+
+    const footerAmounts = cols.map(c => ((data.summary?.[c.field_key] ?? data.summary?.[`sum_${c.field_key}`] ?? 0)).toLocaleString('en-IN'));
+    const tableFoot = [[
+      'TOTAL',
+      `Active: ${memberList.length}`,
+      ...footerAmounts,
+      (data.summary?.grand_total || 0).toLocaleString('en-IN')
+    ]];
+
+    const colStyles = {
+      0: { halign: 'center', cellWidth: 12 },
+      1: { halign: 'left' }
+    };
+    cols.forEach((_, i) => {
+      colStyles[2 + i] = { halign: 'right' };
+    });
+    colStyles[2 + cols.length] = { halign: 'right', fontStyle: 'bold' };
+
+    doc.autoTable({
+      startY: currentY,
+      head: tableHead,
+      body: tableBody,
+      foot: tableFoot,
+      theme: 'grid',
+      headStyles: { fillColor: headFillColor, textColor: headTextColor, fontStyle: 'bold', fontSize: isCompact ? 8 : 9 },
+      footStyles: { fillColor: footFillColor, textColor: footTextColor, fontStyle: 'bold', fontSize: isCompact ? 8 : 9 },
+      bodyStyles: { fontSize: isCompact ? 7.5 : 8.5, cellPadding: isCompact ? 1.4 : 2, textColor: primaryTextColor },
+      columnStyles: colStyles
+    });
+
+    currentY = doc.lastAutoTable.finalY + 12;
+  }
+
+  // --- SIGNATORY LINES BLOCK ---
+  if (includeSealSignatures) {
+    if (currentY > pageHeight - 35) {
+      doc.addPage();
+      currentY = 24;
+    }
+
+    const sigY = currentY + 12;
+    const sigColWidth = (pageWidth - (margin * 2)) / 3;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...mutedTextColor);
+
+    // Left Signature
+    doc.line(margin + 4, sigY, margin + sigColWidth - 4, sigY);
+    doc.text('Prepared by / Bial Collector', margin + 4, sigY + 4);
+
+    // Middle Signature (Seal)
+    doc.text('[ Official Church Seal ]', pageWidth / 2, sigY + 4, { align: 'center' });
+
+    // Right Signature
+    doc.line(pageWidth - margin - sigColWidth + 4, sigY, pageWidth - margin - 4, sigY);
+    doc.text('Verified by / Kohhran Treasurer', pageWidth - margin - sigColWidth + 4, sigY + 4);
+  }
+
+  // --- PAGE NUMBERING FOOTER ON EVERY PAGE ---
+  if (includePageNumbers) {
+    const totalPages = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(...mutedTextColor);
+      const footerY = pageHeight - 8;
+      doc.text('Bethlehem Kohhran • Pathian Ram Tithe Stewardship', margin, footerY);
+      doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, footerY, { align: 'right' });
+    }
+  }
+
+  const safeTitle = (data.title || 'Pathian_Ram_Ledger').replace(/[^a-zA-Z0-9]/g, '_');
+  const safeFilename = `${safeTitle}_${data.year || new Date().getFullYear()}_${format}_${orientation}.pdf`;
+  doc.save(safeFilename);
+}
+
 
 
 

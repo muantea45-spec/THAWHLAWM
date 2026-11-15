@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import AdminSidebar from '../components/AdminSidebar';
 import {
   Building2, Plus, Lock, Unlock, Key, Trash2, Calendar, Download,
@@ -101,6 +101,24 @@ export default function AdminDashboard({ user, showToast }) {
   const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
   const [auditSearchQuery, setAuditSearchQuery] = useState('');
   const [auditFilterAction, setAuditFilterAction] = useState('all');
+  const [reportModalInitialTab, setReportModalInitialTab] = useState('consolidated');
+
+  const filteredAuditLogs = useMemo(() => {
+    return auditLogs.filter(log => {
+      if (auditFilterAction === 'auth' && !log.action.includes('EMAIL') && !log.action.includes('PRIMARY') && !log.action.includes('AUTH')) return false;
+      if (auditFilterAction === 'locks' && !log.action.includes('LOCK')) return false;
+      if (auditFilterAction === 'transfers' && !log.action.includes('TRANSFER')) return false;
+      if (!auditSearchQuery.trim()) return true;
+      const q = auditSearchQuery.toLowerCase();
+      return (
+        (log.action && log.action.toLowerCase().includes(q)) ||
+        (log.username && log.username.toLowerCase().includes(q)) ||
+        (log.email && log.email.toLowerCase().includes(q)) ||
+        (log.details && log.details.toLowerCase().includes(q)) ||
+        (log.ip_address && log.ip_address.toLowerCase().includes(q))
+      );
+    });
+  }, [auditLogs, auditFilterAction, auditSearchQuery]);
 
   // Inspector Tab State
   const [inspectorBialId, setInspectorBialId] = useState('all');
@@ -605,9 +623,9 @@ export default function AdminDashboard({ user, showToast }) {
     : 0;
 
   // Fund Allocation Metrics (Mission / Ramthar Ratio & Category Dominance)
-  const ramtharCol = titheColumns.find(c => 
-    c.field_key === 'ramthar' || 
-    c.code?.toLowerCase().includes('ramthar') || 
+  const ramtharCol = titheColumns.find(c =>
+    c.field_key === 'ramthar' ||
+    c.code?.toLowerCase().includes('ramthar') ||
     c.name?.toLowerCase().includes('ramthar')
   );
   const ramtharKey = ramtharCol ? ramtharCol.field_key : 'ramthar';
@@ -815,9 +833,9 @@ export default function AdminDashboard({ user, showToast }) {
 
   return (
     <div className="min-h-screen text-slate-900 p-2.5 sm:p-3.5 lg:p-4">
-      
+
       <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-start gap-3 sm:gap-4 lg:gap-5">
-        
+
         {/* Mobile Drawer & Desktop Left Sidebar */}
         <AdminSidebar
           activeTab={activeTab}
@@ -827,8 +845,18 @@ export default function AdminDashboard({ user, showToast }) {
             setTransferPreselectedBialId(null);
             setShowTransferModal(true);
           }}
-          onOpenConsolidated={() => setShowConsolidatedModal(true)}
-          onOpenReportForm={() => setShowReportFormModal(true)}
+          onOpenReports={() => {
+            setReportModalInitialTab('consolidated');
+            setShowReportFormModal(true);
+          }}
+          onOpenConsolidated={() => {
+            setReportModalInitialTab('consolidated');
+            setShowReportFormModal(true);
+          }}
+          onOpenReportForm={() => {
+            setReportModalInitialTab('certificate');
+            setShowReportFormModal(true);
+          }}
           onOpenMatrix={() => setShowMatrixModal(true)}
           onOpenCredentials={() => setActiveTab('credentials')}
           onOpenAdmins={() => setActiveTab('credentials')}
@@ -846,390 +874,133 @@ export default function AdminDashboard({ user, showToast }) {
 
         {/* Main Content Area */}
         <div className="flex-1 min-w-0 w-full space-y-2.5 sm:space-y-3">
-          
-
-
-        {/* AGGREGATED SYSTEM TOTALS */}
-        <div className="glass-panel p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl space-y-2">
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 gap-2">
-            <div className="flex items-center gap-2.5">
-              <button
-                type="button"
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
-                title="Open Admin Menu"
-              >
-                <Menu className="w-3.5 h-3.5" />
-                <span>Menu</span>
-              </button>
-
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-700 tracking-wide">
-                  OVERALL ({year}-{year + 1})
-                </span>
-                <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-100">
-                  FY {year}
-                </span>
-              </div>
-            </div>
-
-            {/* Dropdowns */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <select
-                value={overallBialFilter}
-                onChange={(e) => setOverallBialFilter(e.target.value)}
-                className="px-2 sm:px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
-                title="Filter contributions by Bial"
-              >
-                <option value="all">All Bials</option>
-                {bials.map(b => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
-
-              <select
-                value={overallMonthFilter}
-                onChange={(e) => setOverallMonthFilter(e.target.value)}
-                className="px-2 sm:px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
-                title="Filter contributions by Month"
-              >
-                <option value="all">All Months</option>
-                {FINANCIAL_MONTHS.map(m => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Dynamic Tithe Category Summary Cards + Grand Total */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
-            {titheColumns.map((col) => {
-              const amount = grandTotals[col.field_key] || grandTotals[`total_${col.field_key}`] || 0;
-              return (
-                <div
-                  key={col.id}
-                  className="p-2 sm:p-2.5 rounded-xl border flex flex-col justify-between transition-all shadow-2xs"
-                  style={{
-                    backgroundColor: `${col.color || '#6366f1'}10`,
-                    borderColor: `${col.color || '#6366f1'}35`
-                  }}
-                >
-                  <div className="flex items-center justify-between mb-1 gap-1 min-w-0">
-                    <span
-                      className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider truncate"
-                      style={{ color: col.color || '#1e293b' }}
-                    >
-                      {col.code}
-                    </span>
-                    <span className="text-[9px] font-semibold text-slate-500 truncate text-right">
-                      {col.name}
-                    </span>
-                  </div>
-                  <div className="font-mono tabular-nums font-black text-slate-900 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
-                    ₹{amount.toLocaleString('en-IN')}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* GRAND TOTAL BOX */}
-            <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-slate-900 p-2 sm:p-2.5 rounded-xl border border-slate-950 text-white shadow-2xs flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">TOTAL</span>
-                <span className="text-[9px] font-medium text-slate-400">Grand Total</span>
-              </div>
-              <div className="font-mono tabular-nums font-bold text-white text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
-                ₹{(grandTotals.grand_total || 0).toLocaleString('en-IN')}
-              </div>
-            </div>
-          </div>
-        </div>
 
 
 
-        {/* TAB 1: MAIN (BIALS MANAGEMENT) */}
-        {activeTab === 'bials' && (
-          <div className="space-y-2.5 animate-in fade-in duration-150">
-            {/* Control Toolbar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-              <div className="relative flex-1">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search Bials..."
-                  className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
-                />
-              </div>
-
-              <div className="flex items-center gap-1.5 self-end sm:self-center">
-                {/* View Mode Toggle: Table / Card */}
-                <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 shadow-2xs">
-                  <button
-                    onClick={() => setBialViewMode('table')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      bialViewMode === 'table'
-                        ? 'bg-white text-indigo-700 shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                    title="Table View"
-                  >
-                    <LayoutList className="w-3.5 h-3.5" />
-                    <span>Table</span>
-                  </button>
-
-                  <button
-                    onClick={() => setBialViewMode('card')}
-                    className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      bialViewMode === 'card'
-                        ? 'bg-white text-indigo-700 shadow-2xs'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
-                    title="Card View"
-                  >
-                    <LayoutGrid className="w-3.5 h-3.5" />
-                    <span>Cards</span>
-                  </button>
-                </div>
-
+          {/* AGGREGATED SYSTEM TOTALS */}
+          <div className="glass-panel p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl space-y-2">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 gap-2">
+              <div className="flex items-center gap-2.5">
                 <button
-                  onClick={() => { setBialToEdit(null); setShowBialModal(true); }}
-                  className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(true)}
+                  className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                  title="Open Admin Menu"
                 >
-                  <Plus className="w-3.5 h-3.5" /> <span>Add</span>
+                  <Menu className="w-3.5 h-3.5" />
+                  <span>Menu</span>
                 </button>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-slate-700 tracking-wide">
+                    OVERALL ({year}-{year + 1})
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-100">
+                    FY {year}
+                  </span>
+                </div>
+              </div>
+
+              {/* Dropdowns */}
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <select
+                  value={overallBialFilter}
+                  onChange={(e) => setOverallBialFilter(e.target.value)}
+                  className="px-2 sm:px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
+                  title="Filter contributions by Bial"
+                >
+                  <option value="all">All Bials</option>
+                  {bials.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={overallMonthFilter}
+                  onChange={(e) => setOverallMonthFilter(e.target.value)}
+                  className="px-2 sm:px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
+                  title="Filter contributions by Month"
+                >
+                  <option value="all">All Months</option>
+                  {FINANCIAL_MONTHS.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
-            {/* View Option 1: TABLE VIEW */}
-            {bialViewMode === 'table' && (
-              <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-200 bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                        <th className="py-2.5 px-2.5 w-12 text-center">Sl No</th>
-                        <th className="py-2.5 px-3">Bial Name</th>
-                        <th className="py-2.5 px-2 text-center w-20">Members</th>
-                        <th className="py-2.5 px-3 text-right w-32">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 text-xs sm:text-sm">
-                      {filteredBials.length === 0 ? (
-                        <tr>
-                          <td colSpan="4" className="py-8 text-center text-xs text-slate-500 font-sans">
-                            No Bial accounts found.
-                          </td>
-                        </tr>
-                      ) : (
-                        filteredBials.map((b, idx) => (
-                          <tr key={b.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="py-2.5 px-2.5 text-center font-mono font-bold text-slate-500 text-xs">{idx + 1}</td>
-                            <td className="py-2.5 px-3">
-                              <button
-                                onClick={() => {
-                                  setInspectorBialId(b.id);
-                                  setActiveTab('inspector');
-                                }}
-                                className="font-bold text-indigo-700 hover:text-indigo-900 hover:underline text-left cursor-pointer transition-colors"
-                                title="Click to open Bial ledger"
-                              >
-                                {b.name}
-                              </button>
-                            </td>
-                            <td className="py-2.5 px-2 text-center font-semibold text-slate-700">{b.member_count}</td>
-                            <td className="py-2.5 px-3 text-right font-mono tabular-nums font-bold text-emerald-700">₹{(b.total_collected || 0).toLocaleString('en-IN')}</td>
-                          </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* View Option 2: CARD VIEW - Mobile Friendly Grid */}
-            {bialViewMode === 'card' && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  {filteredBials.length === 0 ? (
-                    <div className="col-span-2 py-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
-                      No Bial accounts found.
-                    </div>
-                  ) : (
-                    ((!showAllBialCards && !searchQuery.trim() && filteredBials.length > 6)
-                      ? filteredBials.slice(0, 6)
-                      : filteredBials
-                    ).map((b, idx) => (
-                      <div
-                        key={b.id}
-                        onClick={() => {
-                          setInspectorBialId(b.id);
-                          setActiveTab('inspector');
-                        }}
-                        className="p-2.5 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between space-y-2 active:scale-[0.98]"
-                        title="Click to view Bial ledger"
-                      >
-                        {/* Card Top: Sl No & Bial Name */}
-                        <div className="flex items-start gap-1.5 min-w-0">
-                          <span className="w-4 h-4 rounded-md bg-indigo-100 text-indigo-700 font-mono font-bold text-[9px] flex items-center justify-center shrink-0 mt-0.5">
-                            {idx + 1}
-                          </span>
-                          <h4 className="font-bold text-indigo-700 text-xs sm:text-sm leading-snug break-words flex-1 hover:underline">
-                            {b.name}
-                          </h4>
-                        </div>
-
-                        {/* Card Metrics: Separate lines for Members and Total */}
-                        <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-[11px] space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase">Members:</span>
-                            <span className="font-bold text-slate-800">{b.member_count}</span>
-                          </div>
-                          <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
-                            <span className="text-[10px] font-bold text-slate-500 uppercase">Total:</span>
-                            <span className="font-mono font-bold text-emerald-700">₹{(b.total_collected || 0).toLocaleString('en-IN')}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* More / Show Less Toggle Button (3 lines = 6 Bials) */}
-                {filteredBials.length > 6 && !searchQuery.trim() && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllBialCards(prev => !prev)}
-                    className="w-full py-2 px-4 rounded-2xl bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs border border-indigo-200 shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            {/* Dynamic Tithe Category Summary Cards + Grand Total */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
+              {titheColumns.map((col) => {
+                const amount = grandTotals[col.field_key] || grandTotals[`total_${col.field_key}`] || 0;
+                return (
+                  <div
+                    key={col.id}
+                    className="p-2 sm:p-2.5 rounded-xl border flex flex-col justify-between transition-all shadow-2xs"
+                    style={{
+                      backgroundColor: `${col.color || '#6366f1'}10`,
+                      borderColor: `${col.color || '#6366f1'}35`
+                    }}
                   >
-                    {showAllBialCards ? (
-                      <>
-                        <ChevronUp className="w-4 h-4 text-indigo-600" />
-                        <span>Show Less (Collapse to 6 Bials)</span>
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="w-4 h-4 text-indigo-600" />
-                        <span>More ({filteredBials.length - 6} more Bials)</span>
-                      </>
-                    )}
-                  </button>
-                )}
+                    <div className="flex items-center justify-between mb-1 gap-1 min-w-0">
+                      <span
+                        className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider truncate"
+                        style={{ color: col.color || '#1e293b' }}
+                      >
+                        {col.code}
+                      </span>
+                      <span className="text-[9px] font-semibold text-slate-500 truncate text-right">
+                        {col.name}
+                      </span>
+                    </div>
+                    <div className="font-mono tabular-nums font-black text-slate-900 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                      ₹{amount.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* GRAND TOTAL BOX */}
+              <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-slate-900 p-2 sm:p-2.5 rounded-xl border border-slate-950 text-white shadow-2xs flex flex-col justify-between">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">TOTAL</span>
+                  <span className="text-[9px] font-medium text-slate-400">Grand Total</span>
+                </div>
+                <div className="font-mono tabular-nums font-bold text-white text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                  ₹{(grandTotals.grand_total || 0).toLocaleString('en-IN')}
+                </div>
               </div>
-            )}
+            </div>
           </div>
-        )}
 
-        {/* TAB 2: INSPECT BIAL MONTHLY LEDGER */}
-        {activeTab === 'inspector' && (
-          <div className="space-y-2.5 animate-in fade-in duration-150">
-            {/* Compact Dropdown & Export Controls */}
-            <div className="glass-panel p-2.5 sm:p-3 rounded-2xl">
-              <div className="flex flex-col gap-2 w-full max-w-4xl mx-auto">
-                {/* Top Row: Bial Selection, Month, Financial Year, and Export Button */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
-                  
-                  {/* Bial Selector */}
-                  <div className="flex flex-col">
-                    <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
-                      Bial Selection
-                    </span>
-                    <select
-                      value={inspectorBialId || 'all'}
-                      onChange={(e) => setInspectorBialId(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
-                      className="w-full font-bold text-xs px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer truncate"
-                    >
-                      <option value="all">ALL BIAL</option>
-                      {bials.map(b => (
-                        <option key={b.id} value={b.id}>{b.name} ({b.code})</option>
-                      ))}
-                    </select>
-                  </div>
 
-                  {/* Month Selector */}
-                  <div className="flex flex-col">
-                    <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
-                      Month
-                    </span>
-                    <select
-                      value={inspectorMonth}
-                      onChange={(e) => setInspectorMonth(parseInt(e.target.value))}
-                      className="w-full font-bold text-xs px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer truncate"
-                    >
-                      {FINANCIAL_MONTHS.map((mObj) => (
-                        <option key={mObj.id} value={mObj.id}>{mObj.name}</option>
-                      ))}
-                    </select>
-                  </div>
 
-                  {/* Financial Year Selector */}
-                  <div className="flex flex-col">
-                    <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
-                      Financial Year
-                    </span>
-                    <select
-                      value={year}
-                      onChange={(e) => setYear(parseInt(e.target.value))}
-                      className="w-full font-mono font-bold text-xs px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer truncate"
-                    >
-                      {financialYears.map(y => (
-                        <option key={y} value={y}>FY {y} - {y + 1}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Export Button */}
-                  <div className="flex flex-col">
-                    <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider mb-0.5 opacity-0 pointer-events-none hidden sm:block">
-                      Export
-                    </span>
-                    <button
-                      onClick={() => setShowInspectorExportModal(true)}
-                      className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold border border-slate-300 text-xs transition-colors shadow-2xs cursor-pointer h-[32px] sm:h-[34px]"
-                      title="Export Ledger (Excel / PDF)"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                      <span>Export</span>
-                    </button>
-                  </div>
+          {/* TAB 1: MAIN (BIALS MANAGEMENT) */}
+          {activeTab === 'bials' && (
+            <div className="space-y-2.5 animate-in fade-in duration-150">
+              {/* Control Toolbar */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+                <div className="relative flex-1">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search Bials..."
+                    className="w-full pl-9 pr-3 py-1.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
+                  />
                 </div>
 
-                {/* Bottom Row: Search Member Bar (Left) and View Mode Controls (Right) */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
-                  {/* Member Search Bar */}
-                  <div className="relative flex-1">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                      type="text"
-                      value={inspectorSearchQuery}
-                      onChange={(e) => setInspectorSearchQuery(e.target.value)}
-                      placeholder={inspectorBialId === 'all' ? "Search member across all Bials..." : `Search member in ${selectedBialObj?.name || 'Bial'}...`}
-                      className="w-full pl-8 pr-8 py-1.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
-                    />
-                    {inspectorSearchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => setInspectorSearchQuery('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-0.5 cursor-pointer"
-                        title="Clear search"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-
-                  {/* View Mode Toggle: Table / Cards */}
-                  <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 shadow-2xs self-end sm:self-center shrink-0">
+                <div className="flex items-center gap-1.5 self-end sm:self-center">
+                  {/* View Mode Toggle: Table / Card */}
+                  <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 shadow-2xs">
                     <button
-                      onClick={() => setInspectorViewMode('table')}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        inspectorViewMode === 'table'
-                          ? 'bg-white text-indigo-700 shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      onClick={() => setBialViewMode('table')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${bialViewMode === 'table'
+                        ? 'bg-white text-indigo-700 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                        }`}
                       title="Table View"
                     >
                       <LayoutList className="w-3.5 h-3.5" />
@@ -1237,1522 +1008,1783 @@ export default function AdminDashboard({ user, showToast }) {
                     </button>
 
                     <button
-                      onClick={() => setInspectorViewMode('card')}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                        inspectorViewMode === 'card'
-                          ? 'bg-white text-indigo-700 shadow-2xs'
-                          : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                      title="Cards View"
+                      onClick={() => setBialViewMode('card')}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${bialViewMode === 'card'
+                        ? 'bg-white text-indigo-700 shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      title="Card View"
                     >
                       <LayoutGrid className="w-3.5 h-3.5" />
                       <span>Cards</span>
                     </button>
                   </div>
+
+                  <button
+                    onClick={() => { setBialToEdit(null); setShowBialModal(true); }}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> <span>Add</span>
+                  </button>
                 </div>
               </div>
-            </div>
 
-            {/* VIEW MODE 1: TABLE VIEW */}
-            {inspectorViewMode === 'table' && (
-              <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
-                <div className="overflow-x-auto max-h-[65vh]">
-                  <table className="w-full text-left border-collapse min-w-[640px] sm:min-w-0">
-                    <thead className="sticky top-0 z-20 bg-slate-100 border-b border-slate-200">
-                      <tr className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                        <th onClick={() => handleSort('sl_no')} className="py-2.5 px-2.5 text-center w-14 sortable-header cursor-pointer select-none">
-                          <div className="flex items-center justify-center gap-1"><span>Sl</span>{getSortIcon('sl_no')}</div>
-                        </th>
-                        <th onClick={() => handleSort('name')} className="py-2.5 px-3 sortable-header cursor-pointer select-none">
-                          <div className="flex items-center gap-1"><span>Hming (Member Name)</span>{getSortIcon('name')}</div>
-                        </th>
-                        {titheColumns.map(col => (
-                          <th key={col.id} onClick={() => handleSort(col.field_key)} className="py-2.5 px-2.5 text-right w-24 sm:w-28 sortable-header cursor-pointer select-none">
-                            <div className="flex items-center justify-end gap-1">
-                              <span style={{ color: col.color || '#334155' }}>{col.code}</span>
-                              {getSortIcon(col.field_key)}
-                            </div>
-                          </th>
-                        ))}
-                        <th onClick={() => handleSort('total')} className="py-2.5 px-3 text-right w-28 sm:w-32 sortable-header cursor-pointer select-none">
-                          <div className="flex items-center justify-end gap-1 text-emerald-800 font-extrabold"><span>Total</span>{getSortIcon('total')}</div>
-                        </th>
-                        <th className="py-2.5 px-2 text-center w-20">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200 text-xs sm:text-sm font-mono tabular-nums">
-                      {inspectorLoading ? (
-                        <tr><td colSpan={3 + titheColumns.length} className="py-10 text-center text-indigo-600 font-semibold animate-pulse font-sans">Loading ledger...</td></tr>
-                      ) : sortedInspectorMembers.length === 0 ? (
-                        <tr><td colSpan={3 + titheColumns.length} className="py-10 text-center text-slate-500 font-sans">No tithes recorded.</td></tr>
-                      ) : (
-                        sortedInspectorMembers.map(m => (
-                          <tr key={m.member_id} className="hover:bg-slate-50 transition-colors">
-                            <td className="py-2 px-2.5 text-center text-xs text-slate-500 font-semibold">{m.sl_no}</td>
-                            <td className="py-2 px-3 font-sans font-bold text-slate-900 truncate max-w-[200px] sm:max-w-none">
-                              <button
-                                onClick={() => {
-                                  setSelectedMemberToEdit(m);
-                                  setShowMemberEditModal(true);
-                                }}
-                                className="font-bold text-slate-900 hover:text-indigo-600 hover:underline text-left cursor-pointer transition-colors flex flex-col items-start gap-0.5 max-w-full"
-                                title="Click to edit member details and tithes"
-                              >
-                                <div className="flex items-center gap-1.5 max-w-full truncate">
-                                  <span className="truncate text-xs sm:text-sm font-bold text-slate-900">{m.name}</span>
-                                  <Edit3 className="w-3 h-3 text-slate-400 opacity-60 hover:opacity-100 shrink-0" />
-                                </div>
-                                {inspectorBialId === 'all' && m.bial_name && (
-                                  <span className="text-[10px] text-slate-500 font-medium font-sans leading-tight">
-                                    {m.bial_name}
-                                  </span>
-                                )}
-                              </button>
+              {/* View Option 1: TABLE VIEW */}
+              {bialViewMode === 'table' && (
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-100 text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                          <th className="py-2.5 px-2.5 w-12 text-center">Sl No</th>
+                          <th className="py-2.5 px-3">Bial Name</th>
+                          <th className="py-2.5 px-2 text-center w-20">Members</th>
+                          <th className="py-2.5 px-3 text-right w-32">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-xs sm:text-sm">
+                        {filteredBials.length === 0 ? (
+                          <tr>
+                            <td colSpan="4" className="py-8 text-center text-xs text-slate-500 font-sans">
+                              No Bial accounts found.
                             </td>
-                            {titheColumns.map(col => (
-                              <td key={col.id} className="py-2 px-2.5 text-right font-medium" style={{ color: col.color || '#334155' }}>
-                                ₹{(m[col.field_key] || 0).toLocaleString('en-IN')}
+                          </tr>
+                        ) : (
+                          filteredBials.map((b, idx) => (
+                            <tr key={b.id} className="hover:bg-slate-50 transition-colors">
+                              <td className="py-2.5 px-2.5 text-center font-mono font-bold text-slate-500 text-xs">{idx + 1}</td>
+                              <td className="py-2.5 px-3">
+                                <button
+                                  onClick={() => {
+                                    setInspectorBialId(b.id);
+                                    setActiveTab('inspector');
+                                  }}
+                                  className="font-bold text-indigo-700 hover:text-indigo-900 hover:underline text-left cursor-pointer transition-colors"
+                                  title="Click to open Bial ledger"
+                                >
+                                  {b.name}
+                                </button>
                               </td>
-                            ))}
-                            <td className="py-2 px-3 text-right font-extrabold text-emerald-900 bg-emerald-50/40">₹{(m.total || 0).toLocaleString('en-IN')}</td>
-                            <td className="py-2 px-2 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSelectedMemberForHistory(m.member_id || m.id);
-                                    setShowMemberHistoryModal(true);
-                                  }}
-                                  className="p-1 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors cursor-pointer"
-                                  title={`View 12-month statement for ${m.name}`}
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setTransferPreselectedMember(m);
-                                    setTransferPreselectedBialId(inspectorBialId);
-                                    setShowTransferModal(true);
-                                  }}
-                                  className="p-1 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
-                                  title={`Transfer ${m.name} to another Bial`}
-                                >
-                                  <ArrowRightLeft className="w-3.5 h-3.5" />
-                                </button>
+                              <td className="py-2.5 px-2 text-center font-semibold text-slate-700">{b.member_count}</td>
+                              <td className="py-2.5 px-3 text-right font-mono tabular-nums font-bold text-emerald-700">₹{(b.total_collected || 0).toLocaleString('en-IN')}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* View Option 2: CARD VIEW - Mobile Friendly Grid */}
+              {bialViewMode === 'card' && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {filteredBials.length === 0 ? (
+                      <div className="col-span-2 py-8 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+                        No Bial accounts found.
+                      </div>
+                    ) : (
+                      ((!showAllBialCards && !searchQuery.trim() && filteredBials.length > 6)
+                        ? filteredBials.slice(0, 6)
+                        : filteredBials
+                      ).map((b, idx) => (
+                        <div
+                          key={b.id}
+                          onClick={() => {
+                            setInspectorBialId(b.id);
+                            setActiveTab('inspector');
+                          }}
+                          className="p-2.5 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between space-y-2 active:scale-[0.98]"
+                          title="Click to view Bial ledger"
+                        >
+                          {/* Card Top: Sl No & Bial Name */}
+                          <div className="flex items-start gap-1.5 min-w-0">
+                            <span className="w-4 h-4 rounded-md bg-indigo-100 text-indigo-700 font-mono font-bold text-[9px] flex items-center justify-center shrink-0 mt-0.5">
+                              {idx + 1}
+                            </span>
+                            <h4 className="font-bold text-indigo-700 text-xs sm:text-sm leading-snug break-words flex-1 hover:underline">
+                              {b.name}
+                            </h4>
+                          </div>
+
+                          {/* Card Metrics: Separate lines for Members and Total */}
+                          <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-[11px] space-y-1">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Members:</span>
+                              <span className="font-bold text-slate-800">{b.member_count}</span>
+                            </div>
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase">Total:</span>
+                              <span className="font-mono font-bold text-emerald-700">₹{(b.total_collected || 0).toLocaleString('en-IN')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* More / Show Less Toggle Button (3 lines = 6 Bials) */}
+                  {filteredBials.length > 6 && !searchQuery.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllBialCards(prev => !prev)}
+                      className="w-full py-2 px-4 rounded-2xl bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs border border-indigo-200 shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      {showAllBialCards ? (
+                        <>
+                          <ChevronUp className="w-4 h-4 text-indigo-600" />
+                          <span>Show Less (Collapse to 6 Bials)</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-4 h-4 text-indigo-600" />
+                          <span>More ({filteredBials.length - 6} more Bials)</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: INSPECT BIAL MONTHLY LEDGER */}
+          {activeTab === 'inspector' && (
+            <div className="space-y-2.5 animate-in fade-in duration-150">
+              {/* Compact Dropdown & Export Controls */}
+              <div className="glass-panel p-2.5 sm:p-3 rounded-2xl">
+                <div className="flex flex-col gap-2 w-full max-w-4xl mx-auto">
+                  {/* Top Row: Bial Selection, Month, Financial Year, and Export Button */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-end">
+
+                    {/* Bial Selector */}
+                    <div className="flex flex-col">
+                      <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+                        Bial Selection
+                      </span>
+                      <select
+                        value={inspectorBialId || 'all'}
+                        onChange={(e) => setInspectorBialId(e.target.value === 'all' ? 'all' : parseInt(e.target.value))}
+                        className="w-full font-bold text-xs px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer truncate"
+                      >
+                        <option value="all">ALL BIAL</option>
+                        {bials.map(b => (
+                          <option key={b.id} value={b.id}>{b.name} ({b.code})</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Month Selector */}
+                    <div className="flex flex-col">
+                      <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+                        Month
+                      </span>
+                      <select
+                        value={inspectorMonth}
+                        onChange={(e) => setInspectorMonth(parseInt(e.target.value))}
+                        className="w-full font-bold text-xs px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer truncate"
+                      >
+                        {FINANCIAL_MONTHS.map((mObj) => (
+                          <option key={mObj.id} value={mObj.id}>{mObj.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Financial Year Selector */}
+                    <div className="flex flex-col">
+                      <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">
+                        Financial Year
+                      </span>
+                      <select
+                        value={year}
+                        onChange={(e) => setYear(parseInt(e.target.value))}
+                        className="w-full font-mono font-bold text-xs px-2.5 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer truncate"
+                      >
+                        {financialYears.map(y => (
+                          <option key={y} value={y}>FY {y} - {y + 1}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Export Button */}
+                    <div className="flex flex-col">
+                      <span className="text-[9.5px] font-bold text-slate-500 uppercase tracking-wider mb-0.5 opacity-0 pointer-events-none hidden sm:block">
+                        Export
+                      </span>
+                      <button
+                        onClick={() => setShowInspectorExportModal(true)}
+                        className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-800 font-bold border border-slate-300 text-xs transition-colors shadow-2xs cursor-pointer h-[32px] sm:h-[34px]"
+                        title="Export Ledger (Excel / PDF)"
+                      >
+                        <FileText className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                        <span>Export</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bottom Row: Search Member Bar (Left) and View Mode Controls (Right) */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 pt-1.5 border-t border-slate-100">
+                    {/* Member Search Bar */}
+                    <div className="relative flex-1">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={inspectorSearchQuery}
+                        onChange={(e) => setInspectorSearchQuery(e.target.value)}
+                        placeholder={inspectorBialId === 'all' ? "Search member across all Bials..." : `Search member in ${selectedBialObj?.name || 'Bial'}...`}
+                        className="w-full pl-8 pr-8 py-1.5 rounded-xl bg-white border border-slate-300 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-100 shadow-2xs"
+                      />
+                      {inspectorSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setInspectorSearchQuery('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold p-0.5 cursor-pointer"
+                          title="Clear search"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+
+                    {/* View Mode Toggle: Table / Cards */}
+                    <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200 shadow-2xs self-end sm:self-center shrink-0">
+                      <button
+                        onClick={() => setInspectorViewMode('table')}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${inspectorViewMode === 'table'
+                          ? 'bg-white text-indigo-700 shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        title="Table View"
+                      >
+                        <LayoutList className="w-3.5 h-3.5" />
+                        <span>Table</span>
+                      </button>
+
+                      <button
+                        onClick={() => setInspectorViewMode('card')}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${inspectorViewMode === 'card'
+                          ? 'bg-white text-indigo-700 shadow-2xs'
+                          : 'text-slate-600 hover:text-slate-900'
+                          }`}
+                        title="Cards View"
+                      >
+                        <LayoutGrid className="w-3.5 h-3.5" />
+                        <span>Cards</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* VIEW MODE 1: TABLE VIEW */}
+              {inspectorViewMode === 'table' && (
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto max-h-[65vh]">
+                    <table className="w-full text-left border-collapse min-w-[640px] sm:min-w-0">
+                      <thead className="sticky top-0 z-20 bg-slate-100 border-b border-slate-200">
+                        <tr className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                          <th onClick={() => handleSort('sl_no')} className="py-2.5 px-2.5 text-center w-14 sortable-header cursor-pointer select-none">
+                            <div className="flex items-center justify-center gap-1"><span>Sl</span>{getSortIcon('sl_no')}</div>
+                          </th>
+                          <th onClick={() => handleSort('name')} className="py-2.5 px-3 sortable-header cursor-pointer select-none">
+                            <div className="flex items-center gap-1"><span>Hming (Member Name)</span>{getSortIcon('name')}</div>
+                          </th>
+                          {titheColumns.map(col => (
+                            <th key={col.id} onClick={() => handleSort(col.field_key)} className="py-2.5 px-2.5 text-right w-24 sm:w-28 sortable-header cursor-pointer select-none">
+                              <div className="flex items-center justify-end gap-1">
+                                <span style={{ color: col.color || '#334155' }}>{col.code}</span>
+                                {getSortIcon(col.field_key)}
+                              </div>
+                            </th>
+                          ))}
+                          <th onClick={() => handleSort('total')} className="py-2.5 px-3 text-right w-28 sm:w-32 sortable-header cursor-pointer select-none">
+                            <div className="flex items-center justify-end gap-1 text-emerald-800 font-extrabold"><span>Total</span>{getSortIcon('total')}</div>
+                          </th>
+                          <th className="py-2.5 px-2 text-center w-20">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-200 text-xs sm:text-sm font-mono tabular-nums">
+                        {inspectorLoading ? (
+                          <tr><td colSpan={3 + titheColumns.length} className="py-10 text-center text-indigo-600 font-semibold animate-pulse font-sans">Loading ledger...</td></tr>
+                        ) : sortedInspectorMembers.length === 0 ? (
+                          <tr><td colSpan={3 + titheColumns.length} className="py-10 text-center text-slate-500 font-sans">No tithes recorded.</td></tr>
+                        ) : (
+                          sortedInspectorMembers.map(m => (
+                            <tr key={m.member_id} className="hover:bg-slate-50 transition-colors">
+                              <td className="py-2 px-2.5 text-center text-xs text-slate-500 font-semibold">{m.sl_no}</td>
+                              <td className="py-2 px-3 font-sans font-bold text-slate-900 truncate max-w-[200px] sm:max-w-none">
                                 <button
                                   onClick={() => {
                                     setSelectedMemberToEdit(m);
                                     setShowMemberEditModal(true);
                                   }}
-                                  className="p-1 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                                  title="Edit member details & tithes"
+                                  className="font-bold text-slate-900 hover:text-indigo-600 hover:underline text-left cursor-pointer transition-colors flex flex-col items-start gap-0.5 max-w-full"
+                                  title="Click to edit member details and tithes"
                                 >
-                                  <Edit3 className="w-3.5 h-3.5" />
+                                  <div className="flex items-center gap-1.5 max-w-full truncate">
+                                    <span className="truncate text-xs sm:text-sm font-bold text-slate-900">{m.name}</span>
+                                    <Edit3 className="w-3 h-3 text-slate-400 opacity-60 hover:opacity-100 shrink-0" />
+                                  </div>
+                                  {inspectorBialId === 'all' && m.bial_name && (
+                                    <span className="text-[10px] text-slate-500 font-medium font-sans leading-tight">
+                                      {m.bial_name}
+                                    </span>
+                                  )}
                                 </button>
-                              </div>
-                            </td>
+                              </td>
+                              {titheColumns.map(col => (
+                                <td key={col.id} className="py-2 px-2.5 text-right font-medium" style={{ color: col.color || '#334155' }}>
+                                  ₹{(m[col.field_key] || 0).toLocaleString('en-IN')}
+                                </td>
+                              ))}
+                              <td className="py-2 px-3 text-right font-extrabold text-emerald-900 bg-emerald-50/40">₹{(m.total || 0).toLocaleString('en-IN')}</td>
+                              <td className="py-2 px-2 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedMemberForHistory(m.member_id || m.id);
+                                      setShowMemberHistoryModal(true);
+                                    }}
+                                    className="p-1 rounded-lg text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 transition-colors cursor-pointer"
+                                    title={`View 12-month statement for ${m.name}`}
+                                  >
+                                    <Eye className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setTransferPreselectedMember(m);
+                                      setTransferPreselectedBialId(inspectorBialId);
+                                      setShowTransferModal(true);
+                                    }}
+                                    className="p-1 rounded-lg text-blue-600 hover:text-blue-800 hover:bg-blue-50 transition-colors cursor-pointer"
+                                    title={`Transfer ${m.name} to another Bial`}
+                                  >
+                                    <ArrowRightLeft className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedMemberToEdit(m);
+                                      setShowMemberEditModal(true);
+                                    }}
+                                    className="p-1 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                                    title="Edit member details & tithes"
+                                  >
+                                    <Edit3 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                      {inspectorLedger?.summary && (
+                        <tfoot className="sticky bottom-0 z-20 bg-slate-100 border-t-2 border-slate-300 font-mono font-extrabold text-xs sm:text-sm tabular-nums">
+                          <tr>
+                            <td className="py-2.5 px-2.5 text-center text-slate-600 uppercase text-[11px] font-sans">TOTAL</td>
+                            <td className="py-2.5 px-3 text-slate-900 font-sans truncate">Summary ({sortedInspectorMembers.length} Members)</td>
+                            {titheColumns.map(col => (
+                              <td key={col.id} className="py-2.5 px-2.5 text-right font-bold" style={{ color: col.color || '#334155' }}>
+                                ₹{((inspectorLedger.summary && (inspectorLedger.summary[col.field_key] ?? inspectorLedger.summary[`sum_${col.field_key}`])) || 0).toLocaleString('en-IN')}
+                              </td>
+                            ))}
+                            <td className="py-2.5 px-3 text-right text-emerald-900 text-sm sm:text-base bg-emerald-100">₹{(inspectorLedger.summary.grand_total || 0).toLocaleString('en-IN')}</td>
+                            <td></td>
                           </tr>
-                        ))
+                        </tfoot>
                       )}
-                    </tbody>
-                    {inspectorLedger?.summary && (
-                      <tfoot className="sticky bottom-0 z-20 bg-slate-100 border-t-2 border-slate-300 font-mono font-extrabold text-xs sm:text-sm tabular-nums">
-                        <tr>
-                          <td className="py-2.5 px-2.5 text-center text-slate-600 uppercase text-[11px] font-sans">TOTAL</td>
-                          <td className="py-2.5 px-3 text-slate-900 font-sans truncate">Summary ({sortedInspectorMembers.length} Members)</td>
-                          {titheColumns.map(col => (
-                            <td key={col.id} className="py-2.5 px-2.5 text-right font-bold" style={{ color: col.color || '#334155' }}>
-                              ₹{((inspectorLedger.summary && (inspectorLedger.summary[col.field_key] ?? inspectorLedger.summary[`sum_${col.field_key}`])) || 0).toLocaleString('en-IN')}
-                            </td>
-                          ))}
-                          <td className="py-2.5 px-3 text-right text-emerald-900 text-sm sm:text-base bg-emerald-100">₹{(inspectorLedger.summary.grand_total || 0).toLocaleString('en-IN')}</td>
-                          <td></td>
-                        </tr>
-                      </tfoot>
-                    )}
-                  </table>
+                    </table>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* VIEW MODE 2: CARDS VIEW - Responsive Mobile Layout */}
-            {inspectorViewMode === 'card' && (
-              <div className="space-y-2">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                  {inspectorLoading ? (
-                    <div className="col-span-2 py-10 text-center text-xs text-indigo-600 font-semibold animate-pulse bg-white rounded-2xl border border-slate-200">
-                      Loading ledger...
-                    </div>
-                  ) : sortedInspectorMembers.length === 0 ? (
-                    <div className="col-span-2 py-10 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
-                      No tithes recorded.
-                    </div>
-                  ) : (
-                    ((!showAllInspectorCards && sortedInspectorMembers.length > 4)
-                      ? sortedInspectorMembers.slice(0, 4)
-                      : sortedInspectorMembers
-                    ).map((m) => (
-                      <div
-                        key={m.member_id}
-                        onClick={() => {
-                          setSelectedMemberToEdit(m);
-                          setShowMemberEditModal(true);
-                        }}
-                        className="p-2.5 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between space-y-1.5 active:scale-[0.98]"
-                        title="Click to edit member details and tithes"
-                      >
-                        {/* Top: Sl No & Member Name with Bial Name below */}
-                        <div className="flex items-start justify-between gap-1 min-w-0">
-                          <div className="flex items-start gap-1.5 min-w-0">
-                            <span className="w-4 h-4 mt-0.5 rounded-md bg-indigo-100 text-indigo-700 font-mono font-bold text-[9px] flex items-center justify-center shrink-0">
-                              {m.sl_no}
-                            </span>
-                            <div className="min-w-0 flex flex-col items-start">
-                              <span className="font-bold text-slate-900 text-xs leading-snug truncate">
-                                {m.name}
+              {/* VIEW MODE 2: CARDS VIEW - Responsive Mobile Layout */}
+              {inspectorViewMode === 'card' && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                    {inspectorLoading ? (
+                      <div className="col-span-2 py-10 text-center text-xs text-indigo-600 font-semibold animate-pulse bg-white rounded-2xl border border-slate-200">
+                        Loading ledger...
+                      </div>
+                    ) : sortedInspectorMembers.length === 0 ? (
+                      <div className="col-span-2 py-10 text-center text-xs text-slate-500 bg-white rounded-2xl border border-slate-200">
+                        No tithes recorded.
+                      </div>
+                    ) : (
+                      ((!showAllInspectorCards && sortedInspectorMembers.length > 4)
+                        ? sortedInspectorMembers.slice(0, 4)
+                        : sortedInspectorMembers
+                      ).map((m) => (
+                        <div
+                          key={m.member_id}
+                          onClick={() => {
+                            setSelectedMemberToEdit(m);
+                            setShowMemberEditModal(true);
+                          }}
+                          className="p-2.5 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer flex flex-col justify-between space-y-1.5 active:scale-[0.98]"
+                          title="Click to edit member details and tithes"
+                        >
+                          {/* Top: Sl No & Member Name with Bial Name below */}
+                          <div className="flex items-start justify-between gap-1 min-w-0">
+                            <div className="flex items-start gap-1.5 min-w-0">
+                              <span className="w-4 h-4 mt-0.5 rounded-md bg-indigo-100 text-indigo-700 font-mono font-bold text-[9px] flex items-center justify-center shrink-0">
+                                {m.sl_no}
                               </span>
-                              {inspectorBialId === 'all' && m.bial_name && (
-                                <span className="text-[9.5px] text-slate-500 font-medium truncate leading-tight">
-                                  {m.bial_name}
+                              <div className="min-w-0 flex flex-col items-start">
+                                <span className="font-bold text-slate-900 text-xs leading-snug truncate">
+                                  {m.name}
                                 </span>
-                              )}
+                                {inspectorBialId === 'all' && m.bial_name && (
+                                  <span className="text-[9.5px] text-slate-500 font-medium truncate leading-tight">
+                                    {m.bial_name}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedMemberForHistory(m.member_id || m.id);
+                                  setShowMemberHistoryModal(true);
+                                }}
+                                className="p-1 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
+                                title={`View 12-month statement for ${m.name}`}
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTransferPreselectedMember(m);
+                                  setTransferPreselectedBialId(m.bial_id || inspectorBialId);
+                                  setShowTransferModal(true);
+                                }}
+                                className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                title={`Transfer ${m.name} to another Bial`}
+                              >
+                                <ArrowRightLeft className="w-3.5 h-3.5" />
+                              </button>
+                              <Edit3 className="w-3 h-3 text-slate-400 opacity-70" />
                             </div>
                           </div>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedMemberForHistory(m.member_id || m.id);
-                                setShowMemberHistoryModal(true);
-                              }}
-                              className="p-1 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                              title={`View 12-month statement for ${m.name}`}
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setTransferPreselectedMember(m);
-                                setTransferPreselectedBialId(m.bial_id || inspectorBialId);
-                                setShowTransferModal(true);
-                              }}
-                              className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
-                              title={`Transfer ${m.name} to another Bial`}
-                            >
-                              <ArrowRightLeft className="w-3.5 h-3.5" />
-                            </button>
-                            <Edit3 className="w-3 h-3 text-slate-400 opacity-70" />
+
+                          {/* Category Breakdown (Dynamic mini grid) */}
+                          <div className="grid grid-cols-2 gap-1 bg-slate-50 p-1.5 rounded-xl border border-slate-100 text-[10px] font-mono">
+                            {titheColumns.map(col => (
+                              <div key={col.id} className="flex items-center justify-between" style={{ color: col.color || '#334155' }}>
+                                <span className="font-bold text-slate-400">{col.code}:</span>
+                                <span>₹{(m[col.field_key] || 0).toLocaleString('en-IN')}</span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Total Line */}
+                          <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-xs">
+                            <span className="text-[10px] font-extrabold text-slate-600 uppercase">Total:</span>
+                            <span className="font-mono font-black text-emerald-700">₹{(m.total || 0).toLocaleString('en-IN')}</span>
                           </div>
                         </div>
+                      ))
+                    )}
+                  </div>
 
-                        {/* Category Breakdown (Dynamic mini grid) */}
-                        <div className="grid grid-cols-2 gap-1 bg-slate-50 p-1.5 rounded-xl border border-slate-100 text-[10px] font-mono">
-                          {titheColumns.map(col => (
-                            <div key={col.id} className="flex items-center justify-between" style={{ color: col.color || '#334155' }}>
-                              <span className="font-bold text-slate-400">{col.code}:</span>
-                              <span>₹{(m[col.field_key] || 0).toLocaleString('en-IN')}</span>
-                            </div>
-                          ))}
+                  {/* More / Show Less Toggle Button */}
+                  {sortedInspectorMembers.length > 4 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAllInspectorCards(prev => !prev)}
+                      className="w-full py-2 px-4 rounded-2xl bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs border border-indigo-200 shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    >
+                      {showAllInspectorCards ? (
+                        <>
+                          <ChevronUp className="w-4 h-4 text-indigo-600" />
+                          <span>Show Less (Collapse to 4 Members)</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="w-4 h-4 text-indigo-600" />
+                          <span>More ({sortedInspectorMembers.length - 4} more Members)</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+
+                  {/* Monthly Ledger Summary Footer Card */}
+                  {inspectorLedger?.summary && sortedInspectorMembers.length > 0 && (
+                    <div className="bg-slate-900 p-3 rounded-xl border border-slate-950 text-white shadow-2xs space-y-2">
+                      <div className="flex items-center justify-between text-xs font-semibold border-b border-slate-800 pb-1.5">
+                        <span className="text-slate-300 uppercase tracking-wider text-[10px]">Monthly Bial Total</span>
+                        <span className="text-slate-400 font-sans text-[11px]">{sortedInspectorMembers.length} Members</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-center font-mono text-[10px] pt-0.5">
+                        {titheColumns.map(col => (
+                          <div key={col.id} className="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800">
+                            <span className="text-[9px] block text-slate-300 font-semibold">{col.code}</span>
+                            <span className="font-bold text-white">₹{((inspectorLedger.summary && (inspectorLedger.summary[col.field_key] ?? inspectorLedger.summary[`sum_${col.field_key}`])) || 0).toLocaleString('en-IN')}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-xs">
+                        <span className="font-semibold text-slate-300">GRAND TOTAL:</span>
+                        <span className="font-mono font-bold text-white text-sm">₹{(inspectorLedger.summary.grand_total || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: TITHE HEADERS & COLUMNS */}
+          {activeTab === 'columns' && (
+            <div className="animate-in fade-in duration-150">
+              <TitheColumnsTab
+                onColumnsChanged={async (updatedCols) => {
+                  if (Array.isArray(updatedCols)) {
+                    setTitheColumns(updatedCols);
+                  }
+                  await loadAdminData();
+                }}
+                showToast={showToast}
+              />
+            </div>
+          )}
+
+          {/* TAB: PASSWORDS & ADMIN ACCESS (COMBINED BIAL PASSWORDS & GOOGLE ADMINS) */}
+          {activeTab === 'credentials' && (
+            <div className="animate-in fade-in duration-150">
+              <CredentialsTab
+                bials={bials}
+                onRefresh={loadAdminData}
+                onEditBial={(b) => {
+                  setBialToEdit(b);
+                  setShowBialModal(true);
+                }}
+                onAddNewBial={() => {
+                  setBialToEdit(null);
+                  setShowBialModal(true);
+                }}
+                showToast={showToast}
+              />
+            </div>
+          )}
+
+          {/* TAB 4: CROSS-BIAL ANALYTICS & RETURN STATS */}
+          {activeTab === 'analytics' && stats && (
+            <div className="space-y-3 animate-in fade-in duration-150">
+
+              {/* KPI Features Grid: 2 features per line across all views */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
+
+                {/* Feature 1: Top Bial */}
+                <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1.5">
+                  {/* Header Box */}
+                  <div className="pb-1 border-b border-slate-100">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5 truncate">
+                      <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span className="truncate">Top Bial</span>
+                    </span>
+                  </div>
+
+                  {/* Data Box 1: Bial Name & under that the amount */}
+                  <div className="bg-slate-50/70 p-2 rounded-lg border border-slate-200/80 space-y-0.5">
+                    <span className="text-xs font-semibold text-slate-900 block truncate">
+                      {topContributingBial?.name || 'N/A'}
+                    </span>
+                    <div className="flex items-baseline gap-1 font-mono">
+                      <span className="text-xs sm:text-sm font-bold text-slate-900">
+                        ₹{(topContributingBial?.total || 0).toLocaleString('en-IN')}
+                      </span>
+                      {topContributingBial && (
+                        <span className="text-[9px] font-medium text-slate-500">
+                          ({topContributingBial.percentage_share}%)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Data Box 2: Return Rate - Bial return Rate: in one line and below that figures */}
+                  <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
+                    <span className="text-slate-600 font-bold text-[8.5px] sm:text-[9.5px] block">
+                      Bial return Rate:
+                    </span>
+                    <span className="font-mono font-black text-emerald-700 text-xs sm:text-xs block">
+                      {topContributingBial ? `${topContributingBial.return_rate}% (${topContributingBial.returned_members}/${topContributingBial.total_members} HH)` : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Feature 2: Households Returned */}
+                <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
+                  {/* Header Box */}
+                  <div className="pb-1 border-b border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 truncate">
+                      <Users className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <span className="truncate">Households Returned</span>
+                    </span>
+                  </div>
+
+                  {/* Data Box 1: Count & Progress */}
+                  <div className="bg-white p-1.5 sm:p-2 rounded-xl border border-slate-200 space-y-1">
+                    <div className="flex items-baseline justify-between gap-1 font-mono">
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-xs sm:text-xs font-black text-slate-900">
+                          {totalReturnedMembers}
+                        </span>
+                        <span className="text-[8.5px] sm:text-[9px] font-bold text-slate-500 font-sans">
+                          / {totalSystemMembers} HH
+                        </span>
+                      </div>
+                      <span className="text-[9px] font-bold text-indigo-700">
+                        {overallReturnRate}%
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, overallReturnRate)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Data Box 2: Pending */}
+                  <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
+                    <span className="text-slate-600 font-bold text-[8.5px] sm:text-[9.5px] block">
+                      Pending Households:
+                    </span>
+                    <span className="font-mono font-black text-amber-600 text-xs sm:text-xs block">
+                      {pendingMembers} HH
+                    </span>
+                  </div>
+                </div>
+
+                {/* Feature 3: Overall Return Rate */}
+                <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
+                  {/* Header Box */}
+                  <div className="pb-1 border-b border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 truncate">
+                      <Percent className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="truncate">Overall Return Rate</span>
+                    </span>
+                  </div>
+
+                  {/* Data Box 1: Compliance Rate */}
+                  <div className="bg-white p-1.5 sm:p-2 rounded-xl border border-slate-200 space-y-1 font-mono">
+                    <div className="flex items-baseline justify-between gap-1">
+                      <span className="text-xs sm:text-xs font-black text-emerald-700">
+                        {overallReturnRate}%
+                      </span>
+                      <span className="text-[8.5px] sm:text-[9px] font-bold text-slate-500 font-sans">
+                        compliance
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, overallReturnRate)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Data Box 2: Total Tithes */}
+                  <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
+                    <span className="text-slate-600 font-bold text-[8.5px] sm:text-[9.5px] block">
+                      Total Church Tithes:
+                    </span>
+                    <span className="font-mono font-black text-slate-900 text-xs sm:text-xs block truncate">
+                      ₹{grandTotalVal.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Feature 4: Average Contribution per Returned Member */}
+                <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
+                  {/* Header Box */}
+                  <div className="pb-1 border-b border-slate-100">
+                    <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 truncate">
+                      <Wallet className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                      <span className="truncate">Avg per Household</span>
+                    </span>
+                  </div>
+
+                  {/* Data Box 1: Avg Amount */}
+                  <div className="bg-white p-1.5 sm:p-2 rounded-xl border border-slate-200 space-y-0.5">
+                    <span className="text-[8px] font-bold text-slate-500 block">Average Tithe / Active HH</span>
+                    <div className="text-xs sm:text-xs font-mono font-black text-purple-800">
+                      ₹{avgContributionPerMember.toLocaleString('en-IN')}
+                    </div>
+                  </div>
+
+                  {/* Data Box 2: Units */}
+                  <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
+                    <span className="text-slate-600 font-bold text-[8.5px] sm:text-[9.5px] block">
+                      Reporting Units:
+                    </span>
+                    <span className="font-mono font-black text-slate-800 text-xs sm:text-xs block">
+                      {enrichedBialBreakdown.length} Bials
+                    </span>
+                  </div>
+                </div>
+
+                {/* Feature 5: Bial Variance / Spread */}
+                <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
+                  {/* Header Box */}
+                  <div className="pb-1 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-700 flex items-center gap-1.5 truncate">
+                      <Activity className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                      <span className="truncate">Bial Variance / Spread</span>
+                    </span>
+                    <span className="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
+                      {bialSpreadGap}% gap
+                    </span>
+                  </div>
+
+                  {/* Data Box 1: Highest vs Lowest Participation Bials */}
+                  <div className="bg-slate-50/70 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
+                    <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] font-bold">
+                      <span className="text-slate-500">High:</span>
+                      <span className="font-mono font-black text-emerald-700 truncate">
+                        {highestBial ? `${highestBial.name} (${highestBial.return_rate}%)` : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] font-bold">
+                      <span className="text-slate-500">Low:</span>
+                      <span className="font-mono font-black text-rose-700 truncate">
+                        {lowestBial ? `${lowestBial.name} (${lowestBial.return_rate}%)` : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Data Box 2: Performance Gap Meter */}
+                  <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
+                    <div className="flex items-center justify-between text-[8px] sm:text-[9px] font-bold text-slate-600">
+                      <span>Performance Gap:</span>
+                      <span className="font-mono font-black text-indigo-900">{bialSpreadGap}% spread</span>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
+                        style={{ width: `${Math.min(100, Math.max(5, bialSpreadGap))}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Feature 6: Fund Allocation Metrics (All Column Heads Percentage-Wise) */}
+                <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1.5">
+                  {/* Header Box */}
+                  <div className="pb-1 border-b border-slate-100 flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-700 flex items-center gap-1.5 truncate">
+                      <PieChartIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span className="truncate">Fund Allocation</span>
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                      100% Total
+                    </span>
+                  </div>
+
+                  {/* Composite Multi-Segment Progress Bar */}
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden flex shadow-2xs">
+                    {categoryShares.map((cat, idx) => (
+                      <div
+                        key={cat.id || cat.field_key || idx}
+                        className="h-full first:rounded-l-full last:rounded-r-full transition-all duration-500"
+                        style={{
+                          width: `${cat.percentage}%`,
+                          backgroundColor: cat.color
+                        }}
+                        title={`${cat.name}: ${cat.percentage}% (₹${(cat.amount || 0).toLocaleString('en-IN')})`}
+                      />
+                    ))}
+                  </div>
+
+                  {/* All Column Heads Percentage-Wise List */}
+                  <div className="space-y-1 pt-0.5 max-h-[140px] overflow-y-auto no-scrollbar">
+                    {categoryShares.map((cat, idx) => (
+                      <div
+                        key={cat.id || cat.field_key || idx}
+                        className="bg-slate-50/90 hover:bg-slate-100/70 px-1.5 py-1 rounded-lg border border-slate-200/80 transition-colors space-y-0.5"
+                      >
+                        <div className="flex items-center justify-between text-[8px] sm:text-[8.5px] font-semibold leading-tight">
+                          <span className="flex items-center gap-1 min-w-0 truncate text-slate-700" title={cat.name}>
+                            <span
+                              className="w-1.5 h-1.5 rounded-full shrink-0"
+                              style={{ backgroundColor: cat.color }}
+                            />
+                            <span className="truncate">{cat.name}</span>
+                          </span>
+                          <div className="flex items-baseline gap-1 font-mono shrink-0 ml-1">
+                            <span className="font-black text-slate-900">{cat.percentage}%</span>
+                          </div>
                         </div>
-
-                        {/* Total Line */}
-                        <div className="flex items-center justify-between pt-1 border-t border-slate-200/60 text-xs">
-                          <span className="text-[10px] font-extrabold text-slate-600 uppercase">Total:</span>
-                          <span className="font-mono font-black text-emerald-700">₹{(m.total || 0).toLocaleString('en-IN')}</span>
+                        <div className="w-full bg-slate-200/80 rounded-full h-1 overflow-hidden">
+                          <div
+                            className="h-1 rounded-full transition-all duration-500"
+                            style={{
+                              width: `${Math.min(100, Math.max(1, cat.percentage))}%`,
+                              backgroundColor: cat.color
+                            }}
+                          />
                         </div>
                       </div>
-                    ))
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* PERFORMANCE COMPARISON (Month-over-Month OR Financial Year-over-Year) */}
+              <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
+
+                {/* Header & Comparison Selector */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 border-b border-slate-100 pb-3">
+                  <div className="w-full sm:w-auto flex flex-col items-center sm:items-start text-center sm:text-left">
+                    <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap w-full">
+                      <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center justify-center gap-1.5 text-center">
+                        <TrendingUp className="w-4 h-4 text-indigo-600 shrink-0" />
+                        <span>{compareMode === 'month' ? 'Month-over-Month Performance Comparison' : 'Financial Year Comparison'}</span>
+                      </h3>
+
+                      {/* Mode Toggle Switch */}
+                      <div className="inline-flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+                        <button
+                          type="button"
+                          onClick={() => setCompareMode('month')}
+                          className={`px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${compareMode === 'month'
+                            ? 'bg-white text-indigo-700 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                        >
+                          <Calendar className="w-3.5 h-3.5 shrink-0" />
+                          <span>Monthly</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setCompareMode('year')}
+                          className={`px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${compareMode === 'year'
+                            ? 'bg-white text-indigo-700 shadow-2xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                        >
+                          <Building2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Financial Year</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <p className="text-[11px] sm:text-xs text-slate-500 font-normal mt-0.5 whitespace-nowrap overflow-x-auto no-scrollbar w-full text-center sm:text-left">
+                      {compareMode === 'month' ? (
+                        <>Comparing <strong className="text-slate-800 font-semibold">{currMonthFullName}</strong> vs <strong className="text-slate-700 font-semibold">{prevMonthFullName}</strong> (FY {year})</>
+                      ) : (
+                        <>Comparing <strong className="text-indigo-800 font-semibold">FY {compareYearTarget}-{compareYearTarget + 1}</strong> vs <strong className="text-slate-700 font-semibold">FY {compareYearBase}-{compareYearBase + 1}</strong></>
+                      )}
+                    </p>
+                  </div>
+
+                  {/* Dropdown Selectors for Month or Year */}
+                  {compareMode === 'month' ? (
+                    <div className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs whitespace-nowrap self-center sm:self-center">
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={compareMonthTarget}
+                          onChange={(e) => setCompareMonthTarget(parseInt(e.target.value))}
+                          className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs sm:text-sm"
+                        >
+                          {FINANCIAL_MONTH_ORDER.map(mNum => (
+                            <option key={mNum} value={mNum}>{FINANCIAL_FULL_NAMES[mNum]}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <span className="text-slate-400 text-xs sm:text-sm font-black px-1 sm:px-1.5">VS</span>
+
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={compareMonthBase}
+                          onChange={(e) => setCompareMonthBase(parseInt(e.target.value))}
+                          className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs sm:text-sm"
+                        >
+                          {FINANCIAL_MONTH_ORDER.map(mNum => (
+                            <option key={mNum} value={mNum}>{FINANCIAL_FULL_NAMES[mNum]}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs whitespace-nowrap self-center sm:self-center">
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={compareYearTarget}
+                          onChange={(e) => setCompareYearTarget(parseInt(e.target.value))}
+                          className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs sm:text-sm"
+                        >
+                          {financialYears.map(y => (
+                            <option key={y} value={y}>FY {y}-{y + 1}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <span className="text-slate-400 text-xs sm:text-sm font-black px-1 sm:px-1.5">VS</span>
+
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={compareYearBase}
+                          onChange={(e) => setCompareYearBase(parseInt(e.target.value))}
+                          className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs sm:text-sm"
+                        >
+                          {financialYears.map(y => (
+                            <option key={y} value={y}>FY {y}-{y + 1}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   )}
                 </div>
 
-                {/* More / Show Less Toggle Button */}
-                {sortedInspectorMembers.length > 4 && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAllInspectorCards(prev => !prev)}
-                    className="w-full py-2 px-4 rounded-2xl bg-white hover:bg-slate-50 text-indigo-700 font-bold text-xs border border-indigo-200 shadow-2xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    {showAllInspectorCards ? (
-                      <>
-                        <ChevronUp className="w-4 h-4 text-indigo-600" />
-                        <span>Show Less (Collapse to 4 Members)</span>
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="w-4 h-4 text-indigo-600" />
-                        <span>More ({sortedInspectorMembers.length - 4} more Members)</span>
-                      </>
-                    )}
-                  </button>
-                )}
+                {/* MONTH-OVER-MONTH VIEW */}
+                {compareMode === 'month' && (
+                  <>
+                    {/* Side-by-Side Monetary and Household Return Panels */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
-                {/* Monthly Ledger Summary Footer Card */}
-                {inspectorLedger?.summary && sortedInspectorMembers.length > 0 && (
-                  <div className="bg-slate-900 p-3 rounded-xl border border-slate-950 text-white shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between text-xs font-semibold border-b border-slate-800 pb-1.5">
-                      <span className="text-slate-300 uppercase tracking-wider text-[10px]">Monthly Bial Total</span>
-                      <span className="text-slate-400 font-sans text-[11px]">{sortedInspectorMembers.length} Members</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 text-center font-mono text-[10px] pt-0.5">
-                      {titheColumns.map(col => (
-                        <div key={col.id} className="bg-slate-950/80 p-1.5 rounded-lg border border-slate-800">
-                          <span className="text-[9px] block text-slate-300 font-semibold">{col.code}</span>
-                          <span className="font-bold text-white">₹{((inspectorLedger.summary && (inspectorLedger.summary[col.field_key] ?? inspectorLedger.summary[`sum_${col.field_key}`])) || 0).toLocaleString('en-IN')}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex items-center justify-between pt-1 border-t border-slate-800 text-xs">
-                      <span className="font-semibold text-slate-300">GRAND TOTAL:</span>
-                      <span className="font-mono font-bold text-white text-sm">₹{(inspectorLedger.summary.grand_total || 0).toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* TAB 3: TITHE HEADERS & COLUMNS */}
-        {activeTab === 'columns' && (
-          <div className="animate-in fade-in duration-150">
-            <TitheColumnsTab
-              onColumnsChanged={async (updatedCols) => {
-                if (Array.isArray(updatedCols)) {
-                  setTitheColumns(updatedCols);
-                }
-                await loadAdminData();
-              }}
-              showToast={showToast}
-            />
-          </div>
-        )}
-
-        {/* TAB: PASSWORDS & ADMIN ACCESS (COMBINED BIAL PASSWORDS & GOOGLE ADMINS) */}
-        {activeTab === 'credentials' && (
-          <div className="animate-in fade-in duration-150">
-            <CredentialsTab
-              bials={bials}
-              onRefresh={loadAdminData}
-              onEditBial={(b) => {
-                setBialToEdit(b);
-                setShowBialModal(true);
-              }}
-              onAddNewBial={() => {
-                setBialToEdit(null);
-                setShowBialModal(true);
-              }}
-              showToast={showToast}
-            />
-          </div>
-        )}
-
-        {/* TAB 4: CROSS-BIAL ANALYTICS & RETURN STATS */}
-        {activeTab === 'analytics' && stats && (
-          <div className="space-y-3 animate-in fade-in duration-150">
-            
-            {/* KPI Features Grid: 2 features per line across all views */}
-            <div className="grid grid-cols-2 gap-2 sm:gap-2.5">
-              
-              {/* Feature 1: Top Bial */}
-              <div className="bg-white p-2.5 sm:p-3 rounded-xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1.5">
-                {/* Header Box */}
-                <div className="pb-1 border-b border-slate-100">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5 truncate">
-                    <Trophy className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                    <span className="truncate">Top Bial</span>
-                  </span>
-                </div>
-
-                {/* Data Box 1: Bial Name & under that the amount */}
-                <div className="bg-slate-50/70 p-2 rounded-lg border border-slate-200/80 space-y-0.5">
-                  <span className="text-xs font-semibold text-slate-900 block truncate">
-                    {topContributingBial?.name || 'N/A'}
-                  </span>
-                  <div className="flex items-baseline gap-1 font-mono">
-                    <span className="text-xs sm:text-sm font-bold text-slate-900">
-                      ₹{(topContributingBial?.total || 0).toLocaleString('en-IN')}
-                    </span>
-                    {topContributingBial && (
-                      <span className="text-[9px] font-medium text-slate-500">
-                        ({topContributingBial.percentage_share}%)
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Data Box 2: Return Rate - Bial return Rate: in one line and below that figures */}
-                <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
-                  <span className="text-slate-600 font-bold text-[8.5px] sm:text-[9.5px] block">
-                    Bial return Rate:
-                  </span>
-                  <span className="font-mono font-black text-emerald-700 text-xs sm:text-xs block">
-                    {topContributingBial ? `${topContributingBial.return_rate}% (${topContributingBial.returned_members}/${topContributingBial.total_members} HH)` : 'N/A'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Feature 2: Households Returned */}
-              <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
-                {/* Header Box */}
-                <div className="pb-1 border-b border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 truncate">
-                    <Users className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                    <span className="truncate">Households Returned</span>
-                  </span>
-                </div>
-
-                {/* Data Box 1: Count & Progress */}
-                <div className="bg-white p-1.5 sm:p-2 rounded-xl border border-slate-200 space-y-1">
-                  <div className="flex items-baseline justify-between gap-1 font-mono">
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-xs sm:text-xs font-black text-slate-900">
-                        {totalReturnedMembers}
-                      </span>
-                      <span className="text-[8.5px] sm:text-[9px] font-bold text-slate-500 font-sans">
-                        / {totalSystemMembers} HH
-                      </span>
-                    </div>
-                    <span className="text-[9px] font-bold text-indigo-700">
-                      {overallReturnRate}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, overallReturnRate)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Data Box 2: Pending */}
-                <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
-                  <span className="text-slate-600 font-bold text-[8.5px] sm:text-[9.5px] block">
-                    Pending Households:
-                  </span>
-                  <span className="font-mono font-black text-amber-600 text-xs sm:text-xs block">
-                    {pendingMembers} HH
-                  </span>
-                </div>
-              </div>
-
-              {/* Feature 3: Overall Return Rate */}
-              <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
-                {/* Header Box */}
-                <div className="pb-1 border-b border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 truncate">
-                    <Percent className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span className="truncate">Overall Return Rate</span>
-                  </span>
-                </div>
-
-                {/* Data Box 1: Compliance Rate */}
-                <div className="bg-white p-1.5 sm:p-2 rounded-xl border border-slate-200 space-y-1 font-mono">
-                  <div className="flex items-baseline justify-between gap-1">
-                    <span className="text-xs sm:text-xs font-black text-emerald-700">
-                      {overallReturnRate}%
-                    </span>
-                    <span className="text-[8.5px] sm:text-[9px] font-bold text-slate-500 font-sans">
-                      compliance
-                    </span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, overallReturnRate)}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Data Box 2: Total Tithes */}
-                <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
-                  <span className="text-slate-600 font-bold text-[8.5px] sm:text-[9.5px] block">
-                    Total Church Tithes:
-                  </span>
-                  <span className="font-mono font-black text-slate-900 text-xs sm:text-xs block truncate">
-                    ₹{grandTotalVal.toLocaleString('en-IN')}
-                  </span>
-                </div>
-              </div>
-
-              {/* Feature 4: Average Contribution per Returned Member */}
-              <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
-                {/* Header Box */}
-                <div className="pb-1 border-b border-slate-100">
-                  <span className="text-[10px] font-bold text-slate-600 flex items-center gap-1.5 truncate">
-                    <Wallet className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                    <span className="truncate">Avg per Household</span>
-                  </span>
-                </div>
-
-                {/* Data Box 1: Avg Amount */}
-                <div className="bg-white p-1.5 sm:p-2 rounded-xl border border-slate-200 space-y-0.5">
-                  <span className="text-[8px] font-bold text-slate-500 block">Average Tithe / Active HH</span>
-                  <div className="text-xs sm:text-xs font-mono font-black text-purple-800">
-                    ₹{avgContributionPerMember.toLocaleString('en-IN')}
-                  </div>
-                </div>
-
-                {/* Data Box 2: Units */}
-                <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
-                  <span className="text-slate-600 font-bold text-[8.5px] sm:text-[9.5px] block">
-                    Reporting Units:
-                  </span>
-                  <span className="font-mono font-black text-slate-800 text-xs sm:text-xs block">
-                    {enrichedBialBreakdown.length} Bials
-                  </span>
-                </div>
-              </div>
-
-              {/* Feature 5: Bial Variance / Spread */}
-              <div className="bg-white p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1">
-                {/* Header Box */}
-                <div className="pb-1 border-b border-slate-100 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-700 flex items-center gap-1.5 truncate">
-                    <Activity className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                    <span className="truncate">Bial Variance / Spread</span>
-                  </span>
-                  <span className="px-1 py-0.5 rounded text-[8.5px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shrink-0">
-                    {bialSpreadGap}% gap
-                  </span>
-                </div>
-
-                {/* Data Box 1: Highest vs Lowest Participation Bials */}
-                <div className="bg-slate-50/70 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
-                  <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] font-bold">
-                    <span className="text-slate-500">High:</span>
-                    <span className="font-mono font-black text-emerald-700 truncate">
-                      {highestBial ? `${highestBial.name} (${highestBial.return_rate}%)` : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[8.5px] sm:text-[9px] font-bold">
-                    <span className="text-slate-500">Low:</span>
-                    <span className="font-mono font-black text-rose-700 truncate">
-                      {lowestBial ? `${lowestBial.name} (${lowestBial.return_rate}%)` : 'N/A'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Data Box 2: Performance Gap Meter */}
-                <div className="bg-slate-50/90 p-1.5 rounded-xl border border-slate-200/80 space-y-0.5">
-                  <div className="flex items-center justify-between text-[8px] sm:text-[9px] font-bold text-slate-600">
-                    <span>Performance Gap:</span>
-                    <span className="font-mono font-black text-indigo-900">{bialSpreadGap}% spread</span>
-                  </div>
-                  <div className="w-full bg-slate-200 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="bg-indigo-600 h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${Math.min(100, Math.max(5, bialSpreadGap))}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Feature 6: Fund Allocation Metrics (All Column Heads Percentage-Wise) */}
-              <div className="glass-panel p-2 sm:p-2.5 rounded-2xl border border-slate-200 shadow-2xs flex flex-col justify-between space-y-1.5">
-                {/* Header Box */}
-                <div className="pb-1 border-b border-slate-100 flex items-center justify-between">
-                  <span className="text-[10px] font-bold text-slate-700 flex items-center gap-1.5 truncate">
-                    <PieChartIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                    <span className="truncate">Fund Allocation</span>
-                  </span>
-                  <span className="px-1.5 py-0.5 rounded text-[8.5px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                    100% Total
-                  </span>
-                </div>
-
-                {/* Composite Multi-Segment Progress Bar */}
-                <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden flex shadow-2xs">
-                  {categoryShares.map((cat, idx) => (
-                    <div
-                      key={cat.id || cat.field_key || idx}
-                      className="h-full first:rounded-l-full last:rounded-r-full transition-all duration-500"
-                      style={{
-                        width: `${cat.percentage}%`,
-                        backgroundColor: cat.color
-                      }}
-                      title={`${cat.name}: ${cat.percentage}% (₹${(cat.amount || 0).toLocaleString('en-IN')})`}
-                    />
-                  ))}
-                </div>
-
-                {/* All Column Heads Percentage-Wise List */}
-                <div className="space-y-1 pt-0.5 max-h-[140px] overflow-y-auto no-scrollbar">
-                  {categoryShares.map((cat, idx) => (
-                    <div
-                      key={cat.id || cat.field_key || idx}
-                      className="bg-slate-50/90 hover:bg-slate-100/70 px-1.5 py-1 rounded-lg border border-slate-200/80 transition-colors space-y-0.5"
-                    >
-                      <div className="flex items-center justify-between text-[8px] sm:text-[8.5px] font-semibold leading-tight">
-                        <span className="flex items-center gap-1 min-w-0 truncate text-slate-700" title={cat.name}>
-                          <span
-                            className="w-1.5 h-1.5 rounded-full shrink-0"
-                            style={{ backgroundColor: cat.color }}
-                          />
-                          <span className="truncate">{cat.name}</span>
-                        </span>
-                        <div className="flex items-baseline gap-1 font-mono shrink-0 ml-1">
-                          <span className="font-black text-slate-900">{cat.percentage}%</span>
-                        </div>
-                      </div>
-                      <div className="w-full bg-slate-200/80 rounded-full h-1 overflow-hidden">
-                        <div
-                          className="h-1 rounded-full transition-all duration-500"
-                          style={{
-                            width: `${Math.min(100, Math.max(1, cat.percentage))}%`,
-                            backgroundColor: cat.color
-                          }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-
-            {/* PERFORMANCE COMPARISON (Month-over-Month OR Financial Year-over-Year) */}
-            <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-              
-              {/* Header & Comparison Selector */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 border-b border-slate-100 pb-3">
-                <div className="w-full sm:w-auto flex flex-col items-center sm:items-start text-center sm:text-left">
-                  <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap w-full">
-                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center justify-center gap-1.5 text-center">
-                      <TrendingUp className="w-4 h-4 text-indigo-600 shrink-0" />
-                      <span>{compareMode === 'month' ? 'Month-over-Month Performance Comparison' : 'Financial Year Comparison'}</span>
-                    </h3>
-                    
-                    {/* Mode Toggle Switch */}
-                    <div className="inline-flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg border border-slate-200">
-                      <button
-                        type="button"
-                        onClick={() => setCompareMode('month')}
-                        className={`px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                          compareMode === 'month'
-                            ? 'bg-white text-indigo-700 shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        <Calendar className="w-3.5 h-3.5 shrink-0" />
-                        <span>Monthly</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setCompareMode('year')}
-                        className={`px-2 py-0.5 rounded-md text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 ${
-                          compareMode === 'year'
-                            ? 'bg-white text-indigo-700 shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        <Building2 className="w-3.5 h-3.5 shrink-0" />
-                        <span>Financial Year</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] sm:text-xs text-slate-500 font-normal mt-0.5 whitespace-nowrap overflow-x-auto no-scrollbar w-full text-center sm:text-left">
-                    {compareMode === 'month' ? (
-                      <>Comparing <strong className="text-slate-800 font-semibold">{currMonthFullName}</strong> vs <strong className="text-slate-700 font-semibold">{prevMonthFullName}</strong> (FY {year})</>
-                    ) : (
-                      <>Comparing <strong className="text-indigo-800 font-semibold">FY {compareYearTarget}-{compareYearTarget + 1}</strong> vs <strong className="text-slate-700 font-semibold">FY {compareYearBase}-{compareYearBase + 1}</strong></>
-                    )}
-                  </p>
-                </div>
-
-                {/* Dropdown Selectors for Month or Year */}
-                {compareMode === 'month' ? (
-                  <div className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs whitespace-nowrap self-center sm:self-center">
-                    <div className="flex items-center gap-1">
-                      <select
-                        value={compareMonthTarget}
-                        onChange={(e) => setCompareMonthTarget(parseInt(e.target.value))}
-                        className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs sm:text-sm"
-                      >
-                        {FINANCIAL_MONTH_ORDER.map(mNum => (
-                          <option key={mNum} value={mNum}>{FINANCIAL_FULL_NAMES[mNum]}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <span className="text-slate-400 text-xs sm:text-sm font-black px-1 sm:px-1.5">VS</span>
-
-                    <div className="flex items-center gap-1">
-                      <select
-                        value={compareMonthBase}
-                        onChange={(e) => setCompareMonthBase(parseInt(e.target.value))}
-                        className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs sm:text-sm"
-                      >
-                        {FINANCIAL_MONTH_ORDER.map(mNum => (
-                          <option key={mNum} value={mNum}>{FINANCIAL_FULL_NAMES[mNum]}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-bold shrink-0 bg-white px-2.5 sm:px-3 py-1.5 rounded-xl border border-indigo-200 shadow-2xs whitespace-nowrap self-center sm:self-center">
-                    <div className="flex items-center gap-1">
-                      <select
-                        value={compareYearTarget}
-                        onChange={(e) => setCompareYearTarget(parseInt(e.target.value))}
-                        className="bg-transparent font-extrabold text-indigo-950 focus:outline-none cursor-pointer text-xs sm:text-sm"
-                      >
-                        {financialYears.map(y => (
-                          <option key={y} value={y}>FY {y}-{y + 1}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <span className="text-slate-400 text-xs sm:text-sm font-black px-1 sm:px-1.5">VS</span>
-
-                    <div className="flex items-center gap-1">
-                      <select
-                        value={compareYearBase}
-                        onChange={(e) => setCompareYearBase(parseInt(e.target.value))}
-                        className="bg-transparent font-extrabold text-slate-900 focus:outline-none cursor-pointer text-xs sm:text-sm"
-                      >
-                        {financialYears.map(y => (
-                          <option key={y} value={y}>FY {y}-{y + 1}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* MONTH-OVER-MONTH VIEW */}
-              {compareMode === 'month' && (
-                <>
-                  {/* Side-by-Side Monetary and Household Return Panels */}
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    
-                    {/* 1. Monetary Comparison Card */}
-                    <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
-                          <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Monetary Contribution</span>
-                        </span>
-                        {/* Growth Indicator */}
-                        <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${
-                          monetaryDiff >= 0 
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                      {/* 1. Monetary Comparison Card */}
+                      <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                            <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Monetary Contribution</span>
+                          </span>
+                          {/* Growth Indicator */}
+                          <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${monetaryDiff >= 0
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : 'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}>
-                          {monetaryDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
-                          <span>{monetaryDiff >= 0 ? `+₹${monetaryDiff.toLocaleString('en-IN')} (+${monetaryDiffPercent}%)` : `-₹${Math.abs(monetaryDiff).toLocaleString('en-IN')} (${monetaryDiffPercent}%)`}</span>
-                        </span>
-                      </div>
-
-                      {/* Previous vs Current Boxes */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
-                          <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
-                            {prevMonthLabel}
-                          </span>
-                          <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
-                            ₹{prevTotal.toLocaleString('en-IN')}
+                            }`}>
+                            {monetaryDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
+                            <span>{monetaryDiff >= 0 ? `+₹${monetaryDiff.toLocaleString('en-IN')} (+${monetaryDiffPercent}%)` : `-₹${Math.abs(monetaryDiff).toLocaleString('en-IN')} (${monetaryDiffPercent}%)`}</span>
                           </span>
                         </div>
-                        <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5 min-w-0">
-                          <span className="text-[10px] sm:text-[11px] font-black text-indigo-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
-                            {currMonthLabel}
-                          </span>
-                          <span className="text-xs sm:text-sm font-black text-indigo-950 block truncate">
-                            ₹{currTotal.toLocaleString('en-IN')}
-                          </span>
+
+                        {/* Previous vs Current Boxes */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
+                            <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                              {prevMonthLabel}
+                            </span>
+                            <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
+                              ₹{prevTotal.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5 min-w-0">
+                            <span className="text-[10px] sm:text-[11px] font-black text-indigo-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                              {currMonthLabel}
+                            </span>
+                            <span className="text-xs sm:text-sm font-black text-indigo-950 block truncate">
+                              ₹{currTotal.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Category Breakdown Comparison Bars */}
+                        <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[10px]">
+                          <div className="flex items-center justify-between text-slate-500 font-bold text-[9px] uppercase tracking-wider">
+                            <span>Category</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-slate-600">{prevMonthLabel}</span>
+                              <span className="text-indigo-700">{currMonthLabel}</span>
+                            </div>
+                          </div>
+
+                          {titheColumns.map((cat) => {
+                            const prevVal = prevMonthTrend[cat.field_key] || 0;
+                            const currVal = currMonthTrend[cat.field_key] || 0;
+                            const maxVal = Math.max(1, prevVal, currVal);
+                            return (
+                              <div key={cat.id || cat.field_key} className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
+                                <div className="flex items-center justify-between font-mono font-bold text-[10px]">
+                                  <span className="text-slate-700 font-sans font-semibold truncate pr-2">
+                                    {cat.name} ({cat.code})
+                                  </span>
+                                  <div className="flex items-center gap-2.5 shrink-0">
+                                    <span className="text-slate-500">₹{prevVal.toLocaleString('en-IN')}</span>
+                                    <span className="text-indigo-700 font-black">₹{currVal.toLocaleString('en-IN')}</span>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
+                                    <div className="bg-slate-400 h-1 rounded-full" style={{ width: `${(prevVal / maxVal) * 100}%` }} />
+                                  </div>
+                                  <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
+                                    <div className="h-1 rounded-full" style={{ backgroundColor: cat.color || '#6366f1', width: `${(currVal / maxVal) * 100}%` }} />
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
 
-                      {/* Category Breakdown Comparison Bars */}
-                      <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[10px]">
-                        <div className="flex items-center justify-between text-slate-500 font-bold text-[9px] uppercase tracking-wider">
-                          <span>Category</span>
-                          <div className="flex items-center gap-3">
+                      {/* 2. Household Return Comparison Card */}
+                      <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                            <Users className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Household Return Rate</span>
+                          </span>
+                          {/* Compliance Change Indicator */}
+                          <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${returnedDiff >= 0
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}>
+                            {returnedDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
+                            <span>{returnedDiff >= 0 ? `+${returnedDiff} HH (+${returnRateDiff}%)` : `${returnedDiff} HH (${returnRateDiff}%)`}</span>
+                          </span>
+                        </div>
+
+                        {/* Previous vs Current Boxes */}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
+                            <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                              {prevMonthLabel}
+                            </span>
+                            <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
+                              {prevReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-slate-500 font-normal">/ {totalSystemMembers} HH</span>
+                            </span>
+                            <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-700 block truncate">
+                              {prevReturnRate}% compliance
+                            </span>
+                          </div>
+                          <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5 min-w-0">
+                            <span className="text-[10px] sm:text-[11px] font-black text-emerald-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                              {currMonthLabel}
+                            </span>
+                            <span className="text-xs sm:text-sm font-black text-emerald-950 block truncate">
+                              {currReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-emerald-600 font-normal">/ {totalSystemMembers} HH</span>
+                            </span>
+                            <span className="text-[10px] sm:text-[10.5px] font-bold text-emerald-800 block truncate">
+                              {currReturnRate}% compliance
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Dual Visual Progress Comparison */}
+                        <div className="space-y-2 pt-1 border-t border-slate-100">
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[10px] font-mono">
+                              <span className="text-slate-600 font-sans font-bold">{prevMonthFullName} Return Progress</span>
+                              <span className="text-slate-700 font-bold">{prevReturnRate}%</span>
+                            </div>
+                            <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                              <div
+                                className="bg-slate-400 h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${Math.min(100, prevReturnRate)}%` }}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[10px] font-mono">
+                              <span className="text-indigo-950 font-sans font-bold">{currMonthFullName} Return Progress</span>
+                              <span className="text-emerald-700 font-black">{currReturnRate}%</span>
+                            </div>
+                            <div className="w-full bg-emerald-100/60 rounded-full h-2 overflow-hidden">
+                              <div
+                                className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                                style={{ width: `${Math.min(100, currReturnRate)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Summary Comparison Callout */}
+                        <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[10px] flex items-center justify-between">
+                          <span className="text-slate-600 font-medium">Compliance Shift:</span>
+                          <span className={`font-mono font-bold ${returnRateDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                            {returnRateDiff >= 0 ? `+${returnRateDiff}% higher participation` : `${returnRateDiff}% lower participation`}
+                          </span>
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                    {/* Grouped Comparison Bar Chart */}
+                    <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                          <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Category-wise Breakdown Comparison (₹)</span>
+                        </h4>
+                        <div className="flex items-center gap-3 text-[10px] font-bold">
+                          <div className="flex items-center gap-1">
+                            <span className="w-2.5 h-2.5 rounded bg-slate-400 inline-block" />
                             <span className="text-slate-600">{prevMonthLabel}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="w-2.5 h-2.5 rounded bg-indigo-600 inline-block" />
                             <span className="text-indigo-700">{currMonthLabel}</span>
                           </div>
                         </div>
-
-                        {titheColumns.map((cat) => {
-                          const prevVal = prevMonthTrend[cat.field_key] || 0;
-                          const currVal = currMonthTrend[cat.field_key] || 0;
-                          const maxVal = Math.max(1, prevVal, currVal);
-                          return (
-                            <div key={cat.id || cat.field_key} className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
-                              <div className="flex items-center justify-between font-mono font-bold text-[10px]">
-                                <span className="text-slate-700 font-sans font-semibold truncate pr-2">
-                                  {cat.name} ({cat.code})
-                                </span>
-                                <div className="flex items-center gap-2.5 shrink-0">
-                                  <span className="text-slate-500">₹{prevVal.toLocaleString('en-IN')}</span>
-                                  <span className="text-indigo-700 font-black">₹{currVal.toLocaleString('en-IN')}</span>
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-1.5">
-                                <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
-                                  <div className="bg-slate-400 h-1 rounded-full" style={{ width: `${(prevVal / maxVal) * 100}%` }} />
-                                </div>
-                                <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
-                                  <div className="h-1 rounded-full" style={{ backgroundColor: cat.color || '#6366f1', width: `${(currVal / maxVal) * 100}%` }} />
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* 2. Household Return Comparison Card */}
-                    <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>Household Return Rate</span>
-                        </span>
-                        {/* Compliance Change Indicator */}
-                        <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${
-                          returnedDiff >= 0 
-                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                            : 'bg-rose-50 text-rose-700 border-rose-200'
-                        }`}>
-                          {returnedDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
-                          <span>{returnedDiff >= 0 ? `+${returnedDiff} HH (+${returnRateDiff}%)` : `${returnedDiff} HH (${returnRateDiff}%)`}</span>
-                        </span>
                       </div>
 
-                      {/* Previous vs Current Boxes */}
-                      <div className="grid grid-cols-2 gap-2">
-                        <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
-                          <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
-                            {prevMonthLabel}
-                          </span>
-                          <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
-                            {prevReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-slate-500 font-normal">/ {totalSystemMembers} HH</span>
-                          </span>
-                          <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-700 block truncate">
-                            {prevReturnRate}% compliance
-                          </span>
-                        </div>
-                        <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5 min-w-0">
-                          <span className="text-[10px] sm:text-[11px] font-black text-emerald-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
-                            {currMonthLabel}
-                          </span>
-                          <span className="text-xs sm:text-sm font-black text-emerald-950 block truncate">
-                            {currReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-emerald-600 font-normal">/ {totalSystemMembers} HH</span>
-                          </span>
-                          <span className="text-[10px] sm:text-[10.5px] font-bold text-emerald-800 block truncate">
-                            {currReturnRate}% compliance
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Dual Visual Progress Comparison */}
-                      <div className="space-y-2 pt-1 border-t border-slate-100">
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[10px] font-mono">
-                            <span className="text-slate-600 font-sans font-bold">{prevMonthFullName} Return Progress</span>
-                            <span className="text-slate-700 font-bold">{prevReturnRate}%</span>
-                          </div>
-                          <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div
-                              className="bg-slate-400 h-2 rounded-full transition-all duration-500"
-                              style={{ width: `${Math.min(100, prevReturnRate)}%` }}
+                      <div className="h-44 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={comparisonBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                            <XAxis dataKey="category" stroke="#64748b" tick={{ fontSize: 10 }} />
+                            <YAxis stroke="#64748b" tick={{ fontSize: 9 }} />
+                            <Tooltip
+                              contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', fontSize: '11px' }}
+                              formatter={(val, name) => [`₹${Number(val).toLocaleString('en-IN')}`, name]}
                             />
-                          </div>
-                        </div>
-
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between text-[10px] font-mono">
-                            <span className="text-indigo-950 font-sans font-bold">{currMonthFullName} Return Progress</span>
-                            <span className="text-emerald-700 font-black">{currReturnRate}%</span>
-                          </div>
-                          <div className="w-full bg-emerald-100/60 rounded-full h-2 overflow-hidden">
-                            <div
-                              className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                              style={{ width: `${Math.min(100, currReturnRate)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Summary Comparison Callout */}
-                      <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-[10px] flex items-center justify-between">
-                        <span className="text-slate-600 font-medium">Compliance Shift:</span>
-                        <span className={`font-mono font-bold ${returnRateDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                          {returnRateDiff >= 0 ? `+${returnRateDiff}% higher participation` : `${returnRateDiff}% lower participation`}
-                        </span>
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                  {/* Grouped Comparison Bar Chart */}
-                  <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                        <BarChart3 className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Category-wise Breakdown Comparison (₹)</span>
-                      </h4>
-                      <div className="flex items-center gap-3 text-[10px] font-bold">
-                        <div className="flex items-center gap-1">
-                          <span className="w-2.5 h-2.5 rounded bg-slate-400 inline-block" />
-                          <span className="text-slate-600">{prevMonthLabel}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <span className="w-2.5 h-2.5 rounded bg-indigo-600 inline-block" />
-                          <span className="text-indigo-700">{currMonthLabel}</span>
-                        </div>
+                            <Bar dataKey={prevMonthLabel} fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                            <Bar dataKey={currMonthLabel} fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
+                  </>
+                )}
 
-                    <div className="h-44 w-full">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={comparisonBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                          <XAxis dataKey="category" stroke="#64748b" tick={{ fontSize: 10 }} />
-                          <YAxis stroke="#64748b" tick={{ fontSize: 9 }} />
-                          <Tooltip
-                            contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', fontSize: '11px' }}
-                            formatter={(val, name) => [`₹${Number(val).toLocaleString('en-IN')}`, name]}
-                          />
-                          <Bar dataKey={prevMonthLabel} fill="#94a3b8" radius={[4, 4, 0, 0]} />
-                          <Bar dataKey={currMonthLabel} fill="#4f46e5" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-                </>
-              )}
+                {/* FINANCIAL YEAR COMPARISON VIEW */}
+                {compareMode === 'year' && (
+                  <>
+                    {loadingYearCompare ? (
+                      <div className="py-14 flex flex-col items-center justify-center gap-2.5 text-slate-500">
+                        <Loader2 className="w-7 h-7 animate-spin text-indigo-600" />
+                        <span className="text-xs font-bold text-slate-700">Loading Financial Year Comparison Data...</span>
+                        <span className="text-[11px] text-slate-400">Comparing FY {compareYearTarget} vs FY {compareYearBase}</span>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Side-by-Side Monetary and Household Return Panels */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
-              {/* FINANCIAL YEAR COMPARISON VIEW */}
-              {compareMode === 'year' && (
-                <>
-                  {loadingYearCompare ? (
-                    <div className="py-14 flex flex-col items-center justify-center gap-2.5 text-slate-500">
-                      <Loader2 className="w-7 h-7 animate-spin text-indigo-600" />
-                      <span className="text-xs font-bold text-slate-700">Loading Financial Year Comparison Data...</span>
-                      <span className="text-[11px] text-slate-400">Comparing FY {compareYearTarget} vs FY {compareYearBase}</span>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Side-by-Side Monetary and Household Return Panels */}
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                        
-                        {/* 1. Annual Monetary Comparison Card */}
-                        <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
-                              <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
-                              <span>Annual Monetary Contribution</span>
-                            </span>
-                            {/* Growth Indicator */}
-                            <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${
-                              fyMonetaryDiff >= 0 
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                          {/* 1. Annual Monetary Comparison Card */}
+                          <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                                <IndianRupee className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Annual Monetary Contribution</span>
+                              </span>
+                              {/* Growth Indicator */}
+                              <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${fyMonetaryDiff >= 0
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : 'bg-rose-50 text-rose-700 border-rose-200'
-                            }`}>
-                              {fyMonetaryDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
-                              <span>{fyMonetaryDiff >= 0 ? `+₹${fyMonetaryDiff.toLocaleString('en-IN')} (+${fyMonetaryDiffPercent}%)` : `-₹${Math.abs(fyMonetaryDiff).toLocaleString('en-IN')} (${fyMonetaryDiffPercent}%)`}</span>
-                            </span>
-                          </div>
-
-                          {/* Base Year vs Target Year Boxes */}
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
-                              <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
-                                FY {compareYearBase}-{compareYearBase + 1}
-                              </span>
-                              <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
-                                ₹{fyBaseTotal.toLocaleString('en-IN')}
+                                }`}>
+                                {fyMonetaryDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
+                                <span>{fyMonetaryDiff >= 0 ? `+₹${fyMonetaryDiff.toLocaleString('en-IN')} (+${fyMonetaryDiffPercent}%)` : `-₹${Math.abs(fyMonetaryDiff).toLocaleString('en-IN')} (${fyMonetaryDiffPercent}%)`}</span>
                               </span>
                             </div>
-                            <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5 min-w-0">
-                              <span className="text-[10px] sm:text-[11px] font-black text-indigo-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
-                                FY {compareYearTarget}-{compareYearTarget + 1}
-                              </span>
-                              <span className="text-xs sm:text-sm font-black text-indigo-950 block truncate">
-                                ₹{fyTargetTotal.toLocaleString('en-IN')}
-                              </span>
+
+                            {/* Base Year vs Target Year Boxes */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
+                                <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                                  FY {compareYearBase}-{compareYearBase + 1}
+                                </span>
+                                <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
+                                  ₹{fyBaseTotal.toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                              <div className="p-2 sm:p-2.5 rounded-xl bg-indigo-50/80 border border-indigo-200 text-center font-mono space-y-0.5 min-w-0">
+                                <span className="text-[10px] sm:text-[11px] font-black text-indigo-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                                  FY {compareYearTarget}-{compareYearTarget + 1}
+                                </span>
+                                <span className="text-xs sm:text-sm font-black text-indigo-950 block truncate">
+                                  ₹{fyTargetTotal.toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Category Breakdown Comparison Bars */}
+                            <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[10.5px]">
+                              <div className="flex items-center justify-between text-slate-500 font-bold text-[9.5px] sm:text-[10px] uppercase tracking-wider">
+                                <span>Category</span>
+                                <div className="flex items-center gap-3 font-mono">
+                                  <span className="text-slate-600">FY {compareYearBase}</span>
+                                  <span className="text-indigo-700">FY {compareYearTarget}</span>
+                                </div>
+                              </div>
+
+                              {titheColumns.map((cat) => {
+                                const prevVal = fyBaseTotals[cat.field_key] || fyBaseTotals[`total_${cat.field_key}`] || 0;
+                                const currVal = fyTargetTotals[cat.field_key] || fyTargetTotals[`total_${cat.field_key}`] || 0;
+                                const maxVal = Math.max(1, prevVal, currVal);
+                                return (
+                                  <div key={cat.id || cat.field_key} className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
+                                    <div className="flex items-center justify-between font-mono font-bold text-[10.5px] sm:text-[11px]">
+                                      <span className="text-slate-700 font-sans font-semibold truncate pr-2">
+                                        {cat.name} ({cat.code})
+                                      </span>
+                                      <div className="flex items-center gap-2.5 shrink-0">
+                                        <span className="text-slate-500">₹{prevVal.toLocaleString('en-IN')}</span>
+                                        <span className="text-indigo-700 font-black">₹{currVal.toLocaleString('en-IN')}</span>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                      <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
+                                        <div className="bg-slate-400 h-1 rounded-full" style={{ width: `${(prevVal / maxVal) * 100}%` }} />
+                                      </div>
+                                      <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
+                                        <div className="h-1 rounded-full" style={{ backgroundColor: cat.color || '#6366f1', width: `${(currVal / maxVal) * 100}%` }} />
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
 
-                          {/* Category Breakdown Comparison Bars */}
-                          <div className="space-y-1.5 pt-1 border-t border-slate-100 text-[10.5px]">
-                            <div className="flex items-center justify-between text-slate-500 font-bold text-[9.5px] sm:text-[10px] uppercase tracking-wider">
-                              <span>Category</span>
-                              <div className="flex items-center gap-3 font-mono">
+                          {/* 2. Annual Household Return & Participation Card */}
+                          <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
+                                <Users className="w-3.5 h-3.5 text-indigo-600" />
+                                <span>Household Participation</span>
+                              </span>
+                              {/* Compliance Change Indicator */}
+                              <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${fyReturnedDiff >= 0
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                                }`}>
+                                {fyReturnedDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
+                                <span>{fyReturnedDiff >= 0 ? `+${fyReturnedDiff} HH (+${fyReturnRateDiff}%)` : `${fyReturnedDiff} HH (${fyReturnRateDiff}%)`}</span>
+                              </span>
+                            </div>
+
+                            {/* Base vs Target Household Boxes */}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
+                                <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                                  FY {compareYearBase}
+                                </span>
+                                <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
+                                  {fyBaseReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-slate-500 font-normal">/ {fyBaseHH} HH</span>
+                                </span>
+                                <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-700 block truncate">
+                                  {fyBaseReturnRate}% return rate
+                                </span>
+                                <span className="text-[9.5px] sm:text-[10px] text-slate-500 block truncate">
+                                  Avg: ₹{fyBaseAvg.toLocaleString('en-IN')}/HH
+                                </span>
+                              </div>
+                              <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5 min-w-0">
+                                <span className="text-[10px] sm:text-[11px] font-black text-emerald-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
+                                  FY {compareYearTarget}
+                                </span>
+                                <span className="text-xs sm:text-sm font-black text-emerald-950 block truncate">
+                                  {fyTargetReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-emerald-600 font-normal">/ {fyTargetHH} HH</span>
+                                </span>
+                                <span className="text-[10px] sm:text-[10.5px] font-bold text-emerald-800 block truncate">
+                                  {fyTargetReturnRate}% return rate
+                                </span>
+                                <span className="text-[9.5px] sm:text-[10px] text-emerald-800 font-semibold block truncate">
+                                  Avg: ₹{fyTargetAvg.toLocaleString('en-IN')}/HH
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Dual Visual Progress Comparison */}
+                            <div className="space-y-2 pt-1 border-t border-slate-100">
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between text-[10px] font-mono">
+                                  <span className="text-slate-600 font-sans font-bold">FY {compareYearBase} Overall Participation</span>
+                                  <span className="text-slate-700 font-bold">{fyBaseReturnRate}%</span>
+                                </div>
+                                <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className="bg-slate-400 h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, fyBaseReturnRate)}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between text-[10px] font-mono">
+                                  <span className="text-indigo-950 font-sans font-bold">FY {compareYearTarget} Overall Participation</span>
+                                  <span className="text-emerald-700 font-black">{fyTargetReturnRate}%</span>
+                                </div>
+                                <div className="w-full bg-emerald-100/60 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.min(100, fyTargetReturnRate)}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Summary Comparison Callouts */}
+                            <div className="grid grid-cols-2 gap-2 text-[10px]">
+                              <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                                <span className="text-slate-500 text-[9px] font-semibold">Participation Shift</span>
+                                <span className={`font-mono font-bold ${fyReturnRateDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                  {fyReturnRateDiff >= 0 ? `+${fyReturnRateDiff}% participation` : `${fyReturnRateDiff}% participation`}
+                                </span>
+                              </div>
+                              <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
+                                <span className="text-slate-500 text-[9px] font-semibold">Avg Ticket Shift</span>
+                                <span className={`font-mono font-bold ${fyAvgDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                  {fyAvgDiff >= 0 ? `+₹${fyAvgDiff.toLocaleString('en-IN')}/HH` : `-₹${Math.abs(fyAvgDiff).toLocaleString('en-IN')}/HH`}
+                                </span>
+                              </div>
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                        {/* Grouped Comparison Bar Chart for FY */}
+                        <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                          <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 text-center sm:text-left">
+                            <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-1.5 text-center">
+                              <BarChart3 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                              <span>Financial Year Category Breakdown Comparison (₹)</span>
+                            </h4>
+                            <div className="flex items-center justify-center gap-3 text-[10px] font-bold">
+                              <div className="flex items-center gap-1">
+                                <span className="w-2.5 h-2.5 rounded bg-slate-400 inline-block" />
                                 <span className="text-slate-600">FY {compareYearBase}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="w-2.5 h-2.5 rounded bg-indigo-600 inline-block" />
                                 <span className="text-indigo-700">FY {compareYearTarget}</span>
                               </div>
                             </div>
-
-                            {titheColumns.map((cat) => {
-                              const prevVal = fyBaseTotals[cat.field_key] || fyBaseTotals[`total_${cat.field_key}`] || 0;
-                              const currVal = fyTargetTotals[cat.field_key] || fyTargetTotals[`total_${cat.field_key}`] || 0;
-                              const maxVal = Math.max(1, prevVal, currVal);
-                              return (
-                                <div key={cat.id || cat.field_key} className="p-1.5 rounded-lg bg-slate-50 border border-slate-100 space-y-1">
-                                  <div className="flex items-center justify-between font-mono font-bold text-[10.5px] sm:text-[11px]">
-                                    <span className="text-slate-700 font-sans font-semibold truncate pr-2">
-                                      {cat.name} ({cat.code})
-                                    </span>
-                                    <div className="flex items-center gap-2.5 shrink-0">
-                                      <span className="text-slate-500">₹{prevVal.toLocaleString('en-IN')}</span>
-                                      <span className="text-indigo-700 font-black">₹{currVal.toLocaleString('en-IN')}</span>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-1.5">
-                                    <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
-                                      <div className="bg-slate-400 h-1 rounded-full" style={{ width: `${(prevVal / maxVal) * 100}%` }} />
-                                    </div>
-                                    <div className="w-full bg-slate-200 rounded-full h-1 overflow-hidden">
-                                      <div className="h-1 rounded-full" style={{ backgroundColor: cat.color || '#6366f1', width: `${(currVal / maxVal) * 100}%` }} />
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* 2. Annual Household Return & Participation Card */}
-                        <div className="p-3 rounded-2xl bg-white border border-slate-200/90 shadow-2xs space-y-2.5 flex flex-col justify-between">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1">
-                              <Users className="w-3.5 h-3.5 text-indigo-600" />
-                              <span>Household Participation</span>
-                            </span>
-                            {/* Compliance Change Indicator */}
-                            <span className={`px-2 py-0.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono font-bold border flex items-center gap-1 ${
-                              fyReturnedDiff >= 0 
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                                : 'bg-rose-50 text-rose-700 border-rose-200'
-                            }`}>
-                              {fyReturnedDiff >= 0 ? <ArrowUpRight className="w-3 h-3 text-emerald-600" /> : <ArrowDownRight className="w-3 h-3 text-rose-600" />}
-                              <span>{fyReturnedDiff >= 0 ? `+${fyReturnedDiff} HH (+${fyReturnRateDiff}%)` : `${fyReturnedDiff} HH (${fyReturnRateDiff}%)`}</span>
-                            </span>
                           </div>
 
-                          {/* Base vs Target Household Boxes */}
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="p-2 sm:p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-center font-mono space-y-0.5 min-w-0">
-                              <span className="text-[10px] sm:text-[11px] font-black text-slate-600 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
-                                FY {compareYearBase}
-                              </span>
-                              <span className="text-xs sm:text-sm font-black text-slate-800 block truncate">
-                                {fyBaseReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-slate-500 font-normal">/ {fyBaseHH} HH</span>
-                              </span>
-                              <span className="text-[10px] sm:text-[10.5px] font-bold text-slate-700 block truncate">
-                                {fyBaseReturnRate}% return rate
-                              </span>
-                              <span className="text-[9.5px] sm:text-[10px] text-slate-500 block truncate">
-                                Avg: ₹{fyBaseAvg.toLocaleString('en-IN')}/HH
-                              </span>
-                            </div>
-                            <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200 text-center font-mono space-y-0.5 min-w-0">
-                              <span className="text-[10px] sm:text-[11px] font-black text-emerald-800 uppercase block font-sans whitespace-nowrap truncate tracking-tight">
-                                FY {compareYearTarget}
-                              </span>
-                              <span className="text-xs sm:text-sm font-black text-emerald-950 block truncate">
-                                {fyTargetReturned} <span className="text-[9.5px] sm:text-[10px] font-sans text-emerald-600 font-normal">/ {fyTargetHH} HH</span>
-                              </span>
-                              <span className="text-[10px] sm:text-[10.5px] font-bold text-emerald-800 block truncate">
-                                {fyTargetReturnRate}% return rate
-                              </span>
-                              <span className="text-[9.5px] sm:text-[10px] text-emerald-800 font-semibold block truncate">
-                                Avg: ₹{fyTargetAvg.toLocaleString('en-IN')}/HH
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Dual Visual Progress Comparison */}
-                          <div className="space-y-2 pt-1 border-t border-slate-100">
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between text-[10px] font-mono">
-                                <span className="text-slate-600 font-sans font-bold">FY {compareYearBase} Overall Participation</span>
-                                <span className="text-slate-700 font-bold">{fyBaseReturnRate}%</span>
-                              </div>
-                              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                <div
-                                  className="bg-slate-400 h-2 rounded-full transition-all duration-500"
-                                  style={{ width: `${Math.min(100, fyBaseReturnRate)}%` }}
+                          <div className="h-44 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={fyComparisonBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                <XAxis dataKey="category" stroke="#64748b" tick={{ fontSize: 10 }} />
+                                <YAxis stroke="#64748b" tick={{ fontSize: 9 }} />
+                                <Tooltip
+                                  contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', fontSize: '11px' }}
+                                  formatter={(val, name) => [`₹${Number(val).toLocaleString('en-IN')}`, name]}
                                 />
-                              </div>
-                            </div>
-
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between text-[10px] font-mono">
-                                <span className="text-indigo-950 font-sans font-bold">FY {compareYearTarget} Overall Participation</span>
-                                <span className="text-emerald-700 font-black">{fyTargetReturnRate}%</span>
-                              </div>
-                              <div className="w-full bg-emerald-100/60 rounded-full h-2 overflow-hidden">
-                                <div
-                                  className="bg-emerald-500 h-2 rounded-full transition-all duration-500"
-                                  style={{ width: `${Math.min(100, fyTargetReturnRate)}%` }}
-                                />
-                              </div>
-                            </div>
+                                <Bar dataKey={baseYearKey} fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey={targetYearKey} fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
                           </div>
+                        </div>
 
-                          {/* Summary Comparison Callouts */}
-                          <div className="grid grid-cols-2 gap-2 text-[10px]">
-                            <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
-                              <span className="text-slate-500 text-[9px] font-semibold">Participation Shift</span>
-                              <span className={`font-mono font-bold ${fyReturnRateDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                                {fyReturnRateDiff >= 0 ? `+${fyReturnRateDiff}% participation` : `${fyReturnRateDiff}% participation`}
+                        {/* Bial Year-over-Year Performance Breakdown */}
+                        {fyBialComparison.length > 0 && (
+                          <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+                            <div className="flex flex-col sm:flex-row items-center justify-between border-b border-slate-100 pb-1.5 gap-1 text-center sm:text-left">
+                              <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-1.5 text-center">
+                                <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                <span>Bial-by-Bial Annual Performance Growth</span>
+                              </h4>
+                              <span className="text-[10px] text-slate-500 font-mono text-center">
+                                {fyBialComparison.length} Bials
                               </span>
                             </div>
-                            <div className="p-1.5 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between">
-                              <span className="text-slate-500 text-[9px] font-semibold">Avg Ticket Shift</span>
-                              <span className={`font-mono font-bold ${fyAvgDiff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                                {fyAvgDiff >= 0 ? `+₹${fyAvgDiff.toLocaleString('en-IN')}/HH` : `-₹${Math.abs(fyAvgDiff).toLocaleString('en-IN')}/HH`}
-                              </span>
-                            </div>
-                          </div>
 
-                        </div>
-
-                      </div>
-
-                      {/* Grouped Comparison Bar Chart for FY */}
-                      <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
-                        <div className="flex flex-col sm:flex-row items-center justify-between gap-1.5 text-center sm:text-left">
-                          <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-1.5 text-center">
-                            <BarChart3 className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                            <span>Financial Year Category Breakdown Comparison (₹)</span>
-                          </h4>
-                          <div className="flex items-center justify-center gap-3 text-[10px] font-bold">
-                            <div className="flex items-center gap-1">
-                              <span className="w-2.5 h-2.5 rounded bg-slate-400 inline-block" />
-                              <span className="text-slate-600">FY {compareYearBase}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <span className="w-2.5 h-2.5 rounded bg-indigo-600 inline-block" />
-                              <span className="text-indigo-700">FY {compareYearTarget}</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="h-44 w-full">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={fyComparisonBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                              <XAxis dataKey="category" stroke="#64748b" tick={{ fontSize: 10 }} />
-                              <YAxis stroke="#64748b" tick={{ fontSize: 9 }} />
-                              <Tooltip
-                                contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', fontSize: '11px' }}
-                                formatter={(val, name) => [`₹${Number(val).toLocaleString('en-IN')}`, name]}
-                              />
-                              <Bar dataKey={baseYearKey} fill="#94a3b8" radius={[4, 4, 0, 0]} />
-                              <Bar dataKey={targetYearKey} fill="#4f46e5" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </div>
-                      </div>
-
-                      {/* Bial Year-over-Year Performance Breakdown */}
-                      {fyBialComparison.length > 0 && (
-                        <div className="p-3 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
-                          <div className="flex flex-col sm:flex-row items-center justify-between border-b border-slate-100 pb-1.5 gap-1 text-center sm:text-left">
-                            <h4 className="text-[11px] sm:text-xs font-bold text-slate-800 flex items-center justify-center sm:justify-start gap-1.5 text-center">
-                              <Trophy className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                              <span>Bial-by-Bial Annual Performance Growth</span>
-                            </h4>
-                            <span className="text-[10px] text-slate-500 font-mono text-center">
-                              {fyBialComparison.length} Bials
-                            </span>
-                          </div>
-
-                          <div className="overflow-x-auto">
-                            <table className="w-full text-left text-[11px]">
-                              <thead>
-                                <tr className="border-b border-slate-100 text-slate-500 font-bold uppercase text-[9px]">
-                                  <th className="py-1 px-1.5">Bial</th>
-                                  <th className="py-1 px-1.5 text-right font-mono">FY {compareYearBase}</th>
-                                  <th className="py-1 px-1.5 text-right font-mono">FY {compareYearTarget}</th>
-                                  <th className="py-1 px-1.5 text-right font-mono">Growth</th>
-                                  <th className="py-1 px-1.5 text-right font-mono">Rate</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100 font-mono">
-                                {fyBialComparison.map((b) => (
-                                  <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
-                                    <td className="py-1.5 px-1.5 font-sans font-bold text-slate-800 truncate max-w-[140px]">
-                                      {b.name} <span className="text-slate-400 font-mono text-[9.5px]">({b.code})</span>
-                                    </td>
-                                    <td className="py-1.5 px-1.5 text-right text-slate-500">
-                                      ₹{b.baseTotal.toLocaleString('en-IN')}
-                                    </td>
-                                    <td className="py-1.5 px-1.5 text-right font-bold text-indigo-950">
-                                      ₹{b.targetTotal.toLocaleString('en-IN')}
-                                    </td>
-                                    <td className={`py-1.5 px-1.5 text-right font-bold ${b.diff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
-                                      {b.diff >= 0 ? `+₹${b.diff.toLocaleString('en-IN')}` : `-₹${Math.abs(b.diff).toLocaleString('en-IN')}`}
-                                      <span className="text-[9px] ml-1">({b.diff >= 0 ? `+${b.pct}%` : `${b.pct}%`})</span>
-                                    </td>
-                                    <td className="py-1.5 px-1.5 text-right text-slate-600 text-[10px]">
-                                      {b.targetReturnRate}%
-                                    </td>
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-left text-[11px]">
+                                <thead>
+                                  <tr className="border-b border-slate-100 text-slate-500 font-bold uppercase text-[9px]">
+                                    <th className="py-1 px-1.5">Bial</th>
+                                    <th className="py-1 px-1.5 text-right font-mono">FY {compareYearBase}</th>
+                                    <th className="py-1 px-1.5 text-right font-mono">FY {compareYearTarget}</th>
+                                    <th className="py-1 px-1.5 text-right font-mono">Growth</th>
+                                    <th className="py-1 px-1.5 text-right font-mono">Rate</th>
                                   </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 font-mono">
+                                  {fyBialComparison.map((b) => (
+                                    <tr key={b.id} className="hover:bg-slate-50/80 transition-colors">
+                                      <td className="py-1.5 px-1.5 font-sans font-bold text-slate-800 truncate max-w-[140px]">
+                                        {b.name} <span className="text-slate-400 font-mono text-[9.5px]">({b.code})</span>
+                                      </td>
+                                      <td className="py-1.5 px-1.5 text-right text-slate-500">
+                                        ₹{b.baseTotal.toLocaleString('en-IN')}
+                                      </td>
+                                      <td className="py-1.5 px-1.5 text-right font-bold text-indigo-950">
+                                        ₹{b.targetTotal.toLocaleString('en-IN')}
+                                      </td>
+                                      <td className={`py-1.5 px-1.5 text-right font-bold ${b.diff >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                        {b.diff >= 0 ? `+₹${b.diff.toLocaleString('en-IN')}` : `-₹${Math.abs(b.diff).toLocaleString('en-IN')}`}
+                                        <span className="text-[9px] ml-1">({b.diff >= 0 ? `+${b.pct}%` : `${b.pct}%`})</span>
+                                      </td>
+                                      <td className="py-1.5 px-1.5 text-right text-slate-600 text-[10px]">
+                                        {b.targetReturnRate}%
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
                           </div>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </>
-              )}
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
 
-            </div>
-
-            {/* LEADERBOARD IN COMPACT CARD VIEW (1 feature per line) */}
-            <div className="glass-panel p-2.5 sm:p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-                <h3 className="text-xs sm:text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
-                  Leaderboard
-                </h3>
-                <span className="px-1.5 py-0.2 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[9px] sm:text-[10px] border border-indigo-100">
-                  {enrichedBialBreakdown.length} Bials
-                </span>
               </div>
 
-              {/* Cards Grid: 1 per line */}
-              <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
-                {enrichedBialBreakdown.length === 0 ? (
-                  <div className="py-6 text-center text-xs text-slate-400">
-                    No Bial analytics data found.
-                  </div>
-                ) : (
-                  enrichedBialBreakdown.map((b, idx) => {
-                    const returnRate = b.return_rate || 0;
-                    const rateColor = returnRate >= 80 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : returnRate >= 50 ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-amber-700 bg-amber-50 border-amber-200';
-                    const barColor = returnRate >= 80 ? 'bg-emerald-500' : returnRate >= 50 ? 'bg-blue-500' : 'bg-amber-500';
+              {/* LEADERBOARD IN COMPACT CARD VIEW (1 feature per line) */}
+              <div className="glass-panel p-2.5 sm:p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                  <h3 className="text-xs sm:text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <TrendingUp className="w-3.5 h-3.5 text-indigo-600" />
+                    Leaderboard
+                  </h3>
+                  <span className="px-1.5 py-0.2 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[9px] sm:text-[10px] border border-indigo-100">
+                    {enrichedBialBreakdown.length} Bials
+                  </span>
+                </div>
 
-                    return (
-                      <div
-                        key={b.id}
-                        className={`p-2 rounded-xl border transition-all space-y-1.5 shadow-2xs ${
-                          idx === 0 && b.total > 0
+                {/* Cards Grid: 1 per line */}
+                <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
+                  {enrichedBialBreakdown.length === 0 ? (
+                    <div className="py-6 text-center text-xs text-slate-400">
+                      No Bial analytics data found.
+                    </div>
+                  ) : (
+                    enrichedBialBreakdown.map((b, idx) => {
+                      const returnRate = b.return_rate || 0;
+                      const rateColor = returnRate >= 80 ? 'text-emerald-700 bg-emerald-50 border-emerald-200' : returnRate >= 50 ? 'text-blue-700 bg-blue-50 border-blue-200' : 'text-amber-700 bg-amber-50 border-amber-200';
+                      const barColor = returnRate >= 80 ? 'bg-emerald-500' : returnRate >= 50 ? 'bg-blue-500' : 'bg-amber-500';
+
+                      return (
+                        <div
+                          key={b.id}
+                          className={`p-2 rounded-xl border transition-all space-y-1.5 shadow-2xs ${idx === 0 && b.total > 0
                             ? 'bg-gradient-to-br from-amber-500/10 via-indigo-50/50 to-white border-amber-300 shadow-xs'
                             : idx === 1 && b.total > 0
-                            ? 'bg-gradient-to-br from-slate-100/80 via-white to-slate-50 border-slate-300'
-                            : idx === 2 && b.total > 0
-                            ? 'bg-gradient-to-br from-amber-700/10 via-white to-amber-50/40 border-amber-200'
-                            : 'bg-white border-slate-200 hover:border-indigo-200'
-                        }`}
-                      >
-                        {/* Line 1: Rank Badge, Bial Name, Code, and Share % */}
-                        <div className="bg-white/90 p-1.5 rounded-lg border border-slate-200/80 flex items-center justify-between gap-2 min-w-0">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            {idx === 0 && b.total > 0 ? (
-                              <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 font-bold text-[9px] flex items-center justify-center border border-amber-300 shadow-2xs shrink-0" title="Rank 1">
-                                <Trophy className="w-2.5 h-2.5 text-amber-800 shrink-0" />
-                              </span>
-                            ) : idx === 1 && b.total > 0 ? (
-                              <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-700 font-bold text-[9px] flex items-center justify-center border border-slate-300 shrink-0">
-                                2
-                              </span>
-                            ) : idx === 2 && b.total > 0 ? (
-                              <span className="w-4 h-4 rounded-full bg-amber-700/20 text-amber-900 font-bold text-[9px] flex items-center justify-center border border-amber-600/30 shrink-0">
-                                3
-                              </span>
-                            ) : (
-                              <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-500 font-mono font-bold text-[9px] flex items-center justify-center border border-slate-200 shrink-0">
-                                {idx + 1}
-                              </span>
-                            )}
-
-                            <div className="min-w-0">
-                              <h4 className="font-bold text-slate-900 text-[11px] sm:text-xs truncate">
-                                {b.name}
-                              </h4>
-                              {b.code && (
-                                <span className="text-[7.5px] sm:text-[8.5px] font-mono text-slate-500 block truncate">
-                                  Code: {b.code}
+                              ? 'bg-gradient-to-br from-slate-100/80 via-white to-slate-50 border-slate-300'
+                              : idx === 2 && b.total > 0
+                                ? 'bg-gradient-to-br from-amber-700/10 via-white to-amber-50/40 border-amber-200'
+                                : 'bg-white border-slate-200 hover:border-indigo-200'
+                            }`}
+                        >
+                          {/* Line 1: Rank Badge, Bial Name, Code, and Share % */}
+                          <div className="bg-white/90 p-1.5 rounded-lg border border-slate-200/80 flex items-center justify-between gap-2 min-w-0">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              {idx === 0 && b.total > 0 ? (
+                                <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-800 font-bold text-[9px] flex items-center justify-center border border-amber-300 shadow-2xs shrink-0" title="Rank 1">
+                                  <Trophy className="w-2.5 h-2.5 text-amber-800 shrink-0" />
+                                </span>
+                              ) : idx === 1 && b.total > 0 ? (
+                                <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-700 font-bold text-[9px] flex items-center justify-center border border-slate-300 shrink-0">
+                                  2
+                                </span>
+                              ) : idx === 2 && b.total > 0 ? (
+                                <span className="w-4 h-4 rounded-full bg-amber-700/20 text-amber-900 font-bold text-[9px] flex items-center justify-center border border-amber-600/30 shrink-0">
+                                  3
+                                </span>
+                              ) : (
+                                <span className="w-4 h-4 rounded-full bg-slate-100 text-slate-500 font-mono font-bold text-[9px] flex items-center justify-center border border-slate-200 shrink-0">
+                                  {idx + 1}
                                 </span>
                               )}
+
+                              <div className="min-w-0">
+                                <h4 className="font-bold text-slate-900 text-[11px] sm:text-xs truncate">
+                                  {b.name}
+                                </h4>
+                                {b.code && (
+                                  <span className="text-[7.5px] sm:text-[8.5px] font-mono text-slate-500 block truncate">
+                                    Code: {b.code}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Share Badge */}
+                            <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-mono font-bold text-[8px] sm:text-[8.5px] border border-indigo-100 shrink-0">
+                              {b.percentage_share || 0}% share
+                            </span>
+                          </div>
+
+                          {/* Line 2: Side-by-Side Monetary Breakdown */}
+                          <div className="grid grid-cols-2 gap-1">
+                            <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200 text-center font-mono">
+                              <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-500 uppercase block font-sans">Total Tithe</span>
+                              <span className="font-black text-[11px] sm:text-xs text-slate-900">
+                                ₹{(b.total || 0).toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                            <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200 text-center font-mono">
+                              <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-500 uppercase block font-sans">Avg / Household</span>
+                              <span className="font-black text-[11px] sm:text-xs text-slate-800">
+                                ₹{(b.avg_per_member || 0).toLocaleString('en-IN')}
+                              </span>
                             </div>
                           </div>
 
-                          {/* Share Badge */}
-                          <span className="px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 font-mono font-bold text-[8px] sm:text-[8.5px] border border-indigo-100 shrink-0">
-                            {b.percentage_share || 0}% share
-                          </span>
-                        </div>
-
-                        {/* Line 2: Side-by-Side Monetary Breakdown */}
-                        <div className="grid grid-cols-2 gap-1">
-                          <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200 text-center font-mono">
-                            <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-500 uppercase block font-sans">Total Tithe</span>
-                            <span className="font-black text-[11px] sm:text-xs text-slate-900">
-                              ₹{(b.total || 0).toLocaleString('en-IN')}
-                            </span>
-                          </div>
-                          <div className="bg-slate-50 p-1.5 rounded-lg border border-slate-200 text-center font-mono">
-                            <span className="text-[7.5px] sm:text-[8px] font-bold text-slate-500 uppercase block font-sans">Avg / Household</span>
-                            <span className="font-black text-[11px] sm:text-xs text-slate-800">
-                              ₹{(b.avg_per_member || 0).toLocaleString('en-IN')}
-                            </span>
+                          {/* Line 3: Households Returned & Return Rate Meter */}
+                          <div className="bg-slate-50/90 p-1.5 rounded-lg border border-slate-200/80 space-y-0.5">
+                            <div className="flex items-center justify-between text-[8.5px] sm:text-[9px]">
+                              <span className="text-slate-600 font-medium truncate">
+                                Households: <strong className="text-indigo-700 font-mono">{b.returned_members || 0}</strong>/{b.total_members || 0} HH
+                              </span>
+                              <span className={`px-1 py-0.2 rounded text-[8px] sm:text-[8.5px] font-mono font-bold border shrink-0 ${rateColor}`}>
+                                {returnRate}% return
+                              </span>
+                            </div>
+                            <div className="w-full bg-slate-200/80 rounded-full h-1 overflow-hidden">
+                              <div
+                                className={`${barColor} h-1 rounded-full transition-all duration-500`}
+                                style={{ width: `${Math.min(100, returnRate)}%` }}
+                              />
+                            </div>
                           </div>
                         </div>
-
-                        {/* Line 3: Households Returned & Return Rate Meter */}
-                        <div className="bg-slate-50/90 p-1.5 rounded-lg border border-slate-200/80 space-y-0.5">
-                          <div className="flex items-center justify-between text-[8.5px] sm:text-[9px]">
-                            <span className="text-slate-600 font-medium truncate">
-                              Households: <strong className="text-indigo-700 font-mono">{b.returned_members || 0}</strong>/{b.total_members || 0} HH
-                            </span>
-                            <span className={`px-1 py-0.2 rounded text-[8px] sm:text-[8.5px] font-mono font-bold border shrink-0 ${rateColor}`}>
-                              {returnRate}% return
-                            </span>
-                          </div>
-                          <div className="w-full bg-slate-200/80 rounded-full h-1 overflow-hidden">
-                            <div
-                              className={`${barColor} h-1 rounded-full transition-all duration-500`}
-                              style={{ width: `${Math.min(100, returnRate)}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Visual Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-              
-              {/* Bar Chart: Monetary Contributions by Bial */}
-              <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xs">
-                <div className="mb-3">
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4 text-indigo-600" />
-                    Monetary Contributions by Bial
-                  </h3>
-                </div>
-                <div className="h-60 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={enrichedBialBreakdown}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                      <XAxis dataKey="code" stroke="#64748b" tick={{ fontSize: 10 }} />
-                      <YAxis stroke="#64748b" tick={{ fontSize: 10 }} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', fontSize: '11px' }}
-                        formatter={(val) => [`₹${val.toLocaleString('en-IN')}`, 'Total Collected']}
-                        labelFormatter={(label, items) => {
-                          const item = items?.[0]?.payload;
-                          return item ? `${item.name} (${item.code})` : label;
-                        }}
-                      />
-                      <Bar dataKey="total" fill="#4f46e5" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Pie Chart: Category Allocation Ratio */}
-              <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xs">
-                <div className="mb-3">
-                  <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <PieChartIcon className="w-4 h-4 text-emerald-600" />
-                    Category Allocation Ratio
-                  </h3>
-                </div>
-                <div className="h-60 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={pieChartData} cx="50%" cy="45%" innerRadius={40} outerRadius={68} paddingAngle={4} dataKey="value">
-                        {pieChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', fontSize: '11px' }}
-                        formatter={(val) => [`₹${val.toLocaleString('en-IN')}`]}
-                      />
-                      <Legend wrapperStyle={{ color: '#475569', fontSize: '11px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Column Heads Percentage Breakdown */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-slate-100 mt-2">
-                  {categoryShares.map((cat, idx) => (
-                    <div key={cat.id || cat.field_key || idx} className="bg-slate-50/80 p-2 rounded-xl border border-slate-200/80 text-center space-y-0.5">
-                      <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-700 truncate">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                        <span className="truncate">{cat.name}</span>
-                      </div>
-                      <div className="text-sm font-mono font-black text-slate-900">
-                        {cat.percentage}%
-                      </div>
-                      <div className="text-[10px] font-mono text-slate-500 truncate">
-                        ₹{(cat.amount || 0).toLocaleString('en-IN')}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: DATA BACKUP & RESTORE */}
-        {activeTab === 'backups' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in duration-150">
-            <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-1.5">
-                  <Download className="w-4 h-4 text-indigo-600" /> Instant System Snapshot Backup
-                </h3>
-                <p className="text-xs text-slate-500 leading-relaxed mb-4">
-                  Initiate a full manual snapshot backup JSON download containing all Bials, members, monthly tithe records, and lock settings.
-                </p>
-              </div>
-              <button onClick={handleBackupNow} className="w-full py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
-                <Download className="w-4 h-4" /> Download Backup Snapshot Now
-              </button>
-            </div>
-
-            <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-1.5">
-                  <Upload className="w-4 h-4 text-emerald-600" /> Restore System Snapshot
-                </h3>
-                <p className="text-xs text-slate-500 leading-relaxed mb-3">
-                  Upload a valid JSON database snapshot file to restore system data.
-                </p>
-
-                <form onSubmit={handleRestoreSubmit} className="space-y-3">
-                  <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-emerald-500 transition-colors bg-slate-50">
-                    <input type="file" accept=".json" onChange={(e) => setSelectedFile(e.target.files[0])} className="hidden" id="admin-backup-upload" />
-                    <label htmlFor="admin-backup-upload" className="cursor-pointer flex flex-col items-center gap-1.5">
-                      <Upload className="w-6 h-6 text-slate-400" />
-                      <span className="text-xs font-semibold text-slate-700">{selectedFile ? selectedFile.name : 'Select backup JSON snapshot'}</span>
-                    </label>
-                  </div>
-                  <button type="submit" disabled={!selectedFile || restoring} className="w-full py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs shadow-emerald-600/20 transition-all disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer">
-                    {restoring ? 'Restoring Database...' : 'Restore Database'}
-                  </button>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 5: ACTIVITY AUDIT LOG */}
-        {activeTab === 'audit' && (
-          <div className="space-y-4 animate-in fade-in duration-150">
-            {/* Header & Controls Card */}
-            <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <History className="w-5 h-5 text-indigo-600" /> Activity Audit Trail
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Real-time security log of administrator actions, email authorizations, primary owner changes, and month lock controls.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {/* Search Input */}
-                <div className="relative min-w-[200px] sm:min-w-[240px]">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={auditSearchQuery}
-                    onChange={(e) => setAuditSearchQuery(e.target.value)}
-                    placeholder="Search logs by action, user, or email..."
-                    className="w-full pl-8 pr-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-xs font-medium focus:outline-none focus:border-indigo-600 shadow-2xs"
-                  />
-                  {auditSearchQuery && (
-                    <button
-                      onClick={() => setAuditSearchQuery('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
-                    >
-                      ×
-                    </button>
+                      );
+                    })
                   )}
                 </div>
+              </div>
 
-                {/* Filter Chips */}
-                <select
-                  value={auditFilterAction}
-                  onChange={(e) => setAuditFilterAction(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-semibold focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
-                >
-                  <option value="all">All Actions</option>
-                  <option value="auth">Admin & Google Auth</option>
-                  <option value="locks">Month Locks</option>
-                  <option value="transfers">Transfers</option>
-                </select>
+              {/* Visual Charts Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
 
-                {/* Refresh Button */}
-                <button
-                  onClick={fetchAuditLogs}
-                  disabled={loadingAuditLogs}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  title="Refresh Audit Logs"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${loadingAuditLogs ? 'animate-spin' : ''}`} />
-                  <span className="hidden sm:inline">Refresh</span>
-                </button>
+                {/* Bar Chart: Monetary Contributions by Bial */}
+                <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xs">
+                  <div className="mb-3">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <BarChart3 className="w-4 h-4 text-indigo-600" />
+                      Monetary Contributions by Bial
+                    </h3>
+                  </div>
+                  <div className="h-60 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={enrichedBialBreakdown}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                        <XAxis dataKey="code" stroke="#64748b" tick={{ fontSize: 10 }} />
+                        <YAxis stroke="#64748b" tick={{ fontSize: 10 }} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', fontSize: '11px' }}
+                          formatter={(val) => [`₹${val.toLocaleString('en-IN')}`, 'Total Collected']}
+                          labelFormatter={(label, items) => {
+                            const item = items?.[0]?.payload;
+                            return item ? `${item.name} (${item.code})` : label;
+                          }}
+                        />
+                        <Bar dataKey="total" fill="#4f46e5" radius={[6, 6, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Pie Chart: Category Allocation Ratio */}
+                <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200 shadow-2xs">
+                  <div className="mb-3">
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <PieChartIcon className="w-4 h-4 text-emerald-600" />
+                      Category Allocation Ratio
+                    </h3>
+                  </div>
+                  <div className="h-60 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={pieChartData} cx="50%" cy="45%" innerRadius={40} outerRadius={68} paddingAngle={4} dataKey="value">
+                          {pieChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#ffffff', borderColor: '#cbd5e1', borderRadius: '12px', color: '#0f172a', fontSize: '11px' }}
+                          formatter={(val) => [`₹${val.toLocaleString('en-IN')}`]}
+                        />
+                        <Legend wrapperStyle={{ color: '#475569', fontSize: '11px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Column Heads Percentage Breakdown */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-slate-100 mt-2">
+                    {categoryShares.map((cat, idx) => (
+                      <div key={cat.id || cat.field_key || idx} className="bg-slate-50/80 p-2 rounded-xl border border-slate-200/80 text-center space-y-0.5">
+                        <div className="flex items-center justify-center gap-1.5 text-[11px] font-semibold text-slate-700 truncate">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                          <span className="truncate">{cat.name}</span>
+                        </div>
+                        <div className="text-sm font-mono font-black text-slate-900">
+                          {cat.percentage}%
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-500 truncate">
+                          ₹{(cat.amount || 0).toLocaleString('en-IN')}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
               </div>
             </div>
+          )}
 
-            {/* Audit Logs Table / Feed */}
-            <div className="glass-panel rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xs border border-slate-200/80 bg-white">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
-                      <th className="py-3 px-4">Timestamp</th>
-                      <th className="py-3 px-3">Action</th>
-                      <th className="py-3 px-4">Performed By</th>
-                      <th className="py-3 px-4">Event Details</th>
-                      <th className="py-3 px-3 text-right">IP Address</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-sans">
-                    {loadingAuditLogs ? (
-                      <tr>
-                        <td colSpan={5} className="py-12 text-center text-indigo-600 font-bold animate-pulse">
-                          <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-600" />
-                          <span>Loading audit log trail...</span>
-                        </td>
+          {/* TAB 4: DATA BACKUP & RESTORE */}
+          {activeTab === 'backups' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in duration-150">
+              <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-1.5">
+                    <Download className="w-4 h-4 text-indigo-600" /> Instant System Snapshot Backup
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed mb-4">
+                    Initiate a full manual snapshot backup JSON download containing all Bials, members, monthly tithe records, and lock settings.
+                  </p>
+                </div>
+                <button onClick={handleBackupNow} className="w-full py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                  <Download className="w-4 h-4" /> Download Backup Snapshot Now
+                </button>
+              </div>
+
+              <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 mb-1.5">
+                    <Upload className="w-4 h-4 text-emerald-600" /> Restore System Snapshot
+                  </h3>
+                  <p className="text-xs text-slate-500 leading-relaxed mb-3">
+                    Upload a valid JSON database snapshot file to restore system data.
+                  </p>
+
+                  <form onSubmit={handleRestoreSubmit} className="space-y-3">
+                    <div className="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center hover:border-emerald-500 transition-colors bg-slate-50">
+                      <input type="file" accept=".json" onChange={(e) => setSelectedFile(e.target.files[0])} className="hidden" id="admin-backup-upload" />
+                      <label htmlFor="admin-backup-upload" className="cursor-pointer flex flex-col items-center gap-1.5">
+                        <Upload className="w-6 h-6 text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-700">{selectedFile ? selectedFile.name : 'Select backup JSON snapshot'}</span>
+                      </label>
+                    </div>
+                    <button type="submit" disabled={!selectedFile || restoring} className="w-full py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs shadow-emerald-600/20 transition-all disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer">
+                      {restoring ? 'Restoring Database...' : 'Restore Database'}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 5: ACTIVITY AUDIT LOG */}
+          {activeTab === 'audit' && (
+            <div className="space-y-3.5 sm:space-y-4 animate-in fade-in duration-150">
+              {/* Header & Controls Card */}
+              <div className="glass-panel p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <History className="w-5 h-5 text-indigo-600" /> Activity Audit Trail
+                    </h3>
+                    <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      {filteredAuditLogs.length} events
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">
+                    Real-time security log of administrator actions, email authorizations, primary owner changes, and month lock controls.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-2.5">
+                  {/* Search Input */}
+                  <div className="relative w-full sm:w-auto min-w-[200px] sm:min-w-[240px]">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={auditSearchQuery}
+                      onChange={(e) => setAuditSearchQuery(e.target.value)}
+                      placeholder="Search logs by action, user, email..."
+                      className="w-full pl-8 pr-7 py-2 sm:py-1.5 rounded-xl bg-white border border-slate-300 text-slate-900 text-xs font-medium focus:outline-none focus:border-indigo-600 shadow-2xs"
+                    />
+                    {auditSearchQuery && (
+                      <button
+                        onClick={() => setAuditSearchQuery('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm font-bold w-4 h-4 flex items-center justify-center cursor-pointer"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    {/* Filter Chips / Dropdown */}
+                    <select
+                      value={auditFilterAction}
+                      onChange={(e) => setAuditFilterAction(e.target.value)}
+                      className="flex-1 sm:flex-initial px-3 py-2 sm:py-1.5 rounded-xl bg-white border border-slate-300 text-slate-800 text-xs font-semibold focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
+                    >
+                      <option value="all">All Actions</option>
+                      <option value="auth">Admin & Google Auth</option>
+                      <option value="locks">Month Locks</option>
+                      <option value="transfers">Transfers</option>
+                    </select>
+
+                    {/* Refresh Button */}
+                    <button
+                      onClick={fetchAuditLogs}
+                      disabled={loadingAuditLogs}
+                      className="px-3 py-2 sm:py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0 shadow-2xs"
+                      title="Refresh Audit Logs"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${loadingAuditLogs ? 'animate-spin' : ''}`} />
+                      <span className="text-xs">Refresh</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Filter Pills (Mobile Friendly) */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
+                {[
+                  { id: 'all', label: 'All Events' },
+                  { id: 'auth', label: 'Auth & Roles' },
+                  { id: 'locks', label: 'Month Locks' },
+                  { id: 'transfers', label: 'Transfers' }
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setAuditFilterAction(tab.id)}
+                    className={`px-3 py-1.5 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${auditFilterAction === tab.id
+                      ? 'bg-indigo-600 text-white shadow-2xs'
+                      : 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900'
+                      }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Audit Logs Content: Table for Desktop, Cards for Mobile */}
+              <div className="glass-panel rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xs border border-slate-200/80 bg-white">
+
+                {/* --- DESKTOP TABLE VIEW (hidden on mobile) --- */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/90 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="py-3 px-4">Timestamp</th>
+                        <th className="py-3 px-3">Action</th>
+                        <th className="py-3 px-4">Performed By</th>
+                        <th className="py-3 px-4">Event Details</th>
+                        <th className="py-3 px-3 text-right">IP Address</th>
                       </tr>
-                    ) : auditLogs.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="py-12 text-center text-slate-400">
-                          No audit activity logs recorded yet.
-                        </td>
-                      </tr>
-                    ) : (
-                      auditLogs
-                        .filter(log => {
-                          if (auditFilterAction === 'auth' && !log.action.includes('EMAIL') && !log.action.includes('PRIMARY')) return false;
-                          if (auditFilterAction === 'locks' && !log.action.includes('LOCK')) return false;
-                          if (auditFilterAction === 'transfers' && !log.action.includes('TRANSFER')) return false;
-                          if (!auditSearchQuery.trim()) return true;
-                          const q = auditSearchQuery.toLowerCase();
-                          return (
-                            (log.action && log.action.toLowerCase().includes(q)) ||
-                            (log.username && log.username.toLowerCase().includes(q)) ||
-                            (log.email && log.email.toLowerCase().includes(q)) ||
-                            (log.details && log.details.toLowerCase().includes(q)) ||
-                            (log.ip_address && log.ip_address.toLowerCase().includes(q))
-                          );
-                        })
-                        .map(log => {
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-sans">
+                      {loadingAuditLogs ? (
+                        <tr>
+                          <td colSpan={5} className="py-12 text-center text-indigo-600 font-bold animate-pulse">
+                            <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-600" />
+                            <span>Loading audit log trail...</span>
+                          </td>
+                        </tr>
+                      ) : filteredAuditLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-12 text-center text-slate-400">
+                            No audit activity logs recorded yet.
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredAuditLogs.map(log => {
                           let badgeBg = 'bg-slate-100 text-slate-700 border-slate-300';
                           if (log.action.includes('AUTHORIZE')) badgeBg = 'bg-emerald-50 text-emerald-800 border-emerald-300';
                           else if (log.action.includes('REVOKE')) badgeBg = 'bg-rose-50 text-rose-800 border-rose-300';
@@ -2762,9 +2794,9 @@ export default function AdminDashboard({ user, showToast }) {
 
                           const formattedDate = log.created_at
                             ? new Date(log.created_at).toLocaleString('en-IN', {
-                                dateStyle: 'short',
-                                timeStyle: 'short'
-                              })
+                              dateStyle: 'short',
+                              timeStyle: 'short'
+                            })
                             : '-';
 
                           return (
@@ -2800,13 +2832,103 @@ export default function AdminDashboard({ user, showToast }) {
                             </tr>
                           );
                         })
-                    )}
-                  </tbody>
-                </table>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* --- MOBILE CARD FEED VIEW (visible only on mobile) --- */}
+                <div className="block md:hidden p-3 space-y-2.5">
+                  {loadingAuditLogs ? (
+                    <div className="py-10 text-center text-indigo-600 font-bold space-y-2">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto text-indigo-600" />
+                      <p className="text-xs">Loading activity logs...</p>
+                    </div>
+                  ) : filteredAuditLogs.length === 0 ? (
+                    <div className="py-10 text-center text-slate-400 space-y-1">
+                      <Activity className="w-8 h-8 mx-auto text-slate-300" />
+                      <p className="text-xs font-semibold text-slate-500">No activity logs recorded</p>
+                      <p className="text-[11px] text-slate-400">Try adjusting your search or action filter</p>
+                    </div>
+                  ) : (
+                    filteredAuditLogs.map(log => {
+                      let badgeBg = 'bg-slate-100 text-slate-700 border-slate-300';
+                      let accentBorder = 'border-l-slate-400';
+                      if (log.action.includes('AUTHORIZE')) {
+                        badgeBg = 'bg-emerald-50 text-emerald-800 border-emerald-300';
+                        accentBorder = 'border-l-emerald-500';
+                      } else if (log.action.includes('REVOKE')) {
+                        badgeBg = 'bg-rose-50 text-rose-800 border-rose-300';
+                        accentBorder = 'border-l-rose-500';
+                      } else if (log.action.includes('PRIMARY')) {
+                        badgeBg = 'bg-amber-50 text-amber-900 border-amber-300';
+                        accentBorder = 'border-l-amber-500';
+                      } else if (log.action.includes('TRANSFER')) {
+                        badgeBg = 'bg-blue-50 text-blue-800 border-blue-300';
+                        accentBorder = 'border-l-blue-500';
+                      } else if (log.action.includes('LOCK')) {
+                        badgeBg = 'bg-purple-50 text-purple-800 border-purple-300';
+                        accentBorder = 'border-l-purple-500';
+                      }
+
+                      const formattedDate = log.created_at
+                        ? new Date(log.created_at).toLocaleString('en-IN', {
+                          dateStyle: 'short',
+                          timeStyle: 'short'
+                        })
+                        : '-';
+
+                      const initial = (log.username || 'A')[0].toUpperCase();
+
+                      return (
+                        <div
+                          key={log.id}
+                          className={`p-3 rounded-2xl bg-white border border-slate-200/90 border-l-[3.5px] ${accentBorder} shadow-2xs space-y-2`}
+                        >
+                          {/* Top: Action Badge & Timestamp */}
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9.5px] font-extrabold border ${badgeBg}`}>
+                              {log.action}
+                            </span>
+                            <span className="text-[10px] font-mono text-slate-400 shrink-0">
+                              {formattedDate}
+                            </span>
+                          </div>
+
+                          {/* Event Details Content */}
+                          <div className="text-xs text-slate-800 font-medium leading-relaxed break-words">
+                            {log.details || 'No event details recorded'}
+                          </div>
+
+                          {/* Bottom Meta: Performed By & IP Address */}
+                          <div className="flex items-center justify-between pt-1.5 border-t border-slate-100 text-[10.5px]">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 font-bold text-[9px] flex items-center justify-center shrink-0">
+                                {initial}
+                              </span>
+                              <div className="flex items-center gap-1 min-w-0">
+                                <span className="font-bold text-slate-800 truncate">{log.username || 'Admin'}</span>
+                                {log.email && (
+                                  <span className="text-[9.5px] text-slate-400 truncate max-w-[110px]">
+                                    • {log.email}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            <span className="font-mono text-[9px] text-slate-400 bg-slate-50 border border-slate-200 px-1.5 py-0.5 rounded shrink-0">
+                              {log.ip_address || 'local'}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+
               </div>
             </div>
-          </div>
-        )}
+          )}
 
         </div>
       </div>
@@ -2954,6 +3076,9 @@ export default function AdminDashboard({ user, showToast }) {
             grandTotals={grandTotals}
             stats={stats}
             user={user}
+            titheColumns={titheColumns}
+            categoryShares={categoryShares}
+            initialTab={reportModalInitialTab}
             showToast={showToast}
           />
         )}

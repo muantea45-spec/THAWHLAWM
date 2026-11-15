@@ -11,6 +11,7 @@ export default function AdminSidebar({
   onOpenTransfer,
   onOpenConsolidated,
   onOpenReportForm,
+  onOpenReports,
   onOpenMatrix,
   onOpenCredentials,
   onOpenAdmins,
@@ -88,22 +89,13 @@ export default function AdminSidebar({
       tooltip: 'Transfer member between bials'
     },
     {
-      id: 'consolidated',
-      label: 'Consolidated Report',
-      shortLabel: 'Consolidated',
+      id: 'reports',
+      label: 'Reports & Consolidated',
+      shortLabel: 'Reports',
       icon: FileSpreadsheet,
       iconColor: 'text-emerald-600',
-      action: onOpenConsolidated,
-      tooltip: 'Export consolidated report & ledger'
-    },
-    {
-      id: 'report_form',
-      label: 'Report Form',
-      shortLabel: 'Report Form',
-      icon: FileText,
-      iconColor: 'text-rose-600',
-      action: onOpenReportForm,
-      tooltip: 'Generate certificate & letterhead report form'
+      action: onOpenReports || onOpenReportForm || onOpenConsolidated,
+      tooltip: 'Consolidated summaries, overall ledgers, certificates & booklets'
     },
     {
       id: 'matrix',

@@ -83,6 +83,35 @@ export default function MonthMatrixModal({ isOpen, onClose, showToast, currentYe
     }
   };
 
+  const handleToggleAllMonths = async (shouldLock) => {
+    const actionWord = shouldLock ? 'LOCK' : 'UNLOCK';
+    if (!window.confirm(`Are you sure you want to ${actionWord} ALL months (Jan-Dec) for ALL ${bials.length} Bials at once for FY ${year}?`)) {
+      return;
+    }
+
+    const newLockedState = shouldLock ? 1 : 0;
+    const updated = { ...matrix };
+    bials.forEach(b => {
+      if (!updated[b.id]) updated[b.id] = {};
+      for (let m = 1; m <= 12; m++) {
+        updated[b.id][m] = newLockedState;
+      }
+    });
+    setMatrix(updated);
+
+    try {
+      await api.toggleMonthLock({
+        year,
+        all_months: true,
+        is_locked: newLockedState
+      });
+      showToast(`ALL months (Jan-Dec) ${shouldLock ? 'Locked' : 'Unlocked'} for ALL Bials!`, 'success');
+    } catch (err) {
+      fetchMatrix();
+      showToast(err.message || 'Failed to update all month locks', 'error');
+    }
+  };
+
   const [matrixView, setMatrixView] = useState('cards'); // 'cards' | 'table'
   const [selectedGlobalMonth, setSelectedGlobalMonth] = useState(4);
 
@@ -94,7 +123,7 @@ export default function MonthMatrixModal({ isOpen, onClose, showToast, currentYe
         icon={Calendar}
         onClose={onClose}
       />
-      
+
       {/* Top Controls: FY Selector & View Mode Switcher */}
       <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
         <div className="flex items-center gap-2 min-w-0">
@@ -115,73 +144,107 @@ export default function MonthMatrixModal({ isOpen, onClose, showToast, currentYe
         <div className="flex items-center gap-1 bg-slate-200/80 p-1 rounded-xl text-xs font-bold">
           <button
             onClick={() => setMatrixView('cards')}
-            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-              matrixView === 'cards' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600'
-            }`}
+            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${matrixView === 'cards' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600'
+              }`}
           >
             Cards View
           </button>
           <button
             onClick={() => setMatrixView('table')}
-            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
-              matrixView === 'table' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600'
-            }`}
+            className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${matrixView === 'table' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600'
+              }`}
           >
             Table View
           </button>
         </div>
       </div>
 
-      {/* Prominent Global Month Control Banner (Lock All Bials for a Particular Month at Once) */}
-      <div className="m-3 p-3.5 rounded-2xl bg-gradient-to-r from-indigo-900 via-indigo-950 to-slate-900 text-white shadow-md border border-indigo-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0">
-            <Globe className="w-4 h-4 text-indigo-300" />
+      {/* Prominent Global Month Control Banner (All Months Master + Per-Month Bulk) */}
+      <div className="m-3 p-3.5 rounded-2xl bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white shadow-md border border-indigo-700/80 space-y-3">
+        {/* Row 1: MASTER ALL MONTHS (JAN - DEC) FOR ALL BIALS */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-indigo-800/60">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center shrink-0">
+              <Globe className="w-4 h-4 text-amber-300" />
+            </div>
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-wider text-amber-300 flex items-center gap-1.5">
+                <span>ALL MONTHS (JAN-DEC) MASTER CONTROL</span>
+                <span className="text-[9px] bg-amber-400/20 text-amber-200 border border-amber-400/30 px-1.5 py-0.2 rounded font-mono">
+                  12 Months • All Bials
+                </span>
+              </div>
+              <div className="text-xs font-medium text-slate-300">
+                Lock or unlock all 12 months for all {bials.length} Bials at once
+              </div>
+            </div>
           </div>
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-wider text-indigo-200">
-              GLOBAL BULK MONTH LOCKING
-            </div>
-            <div className="text-xs font-bold text-slate-200">
-              Lock or Unlock all {bials.length} Bials at once for a selected month
-            </div>
+
+          <div className="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto justify-end">
+            <button
+              type="button"
+              onClick={() => handleToggleAllMonths(true)}
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-xs shadow-rose-600/40 cursor-pointer active:scale-95"
+              title="Lock ALL 12 months for ALL Bials at once"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Lock All Months</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleToggleAllMonths(false)}
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-xs shadow-emerald-600/40 cursor-pointer active:scale-95"
+              title="Unlock ALL 12 months for ALL Bials at once"
+            >
+              <Unlock className="w-3.5 h-3.5" />
+              <span>Unlock All Months</span>
+            </button>
           </div>
         </div>
 
-        {/* Month Dropdown & Lock/Unlock Buttons */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto justify-end">
-          <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xl border border-indigo-400/30">
-            <span className="text-[10px] uppercase text-indigo-200 font-extrabold">Month:</span>
-            <select
-              value={selectedGlobalMonth}
-              onChange={(e) => setSelectedGlobalMonth(parseInt(e.target.value))}
-              className="bg-transparent text-white font-extrabold text-xs focus:outline-none cursor-pointer"
-            >
-              {FINANCIAL_MONTHS.map(m => (
-                <option key={m.id} value={m.id} className="text-slate-900 font-bold">{m.name}</option>
-              ))}
-            </select>
+        {/* Row 2: SINGLE MONTH BULK SELECTOR */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-0.5">
+          <div className="text-xs text-slate-300 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block"></span>
+            <span className="font-semibold">Single Month Quick Control:</span>
+            <span className="text-slate-400 text-[11px] hidden md:inline">Select a month to toggle for all bials</span>
           </div>
 
-          <button
-            type="button"
-            onClick={() => handleToggleGlobal(selectedGlobalMonth, true)}
-            className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-xs shadow-rose-600/40 cursor-pointer"
-            title="Lock this month for ALL Bials at once"
-          >
-            <Lock className="w-3.5 h-3.5" />
-            <span>Lock All Bials</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0 flex-wrap w-full sm:w-auto justify-end">
+            <div className="flex items-center gap-1.5 bg-white/10 px-2.5 py-1 rounded-xl border border-indigo-400/30">
+              <span className="text-[10px] uppercase text-indigo-200 font-extrabold">Month:</span>
+              <select
+                value={selectedGlobalMonth}
+                onChange={(e) => setSelectedGlobalMonth(parseInt(e.target.value))}
+                className="bg-transparent text-white font-extrabold text-xs focus:outline-none cursor-pointer"
+              >
+                {FINANCIAL_MONTHS.map(m => (
+                  <option key={m.id} value={m.id} className="text-slate-900 font-bold">{m.name}</option>
+                ))}
+              </select>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => handleToggleGlobal(selectedGlobalMonth, false)}
-            className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-xs shadow-emerald-600/40 cursor-pointer"
-            title="Unlock this month for ALL Bials at once"
-          >
-            <Unlock className="w-3.5 h-3.5" />
-            <span>Unlock All Bials</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => handleToggleGlobal(selectedGlobalMonth, true)}
+              className="px-2.5 py-1 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 border border-rose-400/40 text-rose-200 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+              title={`Lock ${MONTH_NAME_MAP[selectedGlobalMonth]} for ALL Bials`}
+            >
+              <Lock className="w-3 h-3 text-rose-400" />
+              <span>Lock {MONTH_NAME_MAP[selectedGlobalMonth]?.slice(0, 3)}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleToggleGlobal(selectedGlobalMonth, false)}
+              className="px-2.5 py-1 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-400/40 text-emerald-200 font-bold text-xs flex items-center gap-1 transition-all cursor-pointer"
+              title={`Unlock ${MONTH_NAME_MAP[selectedGlobalMonth]} for ALL Bials`}
+            >
+              <Unlock className="w-3 h-3 text-emerald-400" />
+              <span>Unlock {MONTH_NAME_MAP[selectedGlobalMonth]?.slice(0, 3)}</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -222,11 +285,10 @@ export default function MonthMatrixModal({ isOpen, onClose, showToast, currentYe
                         key={mObj.id}
                         type="button"
                         onClick={() => handleToggleSingle(b.id, mNum)}
-                        className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer ${
-                          isLocked
-                            ? 'bg-rose-50 border-rose-200 text-rose-800'
-                            : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        }`}
+                        className={`p-1.5 rounded-xl border flex flex-col items-center justify-center transition-all cursor-pointer ${isLocked
+                          ? 'bg-rose-50 border-rose-200 text-rose-800'
+                          : 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          }`}
                         title={`${mObj.name}: Click to ${isLocked ? 'Unlock' : 'Lock'}`}
                       >
                         <span className="text-[9px] font-extrabold uppercase">{mObj.short}</span>
@@ -291,11 +353,10 @@ export default function MonthMatrixModal({ isOpen, onClose, showToast, currentYe
                           <button
                             type="button"
                             onClick={() => handleToggleSingle(b.id, mNum)}
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all cursor-pointer ${
-                              isLocked
-                                ? 'bg-rose-100 border border-rose-300 text-rose-700'
-                                : 'bg-emerald-100 border border-emerald-300 text-emerald-800'
-                            }`}
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center mx-auto transition-all cursor-pointer ${isLocked
+                              ? 'bg-rose-100 border border-rose-300 text-rose-700'
+                              : 'bg-emerald-100 border border-emerald-300 text-emerald-800'
+                              }`}
                           >
                             {isLocked ? (
                               <Lock className="w-3 h-3 text-rose-700" />

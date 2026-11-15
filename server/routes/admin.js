@@ -199,15 +199,40 @@ router.get('/month-locks', (req, res) => {
 
 // POST /api/admin/month-locks/toggle - Toggle single Bial month lock or Global month lock
 router.post('/month-locks/toggle', (req, res) => {
-  const { bial_id, year, month, is_locked, global_toggle } = req.body;
+  const { bial_id, year, month, is_locked, global_toggle, all_months } = req.body;
   const targetYear = parseInt(year) || new Date().getFullYear();
-  const targetMonth = parseInt(month);
-
-  if (!targetMonth || targetMonth < 1 || targetMonth > 12) {
-    return res.status(400).json({ error: 'Invalid month (1-12 required)' });
-  }
+  const lockVal = is_locked ? 1 : 0;
 
   try {
+    if (all_months) {
+      const bials = db.prepare('SELECT id FROM bials').all();
+      const insertOrUpdate = db.prepare(`
+        INSERT INTO month_locks (bial_id, year, month, is_locked, updated_at)
+        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(bial_id, year, month) DO UPDATE SET
+          is_locked = excluded.is_locked,
+          updated_at = CURRENT_TIMESTAMP
+      `);
+
+      const runBatch = db.transaction(() => {
+        for (const b of bials) {
+          for (let m = 1; m <= 12; m++) {
+            insertOrUpdate.run(b.id, targetYear, m, lockVal);
+          }
+        }
+      });
+      runBatch();
+
+      return res.json({
+        message: `All 12 months for all Bials set to ${lockVal ? 'LOCKED' : 'UNLOCKED'} for FY ${targetYear}`
+      });
+    }
+
+    const targetMonth = parseInt(month);
+    if (!targetMonth || targetMonth < 1 || targetMonth > 12) {
+      return res.status(400).json({ error: 'Invalid month (1-12 required)' });
+    }
+
     if (global_toggle) {
       // Toggle for ALL bials for this month and year
       const bials = db.prepare('SELECT id FROM bials').all();

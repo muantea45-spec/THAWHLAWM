@@ -1071,18 +1071,48 @@ app.get('/admin/month-locks', authMiddleware, requireAdmin, async (c) => {
 
 app.post('/admin/month-locks/toggle', authMiddleware, requireAdmin, async (c) => {
   const db = c.env.DB;
-  const { bial_id, year, month, is_locked, global_toggle } = await c.req.json();
+  const { bial_id, year, month, is_locked, global_toggle, all_months } = await c.req.json();
   const targetYear = parseInt(year) || await getActiveYear(db);
-  const targetMonth = parseInt(month);
-
-  if (!targetMonth || targetMonth < 1 || targetMonth > 12) {
-    return c.json({ error: 'Invalid month (1-12 required)' }, 400);
-  }
+  const lockVal = is_locked ? 1 : 0;
 
   try {
+    if (all_months) {
+      const { results: bials } = await db.prepare('SELECT id FROM bials').all();
+      const stmts = [];
+      for (const b of bials) {
+        for (let m = 1; m <= 12; m++) {
+          stmts.push(
+            db.prepare(`
+              INSERT INTO month_locks (bial_id, year, month, is_locked, updated_at)
+              VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+              ON CONFLICT(bial_id, year, month) DO UPDATE SET
+                is_locked = excluded.is_locked,
+                updated_at = CURRENT_TIMESTAMP
+            `).bind(b.id, targetYear, m, lockVal)
+          );
+        }
+      }
+
+      await db.batch(stmts);
+      await logAudit(
+        db,
+        c.get('user'),
+        'GLOBAL_ALL_MONTHS_LOCK',
+        `Year ${targetYear}: ${lockVal ? 'LOCKED ALL 12 MONTHS FOR ALL BIALS' : 'UNLOCKED ALL 12 MONTHS FOR ALL BIALS'}`,
+        c
+      );
+      return c.json({
+        message: `All 12 months for all Bials set to ${lockVal ? 'LOCKED' : 'UNLOCKED'}`
+      });
+    }
+
+    const targetMonth = parseInt(month);
+    if (!targetMonth || targetMonth < 1 || targetMonth > 12) {
+      return c.json({ error: 'Invalid month (1-12 required)' }, 400);
+    }
+
     if (global_toggle) {
       const { results: bials } = await db.prepare('SELECT id FROM bials').all();
-      const lockVal = is_locked ? 1 : 0;
       const stmts = bials.map(b =>
         db.prepare(`
           INSERT INTO month_locks (bial_id, year, month, is_locked, updated_at)

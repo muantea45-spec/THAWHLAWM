@@ -24,6 +24,7 @@ export default function ExportOptionsModal({
   const [orientation, setOrientation] = useState(columnCount > 4 ? 'landscape' : 'portrait'); // 'portrait' | 'landscape'
   const [tone, setTone] = useState('monochrome'); // 'monochrome' | 'color'
   const [density, setDensity] = useState('compact'); // 'compact' | 'standard'
+  const [bookletMode, setBookletMode] = useState('imposed'); // 'imposed' | 'sequential'
 
   // Content inclusions
   const [includeSealSignatures, setIncludeSealSignatures] = useState(true);
@@ -36,8 +37,13 @@ export default function ExportOptionsModal({
     if (isOpen) {
       setPreset(defaultPreset);
       if (defaultPreset === 'booklet') {
-        setPageSize('a5');
-        setOrientation('portrait');
+        if (bookletMode === 'imposed') {
+          setPageSize('a4');
+          setOrientation('landscape');
+        } else {
+          setPageSize('a5');
+          setOrientation('portrait');
+        }
         setDensity('compact');
       } else if (defaultPreset === 'certificate') {
         setPageSize('a4');
@@ -56,14 +62,19 @@ export default function ExportOptionsModal({
         setTone('monochrome');
       }
     }
-  }, [isOpen, defaultPreset, columnCount, recordCount]);
+  }, [isOpen, defaultPreset, columnCount, recordCount, bookletMode]);
 
   // When user switches preset inside the modal
   const handlePresetChange = (newPreset) => {
     setPreset(newPreset);
     if (newPreset === 'booklet') {
-      setPageSize('a5');
-      setOrientation('portrait');
+      if (bookletMode === 'imposed') {
+        setPageSize('a4');
+        setOrientation('landscape');
+      } else {
+        setPageSize('a5');
+        setOrientation('portrait');
+      }
       setDensity('compact');
     } else if (newPreset === 'certificate') {
       setPageSize('a4');
@@ -89,6 +100,7 @@ export default function ExportOptionsModal({
       orientation,
       tone,
       density,
+      bookletMode,
       includeSealSignatures,
       includeAllocation,
       includeZeroGiving,
@@ -174,6 +186,65 @@ export default function ExportOptionsModal({
             })}
           </div>
         </div>
+
+        {/* BOOKLET MODE SELECTOR (Only when preset === 'booklet') */}
+        {preset === 'booklet' && (
+          <div className="space-y-1.5 p-3 rounded-2xl bg-indigo-50/80 border border-indigo-200">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-black text-indigo-950 uppercase tracking-wider">
+                Booklet Publication Format
+              </label>
+              <span className="text-[10px] font-bold text-indigo-700 bg-white px-2 py-0.5 rounded-md border border-indigo-200">
+                {bookletMode === 'imposed' ? 'A4 2-Up Spreads' : 'A5 Single Pages'}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setBookletMode('imposed');
+                  setPageSize('a4');
+                  setOrientation('landscape');
+                }}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  bookletMode === 'imposed'
+                    ? 'bg-white border-indigo-600 shadow-2xs ring-2 ring-indigo-600/20 text-indigo-950'
+                    : 'bg-white/70 border-slate-200 hover:bg-white text-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span className="text-xs font-bold text-slate-900">A4 Imposed (Print & Fold)</span>
+                  {bookletMode === 'imposed' && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                </div>
+                <p className="text-[10px] text-slate-500 leading-tight">
+                  2-up landscape spreads with fold marks. Print duplex (flip on short edge) and fold into an A5 booklet in 1..N order.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setBookletMode('sequential');
+                  setPageSize('a5');
+                  setOrientation('portrait');
+                }}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                  bookletMode === 'sequential'
+                    ? 'bg-white border-indigo-600 shadow-2xs ring-2 ring-indigo-600/20 text-indigo-950'
+                    : 'bg-white/70 border-slate-200 hover:bg-white text-slate-700'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span className="text-xs font-bold text-slate-900">A5 Master (Press RIP)</span>
+                  {bookletMode === 'sequential' && <Check className="w-3.5 h-3.5 text-indigo-600" />}
+                </div>
+                <p className="text-[10px] text-slate-500 leading-tight">
+                  Single-page A5 in 1..N order with 15mm/9mm alternating gutter margins and folios for commercial printing press RIP.
+                </p>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* 2. PAPER SIZE & ORIENTATION GRID */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -380,7 +451,13 @@ export default function ExportOptionsModal({
             </div>
             <div className="min-w-0">
               <span className="font-bold text-slate-800 block truncate">
-                {preset === 'certificate' ? 'Official Certificate' : preset === 'summary' ? 'Executive 1-Page Summary' : preset === 'booklet' ? 'A5 Church Booklet' : 'Member Roster Ledger'}
+                {preset === 'certificate'
+                  ? 'Official Certificate'
+                  : preset === 'summary'
+                  ? 'Executive 1-Page Summary'
+                  : preset === 'booklet'
+                  ? (bookletMode === 'imposed' ? 'A4 Imposed Booklet (Print & Fold)' : 'A5 Sequential Master Booklet (Press RIP)')
+                  : 'Member Roster Ledger'}
               </span>
               <span className="text-[10.5px] text-slate-500 block truncate">
                 Format: <strong className="text-slate-700">{pageSize.toUpperCase()}</strong> ({orientation}) • {tone === 'monochrome' ? 'B&W Photocopy' : 'Presentation Color'} • {density}

@@ -16,6 +16,7 @@ import {
   exportOfficialCertificateExcel,
   exportConsolidatedBookletPDF,
   exportConsolidatedBookletExcel,
+  exportPressReadyBookletPDF,
   exportAdminConsolidatedExcel,
   exportAdminConsolidatedPDF,
   exportOverallMemberExcel,
@@ -37,7 +38,7 @@ export default function OfficialReportModal({
   titheColumns = [],
   categoryShares = [],
   initialTab = 'consolidated',
-  showToast = () => {}
+  showToast = () => { }
 }) {
   const [reportType, setReportType] = useState('annual'); // 'annual' | 'monthly'
   const [selectedYear, setSelectedYear] = useState(currentYear || new Date().getFullYear());
@@ -224,37 +225,37 @@ export default function OfficialReportModal({
           const res = await api.getAdminDashboard(selectedYear);
           const breakdown = (res.bialBreakdown && res.bialBreakdown.length > 0)
             ? res.bialBreakdown.map(b => ({
-                id: b.id,
-                name: b.name,
-                bial_name: b.name,
-                bial_code: b.code || '',
-                member_count: b.total_members || b.member_count || 0,
-                total_members: b.total_members || b.member_count || 0,
-                returned_members: b.returned_members ?? (b.total > 0 ? (b.total_members || b.member_count || 0) : 0),
-                return_rate: b.return_rate ?? ((b.total_members || b.member_count || 0) > 0 ? Math.round(((b.returned_members || 0) / (b.total_members || b.member_count || 0)) * 1000) / 10 : 0),
-                avg_per_member: b.avg_per_member || (b.returned_members > 0 ? Math.round(b.total / b.returned_members) : 0),
-                pathian_ram: b.pathian_ram || 0,
-                ramthar: b.ramthar || 0,
-                tualchhung: b.tualchhung || 0,
-                building: b.building || 0,
-                total: b.total || 0
-              }))
+              id: b.id,
+              name: b.name,
+              bial_name: b.name,
+              bial_code: b.code || '',
+              member_count: b.total_members || b.member_count || 0,
+              total_members: b.total_members || b.member_count || 0,
+              returned_members: b.returned_members ?? (b.total > 0 ? (b.total_members || b.member_count || 0) : 0),
+              return_rate: b.return_rate ?? ((b.total_members || b.member_count || 0) > 0 ? Math.round(((b.returned_members || 0) / (b.total_members || b.member_count || 0)) * 1000) / 10 : 0),
+              avg_per_member: b.avg_per_member || (b.returned_members > 0 ? Math.round(b.total / b.returned_members) : 0),
+              pathian_ram: b.pathian_ram || 0,
+              ramthar: b.ramthar || 0,
+              tualchhung: b.tualchhung || 0,
+              building: b.building || 0,
+              total: b.total || 0
+            }))
             : sortedBials.map((b, i) => ({
-                id: b.id,
-                name: b.name,
-                bial_name: b.name,
-                bial_code: b.code || `B${i + 1}`,
-                member_count: b.member_count || 0,
-                total_members: b.member_count || 0,
-                returned_members: 0,
-                return_rate: 0,
-                avg_per_member: 0,
-                pathian_ram: b.total_pathian_ram || 0,
-                ramthar: b.total_ramthar || 0,
-                tualchhung: b.total_tualchhung || 0,
-                building: b.total_building || 0,
-                total: b.total_collected || 0
-              }));
+              id: b.id,
+              name: b.name,
+              bial_name: b.name,
+              bial_code: b.code || `B${i + 1}`,
+              member_count: b.member_count || 0,
+              total_members: b.member_count || 0,
+              returned_members: 0,
+              return_rate: 0,
+              avg_per_member: 0,
+              pathian_ram: b.total_pathian_ram || 0,
+              ramthar: b.total_ramthar || 0,
+              tualchhung: b.total_tualchhung || 0,
+              building: b.total_building || 0,
+              total: b.total_collected || 0
+            }));
 
           breakdown.sort((a, b) => {
             const numA = parseInt((a.bial_code || a.code || '').replace(/\D/g, '') || a.id) || 0;
@@ -289,37 +290,37 @@ export default function OfficialReportModal({
           const res = await api.getAdminDashboard(selectedYear, { month: selectedMonth });
           const breakdown = (res.bialBreakdown && res.bialBreakdown.length > 0)
             ? res.bialBreakdown.map(b => ({
-                id: b.id,
-                name: b.name,
-                bial_name: b.name,
-                bial_code: b.code || '',
-                member_count: b.total_members || b.member_count || 0,
-                total_members: b.total_members || b.member_count || 0,
-                returned_members: b.returned_members ?? (b.total > 0 ? (b.total_members || b.member_count || 0) : 0),
-                return_rate: b.return_rate ?? ((b.total_members || b.member_count || 0) > 0 ? Math.round(((b.returned_members || 0) / (b.total_members || b.member_count || 0)) * 1000) / 10 : 0),
-                avg_per_member: b.avg_per_member || (b.returned_members > 0 ? Math.round(b.total / b.returned_members) : 0),
-                pathian_ram: b.pathian_ram || 0,
-                ramthar: b.ramthar || 0,
-                tualchhung: b.tualchhung || 0,
-                building: b.building || 0,
-                total: b.total || 0
-              }))
+              id: b.id,
+              name: b.name,
+              bial_name: b.name,
+              bial_code: b.code || '',
+              member_count: b.total_members || b.member_count || 0,
+              total_members: b.total_members || b.member_count || 0,
+              returned_members: b.returned_members ?? (b.total > 0 ? (b.total_members || b.member_count || 0) : 0),
+              return_rate: b.return_rate ?? ((b.total_members || b.member_count || 0) > 0 ? Math.round(((b.returned_members || 0) / (b.total_members || b.member_count || 0)) * 1000) / 10 : 0),
+              avg_per_member: b.avg_per_member || (b.returned_members > 0 ? Math.round(b.total / b.returned_members) : 0),
+              pathian_ram: b.pathian_ram || 0,
+              ramthar: b.ramthar || 0,
+              tualchhung: b.tualchhung || 0,
+              building: b.building || 0,
+              total: b.total || 0
+            }))
             : bials.map((b, i) => ({
-                id: b.id,
-                name: b.name,
-                bial_name: b.name,
-                bial_code: b.code || `B${i + 1}`,
-                member_count: b.member_count || 0,
-                total_members: b.member_count || 0,
-                returned_members: 0,
-                return_rate: 0,
-                avg_per_member: 0,
-                pathian_ram: 0,
-                ramthar: 0,
-                tualchhung: 0,
-                building: 0,
-                total: 0
-              }));
+              id: b.id,
+              name: b.name,
+              bial_name: b.name,
+              bial_code: b.code || `B${i + 1}`,
+              member_count: b.member_count || 0,
+              total_members: b.member_count || 0,
+              returned_members: 0,
+              return_rate: 0,
+              avg_per_member: 0,
+              pathian_ram: 0,
+              ramthar: 0,
+              tualchhung: 0,
+              building: 0,
+              total: 0
+            }));
 
           const totalSysMembers = res.grandTotals?.total_system_members || breakdown.reduce((a, b) => a + (b.total_members || 0), 0);
           const totalRetMembers = res.grandTotals?.total_returned_members || breakdown.reduce((a, b) => a + (b.returned_members || 0), 0);
@@ -594,30 +595,46 @@ export default function OfficialReportModal({
     }
   };
 
-  const handleExportConsolidatedBookletPDF = async () => {
+  const handleExportBookletPDF = async (mode = 'imposed') => {
     try {
       setIsExportingBooklet(true);
-      showToast('Compiling 12-Month Consolidated Booklet (A5 Single-Column)...', 'info');
+      const isImposed = mode === 'imposed';
+      showToast(
+        isImposed
+          ? 'Compiling Press-Ready A4 Imposed Booklet (Print & Fold)...'
+          : 'Compiling Press-Ready A5 Sequential Master (Press RIP)...',
+        'info'
+      );
 
       const res = await api.getOverallMemberContributions(selectedYear);
       if (!res || !res.bials || res.bials.length === 0) {
         throw new Error('No consolidated member data found for this year.');
       }
 
-      exportConsolidatedBookletPDF({
+      exportPressReadyBookletPDF({
         year: selectedYear,
         bialsData: res.bials,
-        churchTotals: res.churchGrandTotal || {}
+        churchTotals: res.churchGrandTotal || {},
+        mode,
+        columns: titheColumns
       });
 
-      showToast(`Consolidated Annual Booklet PDF downloaded (FY ${selectedYear})!`, 'success');
+      showToast(
+        isImposed
+          ? `Press-Ready A4 Imposed Booklet downloaded (FY ${selectedYear})! Ready to duplex print & fold.`
+          : `Press-Ready A5 Sequential Master downloaded (FY ${selectedYear})! Commercial press ready.`,
+        'success'
+      );
     } catch (err) {
       console.error('Booklet PDF export error:', err);
-      showToast(err.message || 'Failed to export consolidated booklet PDF', 'error');
+      showToast(err.message || 'Failed to export press-ready booklet PDF', 'error');
     } finally {
       setIsExportingBooklet(false);
     }
   };
+
+  const handleExportConsolidatedBookletPDF = () => handleExportBookletPDF('imposed');
+  const handleExportSequentialBookletPDF = () => handleExportBookletPDF('sequential');
 
   const handleExportConsolidatedBookletExcel = async () => {
     try {
@@ -736,7 +753,7 @@ export default function OfficialReportModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
       <div className={`bg-white rounded-3xl shadow-2xl border border-slate-200 w-full ${orientation === 'landscape' ? 'max-w-6xl xl:max-w-7xl' : 'max-w-5xl'} max-h-[92vh] flex flex-col overflow-hidden my-auto transition-all duration-300`}>
-        
+
         {/* MODAL HEADER */}
         <div className="px-4 sm:px-6 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80 shrink-0">
           <div className="flex items-center gap-2.5">
@@ -764,10 +781,10 @@ export default function OfficialReportModal({
 
         {/* MODAL BODY: 2 COLUMN WORKSPACE (CONTROLS LEFT, LIVE SHEET PREVIEW RIGHT) */}
         <div className="flex-1 overflow-y-auto p-3 sm:p-5 grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 bg-slate-100/60">
-          
+
           {/* LEFT COLUMN: CONFIGURATION CONTROLS (4 COLS) */}
           <div className="lg:col-span-4 space-y-3">
-            
+
             {/* 1. Scope & Selection Options */}
             <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
               <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-700">
@@ -813,18 +830,16 @@ export default function OfficialReportModal({
                   <button
                     type="button"
                     onClick={() => setReportType('annual')}
-                    className={`py-1.5 px-2 rounded-lg transition-all cursor-pointer ${
-                      reportType === 'annual' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    className={`py-1.5 px-2 rounded-lg transition-all cursor-pointer ${reportType === 'annual' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
                   >
                     Annual Report
                   </button>
                   <button
                     type="button"
                     onClick={() => setReportType('monthly')}
-                    className={`py-1.5 px-2 rounded-lg transition-all cursor-pointer ${
-                      reportType === 'monthly' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    className={`py-1.5 px-2 rounded-lg transition-all cursor-pointer ${reportType === 'monthly' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                      }`}
                   >
                     Monthly Report
                   </button>
@@ -841,9 +856,8 @@ export default function OfficialReportModal({
                     <button
                       type="button"
                       onClick={() => setBialAnnualView('monthly')}
-                      className={`py-1.5 px-1.5 rounded-lg transition-all cursor-pointer truncate ${
-                        bialAnnualView === 'monthly' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      className={`py-1.5 px-1.5 rounded-lg transition-all cursor-pointer truncate ${bialAnnualView === 'monthly' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                        }`}
                       title="12 Month Breakdown (April - March)"
                     >
                       12 Months
@@ -851,9 +865,8 @@ export default function OfficialReportModal({
                     <button
                       type="button"
                       onClick={() => setBialAnnualView('members')}
-                      className={`py-1.5 px-1.5 rounded-lg transition-all cursor-pointer truncate ${
-                        bialAnnualView === 'members' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
-                      }`}
+                      className={`py-1.5 px-1.5 rounded-lg transition-all cursor-pointer truncate ${bialAnnualView === 'members' ? 'bg-white text-indigo-700 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+                        }`}
                       title="Member Annual Summation (Member-by-Member for Full Year)"
                     >
                       Member Summary
@@ -980,11 +993,11 @@ export default function OfficialReportModal({
                   <span>3. YEARLY REPORT BOOKLET</span>
                 </div>
                 <span className="px-2 py-0.5 bg-indigo-600 text-white text-[9.5px] font-black rounded-md uppercase tracking-wider">
-                  A5 Single Column
+                  Press Ready
                 </span>
               </div>
               <p className="text-[10.5px] text-slate-600 font-medium leading-normal">
-                Generates a 12-month consolidated booklet on A5 paper in a clean single-column format. Continuous Sl No starts at First Bial (B1) and follows sequentially across B2, B3... B12.
+                Automated publication engine for printing presses. Choose <strong>A4 Imposed</strong> (2-up saddle-stitch spreads for duplex printing & folding) or <strong>A5 Master</strong> (for commercial press RIP).
               </p>
 
               {/* Live Preview Button */}
@@ -1003,27 +1016,40 @@ export default function OfficialReportModal({
                 <span>{previewTab === 'booklet' ? '✓ Currently Previewing Booklet' : 'Preview Booklet Here'}</span>
               </button>
 
-              <div className="grid grid-cols-2 gap-2 pt-0.5">
-                <button
-                  type="button"
-                  onClick={handleExportConsolidatedBookletPDF}
-                  disabled={isExportingBooklet}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-xs shadow-xs shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50"
-                  title="Download A5 Single-Column Booklet PDF with continuous Sl No starting from First Bial"
-                >
-                  <Download className="w-3.5 h-3.5 shrink-0" />
-                  <span>Booklet PDF (A5)</span>
-                </button>
+              <div className="space-y-1.5 pt-0.5">
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handleExportConsolidatedBookletPDF}
+                    disabled={isExportingBooklet}
+                    className="flex items-center justify-center gap-1 px-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] shadow-xs shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50 text-center"
+                    title="A4 Landscape 2-up Saddle-Stitch Spreads with Fold Marks: Print duplex (flip short edge) and fold directly into an A5 booklet in 1..N order"
+                  >
+                    <Download className="w-3.5 h-3.5 shrink-0" />
+                    <span>A4 Imposed (Print & Fold)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleExportSequentialBookletPDF}
+                    disabled={isExportingBooklet}
+                    className="flex items-center justify-center gap-1 px-2 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-extrabold text-[11px] shadow-xs shadow-slate-800/20 transition-all cursor-pointer disabled:opacity-50 text-center"
+                    title="A5 Sequential 1..N Pages with 15mm/9mm alternating gutter margins and folios for commercial printing press RIP"
+                  >
+                    <Download className="w-3.5 h-3.5 shrink-0" />
+                    <span>A5 Master (Press RIP)</span>
+                  </button>
+                </div>
 
                 <button
                   type="button"
                   onClick={handleExportConsolidatedBookletExcel}
                   disabled={isExportingBooklet}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-50"
                   title="Download Consolidated Member Excel spreadsheet"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
-                  <span>Booklet Excel</span>
+                  <span>Download Booklet Excel</span>
                 </button>
               </div>
             </div>
@@ -1289,18 +1315,17 @@ export default function OfficialReportModal({
 
           {/* RIGHT COLUMN: PREVIEW CANVAS (CERTIFICATE OR BOOKLET) (8 COLS) */}
           <div className="lg:col-span-8 flex flex-col">
-            
+
             {/* TAB SELECTOR: CONSOLIDATED & LEDGERS vs CERTIFICATE SHEET vs YEARLY REPORT BOOKLET */}
             <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-2.5">
               <div className="flex items-center gap-1 bg-slate-200/90 p-1 rounded-xl shadow-2xs">
                 <button
                   type="button"
                   onClick={() => setPreviewTab('consolidated')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    previewTab === 'consolidated'
-                      ? 'bg-white text-black shadow-xs font-black'
-                      : 'text-slate-600 hover:text-black font-semibold'
-                  }`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${previewTab === 'consolidated'
+                    ? 'bg-white text-black shadow-xs font-black'
+                    : 'text-slate-600 hover:text-black font-semibold'
+                    }`}
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
                   <span>Consolidated & Ledgers</span>
@@ -1308,11 +1333,10 @@ export default function OfficialReportModal({
                 <button
                   type="button"
                   onClick={() => setPreviewTab('certificate')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    previewTab === 'certificate'
-                      ? 'bg-white text-black shadow-xs font-black'
-                      : 'text-slate-600 hover:text-black font-semibold'
-                  }`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${previewTab === 'certificate'
+                    ? 'bg-white text-black shadow-xs font-black'
+                    : 'text-slate-600 hover:text-black font-semibold'
+                    }`}
                 >
                   <Award className="w-3.5 h-3.5 text-black" />
                   <span>Report Form & Certificate</span>
@@ -1325,11 +1349,10 @@ export default function OfficialReportModal({
                       loadBookletData();
                     }
                   }}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    previewTab === 'booklet'
-                      ? 'bg-white text-black shadow-xs font-black'
-                      : 'text-slate-600 hover:text-black font-semibold'
-                  }`}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${previewTab === 'booklet'
+                    ? 'bg-white text-black shadow-xs font-black'
+                    : 'text-slate-600 hover:text-black font-semibold'
+                    }`}
                 >
                   <BookOpen className="w-3.5 h-3.5 text-black" />
                   <span>Yearly Report Booklet (A5)</span>
@@ -1381,20 +1404,40 @@ export default function OfficialReportModal({
                       onClick={handlePrint}
                       disabled={loadingBooklet}
                       className="flex items-center gap-1.5 text-[11px] font-bold text-black hover:bg-slate-100 bg-white border border-slate-300 px-2.5 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-                      title="Print booklet directly"
+                      title="Direct print booklet"
                     >
                       <Printer className="w-3.5 h-3.5 text-black" />
-                      <span>Print</span>
+                      <span className="hidden sm:inline">Print</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleExportConsolidatedBookletExcel}
+                      disabled={isExportingBooklet}
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                      title="Download Consolidated Member Excel spreadsheet"
+                    >
+                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="hidden sm:inline">Excel</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleExportSequentialBookletPDF}
+                      disabled={isExportingBooklet}
+                      className="flex items-center gap-1.5 text-[11px] font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 border border-slate-300 px-2.5 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+                      title="Download A5 Sequential Master PDF (for commercial press RIP)"
+                    >
+                      <Download className="w-3.5 h-3.5 text-slate-700" />
+                      <span>A5 Master</span>
                     </button>
                     <button
                       type="button"
                       onClick={handleExportConsolidatedBookletPDF}
                       disabled={isExportingBooklet}
                       className="flex items-center gap-1.5 text-[11px] font-bold text-white bg-indigo-600 hover:bg-indigo-700 px-2.5 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-                      title="Download Consolidated Booklet PDF"
+                      title="Download A4 Imposed PDF: 2-up spreads ready to print duplex and fold into A5 booklet"
                     >
                       <Download className="w-3.5 h-3.5" />
-                      <span>Booklet PDF</span>
+                      <span>A4 Imposed (Print & Fold)</span>
                     </button>
                   </>
                 )}
@@ -1763,7 +1806,7 @@ export default function OfficialReportModal({
                 {/* FOOTER SIGNATORY & SEAL BLOCK (100% BLACK TEXT) */}
                 <div className="pt-6 mt-auto relative z-10 text-xs">
                   <div className="flex items-end justify-between gap-4">
-                    
+
                     {/* Left Column: Empty Spacer */}
                     <div className="w-1/3 hidden sm:block"></div>
 
@@ -2126,9 +2169,9 @@ export default function OfficialReportModal({
                             KOHHRAN GRAND TOTAL ({totalBookletHH} Households • {totalBookletReturned} Returned • {overallBookletReturnRate}% Return Rate)
                           </h4>
                           <p className="text-[11px] text-black font-semibold mt-0.5">
-                            PTR: ₹{(bookletData.churchGrandTotal?.total_pathian_ram || 0).toLocaleString('en-IN')} • 
-                            RT: ₹{(bookletData.churchGrandTotal?.total_ramthar || 0).toLocaleString('en-IN')} • 
-                            Tch: ₹{(bookletData.churchGrandTotal?.total_tualchhung || 0).toLocaleString('en-IN')} • 
+                            PTR: ₹{(bookletData.churchGrandTotal?.total_pathian_ram || 0).toLocaleString('en-IN')} •
+                            RT: ₹{(bookletData.churchGrandTotal?.total_ramthar || 0).toLocaleString('en-IN')} •
+                            Tch: ₹{(bookletData.churchGrandTotal?.total_tualchhung || 0).toLocaleString('en-IN')} •
                             Bldg: ₹{(bookletData.churchGrandTotal?.total_building || 0).toLocaleString('en-IN')}
                           </p>
                         </div>
@@ -2214,17 +2257,17 @@ export default function OfficialReportModal({
                 <button
                   onClick={handlePrint}
                   disabled={loadingBooklet}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
                   title="Direct Print Booklet (A5 Portrait)"
                 >
-                  <Printer className="w-4 h-4 text-slate-200" />
+                  <Printer className="w-4 h-4 text-slate-600" />
                   <span>Print</span>
                 </button>
 
                 <button
                   onClick={handleExportConsolidatedBookletExcel}
                   disabled={isExportingBooklet}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
                   title="Download Consolidated Booklet Excel"
                 >
                   <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
@@ -2232,13 +2275,23 @@ export default function OfficialReportModal({
                 </button>
 
                 <button
+                  onClick={handleExportSequentialBookletPDF}
+                  disabled={isExportingBooklet}
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
+                  title="Download Press-Ready A5 Sequential Master PDF (15mm/9mm alternating gutter for commercial printing press RIP)"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>A5 Master (Press RIP)</span>
+                </button>
+
+                <button
                   onClick={handleExportConsolidatedBookletPDF}
                   disabled={isExportingBooklet}
                   className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50 cursor-pointer"
-                  title="Download Consolidated Booklet PDF (A5 Single-Column)"
+                  title="Download Press-Ready A4 Imposed PDF: 2-up spreads, ready to print duplex on A4 and fold into A5 booklet"
                 >
                   <Download className="w-4 h-4" />
-                  <span>{isExportingBooklet ? 'Downloading...' : 'Download Booklet PDF (A5)'}</span>
+                  <span>{isExportingBooklet ? 'Compiling...' : 'A4 Imposed (Print & Fold)'}</span>
                 </button>
               </>
             ) : (

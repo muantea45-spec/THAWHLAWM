@@ -1801,28 +1801,29 @@ export function exportOfficialCertificateExcel({
 }
 
 /**
- * Consolidated Annual Member Contribution Booklet (A5 Portrait Layout, Single Column, Sequential Bial Order)
+ * Automated Press-Ready Publication Engine (A5 Church Booklet)
+ * 
+ * Supports two publication-grade modes:
+ * - 'imposed' (Default): A4 Landscape (297x210mm) 2-Up Saddle-Stitch Spreads.
+ *   Double-sided duplex (flip on short edge) print-and-fold with center fold ticks.
+ * - 'sequential': A5 Portrait (148x210mm) Single Pages with alternating gutter margins
+ *   (15mm inner staple edge, 9mm outer edge) and alternating running folios for commercial printing press RIP.
+ * 
+ * Features:
+ * - 4-Page Signature Rule: Automatically pads total pages to exact multiple of 4 (12, 16, 20, 24, 28, 32...)
+ *   so the Back Cover is always on the outside back.
+ * - Pure 100% K Black (#000000) vector typography and rules (no fuzzy halftone rasterization).
+ * - Standard Presbyterian Church booklet ordering: Front Cover, Preface, TOC, Sequential Bials (B1..B12),
+ *   Church Grand Total & Signatures, Ruled Committee Notes pages, and Back Cover with Scripture & Colophon.
  */
-export function exportConsolidatedBookletPDF({
+export function exportPressReadyBookletPDF({
   year = new Date().getFullYear(),
   bialsData = [],
-  churchTotals = {}
+  churchTotals = {},
+  mode = 'imposed', // 'imposed' | 'sequential'
+  columns = []
 }) {
-  // Explicitly initialize jsPDF in portrait mode for A5 paper (148mm x 210mm)
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a5'
-  });
-
-  const pageWidth = 148;
-  const pageHeight = 210;
-  const marginLeft = 10;
-  const marginRight = 10;
-  const marginTop = 16;
-  const marginBottom = 12;
-  const colWidth = pageWidth - marginLeft - marginRight; // 128mm
-  const colX = marginLeft; // 10mm
+  const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
 
   // 1. Sort Bials strictly starting from the First Bial (Bial 1 / B1) in natural sequential order
   const sortedBials = [...bialsData].sort((a, b) => {
@@ -1834,7 +1835,7 @@ export function exportConsolidatedBookletPDF({
     return (a.bial_name || a.name || '').localeCompare(b.bial_name || b.name || '', undefined, { numeric: true });
   });
 
-  // Pre-calculate church metrics
+  // 2. Pre-calculate church metrics
   let churchTotalHH = 0;
   let churchReturnedHH = 0;
   let computedPR = 0, computedRT = 0, computedTch = 0, computedBldg = 0, computedGrandTotal = 0;
@@ -1880,186 +1881,370 @@ export function exportConsolidatedBookletPDF({
   const overallReturnRate = churchTotalHH > 0 ? Math.round((churchReturnedHH / churchTotalHH) * 1000) / 10 : 0;
   const avgPerHH = churchReturnedHH > 0 ? Math.round(finalGrandTotal / churchReturnedHH) : 0;
 
-  // ==========================================
-  // PAGE 1: PRESS-READY COVER PAGE (A5)
-  // ==========================================
-  // Decorative Double Border
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.75);
-  doc.rect(8, 8, pageWidth - 16, pageHeight - 16);
-  doc.setLineWidth(0.25);
-  doc.rect(9.5, 9.5, pageWidth - 19, pageHeight - 19);
+  // Running Header helper
+  const drawRunningHeader = (doc, pageNumber, totalPages, offsetX, isEvenPage) => {
+    if (pageNumber === 1 || pageNumber === totalPages) return;
+    const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
+    const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
 
-  // Church Header
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8.5);
-  doc.setTextColor(0, 0, 0);
-  doc.text('MIZORAM PRESBYTERIAN CHURCH', pageWidth / 2, 28, { align: 'center' });
-  doc.setFontSize(14.5);
-  doc.text('BETHLEHEM KOHHRAN', pageWidth / 2, 36, { align: 'center' });
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'normal');
-  doc.text('AIZAWL, MIZORAM', pageWidth / 2, 42, { align: 'center' });
-
-  // Divider
-  doc.setLineWidth(0.4);
-  doc.line(pageWidth / 2 - 25, 46.5, pageWidth / 2 + 25, 46.5);
-
-  // Booklet Title
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(15);
-  doc.text('KUMTLUAN THAWHLAWM', pageWidth / 2, 66, { align: 'center' });
-  doc.setFontSize(13);
-  doc.text('CHANCHIN BU', pageWidth / 2, 73, { align: 'center' });
-
-  doc.setFontSize(9.5);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`FINANCIAL YEAR: ${year} – ${year + 1}`, pageWidth / 2, 83, { align: 'center' });
-  doc.setFontSize(7.5);
-  doc.setFont('helvetica', 'normal');
-  doc.text('(Pathian Ram, Ramthar, Tualchhung leh Building Thawhlawmte)', pageWidth / 2, 88.5, { align: 'center' });
-
-  // Scripture Quote (Thufingte 3:9)
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(8);
-  doc.text('“LALPA chu i sumin chawimawi la,', pageWidth / 2, 108, { align: 'center' });
-  doc.text('I thil thar chhuah zawng zawng a parithain chawimawi rawh.”', pageWidth / 2, 113, { align: 'center' });
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.5);
-  doc.text('— Thufingte 3:9', pageWidth / 2, 119, { align: 'center' });
-
-  // Cover Summary Box
-  doc.setFillColor(248, 250, 252);
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.35);
-  doc.roundedRect(20, 132, pageWidth - 40, 38, 1.5, 1.5, 'FD');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('KOHHRAN KHAWKHAWMNA (SUMMARY)', pageWidth / 2, 139, { align: 'center' });
-  doc.setLineWidth(0.2);
-  doc.line(25, 141.5, pageWidth - 25, 141.5);
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
-  doc.text(`Bial Zat: ${sortedBials.length} Bials`, 26, 148);
-  doc.text(`Chhungkua (Households): ${churchTotalHH} (${churchReturnedHH} Ret)`, 26, 154);
-  doc.text(`Thawh Zat Percentage: ${overallReturnRate}% Return Rate`, 26, 160);
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
-  doc.text(`Grand Total: Rs. ${finalGrandTotal.toLocaleString('en-IN')}`, pageWidth / 2, 166, { align: 'center' });
-
-  // Cover Footer
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
-  doc.text('Bethlehem Kohhran • Kohhran Committee Buatsaih', pageWidth / 2, 194, { align: 'center' });
-
-  // ==========================================
-  // PAGE 2: TABLE OF CONTENTS (BIAL-TE CHHINCHHIAHNA)
-  // ==========================================
-  doc.addPage('a5', 'portrait');
-
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text('TABLE OF CONTENTS (BIAL-TE CHHINCHHIAHNA)', pageWidth / 2, 13.5, { align: 'center' });
-  doc.setFontSize(7);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Bethlehem Kohhran • Kumtluan Thawhlawm Bu • FY ${year}-${year + 1}`, pageWidth / 2, 17.5, { align: 'center' });
-  doc.setLineWidth(0.3);
-  doc.line(marginLeft, 19.5, pageWidth - marginRight, 19.5);
-
-  // TOC Table Header
-  let tocY = 23;
-  doc.setFillColor(226, 232, 240);
-  doc.rect(colX, tocY, colWidth, 5.0, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.5);
-  doc.text('Sl', colX + 2, tocY + 3.4);
-  doc.text('Bial Name / Hming', colX + 8, tocY + 3.4);
-  doc.text('Households', colX + 54, tocY + 3.4);
-  doc.text('Return Rate', colX + 84, tocY + 3.4);
-  doc.text('Total (Rs.)', colX + colWidth - 2, tocY + 3.4, { align: 'right' });
-
-  tocY += 5.2;
-
-  bialSummaries.forEach((bs, idx) => {
-    if (idx % 2 === 1) {
-      doc.setFillColor(248, 250, 252);
-      doc.rect(colX, tocY - 0.4, colWidth, 4.2, 'F');
-    }
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
-    doc.text(String(idx + 1), colX + 2, tocY + 2.6);
-    doc.text(`${bs.bialCode ? `${bs.bialCode} - ` : ''}${bs.bialName}`, colX + 8, tocY + 2.6);
-    doc.text(`${bs.totalHH} HH (${bs.returnedHH} Ret)`, colX + 54, tocY + 2.6);
-    doc.text(`${bs.returnRate}%`, colX + 84, tocY + 2.6);
+    doc.setTextColor(0, 0, 0);
+
+    if (isEvenPage) {
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(pageNumber), marginL, 8.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text('BETHLEHEM KOHHRAN • AIZAWL', marginR, 8.5, { align: 'right' });
+    } else {
+      doc.text(`KUMTLUAN THAWHLAWM CHANCHIN BU (FY ${year}-${year + 1})`, marginL, 8.5);
+      doc.setFont('helvetica', 'bold');
+      doc.text(String(pageNumber), marginR, 8.5, { align: 'right' });
+    }
+
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.35);
+    doc.line(marginL, 10.5, marginR, 10.5);
+  };
+
+  // Running Footer helper
+  const drawRunningFooter = (doc, pageNumber, totalPages, offsetX, isEvenPage) => {
+    if (pageNumber === 1 || pageNumber === totalPages) return;
+    const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
+    const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
+
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.line(marginL, 201.5, marginR, 201.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.2);
+    doc.setTextColor(0, 0, 0);
+
+    if (isEvenPage) {
+      doc.text('Pathian Ram Tithe Stewardship', marginL, 205);
+      doc.text(`Phek ${pageNumber} of ${totalPages}`, marginR, 205, { align: 'right' });
+    } else {
+      doc.text(`Phek ${pageNumber} of ${totalPages}`, marginL, 205);
+      doc.text('Bethlehem Kohhran • Presbyterian Church of India', marginR, 205, { align: 'right' });
+    }
+  };
+
+  // Intermediate page renderers list
+  const pages = [];
+
+  // PAGE 1: Front Cover
+  pages.push((doc, { offsetX, totalPages }) => {
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.75);
+    doc.rect(offsetX + 7, 7, 134.5, 196);
+    doc.setLineWidth(0.25);
+    doc.rect(offsetX + 8.5, 8.5, 131.5, 193);
+
+    const cx = offsetX + 74.25;
+
     doc.setFont('helvetica', 'bold');
-    doc.text(`Rs. ${bs.bTotal.toLocaleString('en-IN')}`, colX + colWidth - 2, tocY + 2.6, { align: 'right' });
-    tocY += 4.5;
+    doc.setFontSize(8.5);
+    doc.setTextColor(0, 0, 0);
+    doc.text('MIZORAM PRESBYTERIAN CHURCH', cx, 28, { align: 'center' });
+    doc.setFontSize(14.5);
+    doc.text('BETHLEHEM KOHHRAN', cx, 36, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('AIZAWL, MIZORAM', cx, 42, { align: 'center' });
+
+    doc.setLineWidth(0.4);
+    doc.line(cx - 25, 46.5, cx + 25, 46.5);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14.5);
+    doc.text('KUMTLUAN THAWHLAWM', cx, 66, { align: 'center' });
+    doc.setFontSize(12.5);
+    doc.text('CHANCHIN BU', cx, 73, { align: 'center' });
+
+    doc.setFontSize(9.5);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`FINANCIAL YEAR: ${year} – ${year + 1}`, cx, 83, { align: 'center' });
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text('(Pathian Ram, Ramthar, Tualchhung leh Building Thawhlawmte)', cx, 88.5, { align: 'center' });
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8);
+    doc.text('“LALPA chu i sumin chawimawi la,', cx, 108, { align: 'center' });
+    doc.text('I thil thar chhuah zawng zawng a parithain chawimawi rawh.”', cx, 113, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('— Thufingte 3:9', cx, 119, { align: 'center' });
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.35);
+    doc.roundedRect(offsetX + 18, 132, 112.5, 38, 1.5, 1.5, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('KOHHRAN KHAWKHAWMNA (SUMMARY)', cx, 139, { align: 'center' });
+    doc.setLineWidth(0.2);
+    doc.line(offsetX + 25, 141.5, offsetX + 123.5, 141.5);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(`Bial Zat: ${sortedBials.length} Bials`, offsetX + 24, 148);
+    doc.text(`Chhungkua (Households): ${churchTotalHH} (${churchReturnedHH} Ret)`, offsetX + 24, 154);
+    doc.text(`Thawh Zat Percentage: ${overallReturnRate}% Return Rate`, offsetX + 24, 160);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text(`Grand Total: Rs. ${finalGrandTotal.toLocaleString('en-IN')}`, cx, 166, { align: 'center' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text('Bethlehem Kohhran • Kohhran Committee Buatsaih', cx, 194, { align: 'center' });
   });
 
-  // TOC Summary Total Row
-  doc.setFillColor(224, 231, 255);
-  doc.rect(colX, tocY, colWidth, 5.5, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(6.8);
-  doc.text('KOHHRAN HUAP KHAWKHAWMNA', colX + 2, tocY + 3.7);
-  doc.text(`${churchTotalHH} HH (${churchReturnedHH} Ret)`, colX + 54, tocY + 3.7);
-  doc.text(`${overallReturnRate}%`, colX + 84, tocY + 3.7);
-  doc.text(`Rs. ${finalGrandTotal.toLocaleString('en-IN')}`, colX + colWidth - 2, tocY + 3.7, { align: 'right' });
+  // PAGE 2: Preface & Leadership
+  pages.push((doc, { offsetX, isEvenPage, pageNumber, totalPages }) => {
+    const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
+    const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
+    const cx = offsetX + 74.25;
 
-  // Scripture note at TOC bottom
-  doc.setFont('helvetica', 'italic');
-  doc.setFontSize(6.8);
-  doc.text('“Phek dawtah hian Bial tin chanchin kimchang a inziak chhunzawm e.”', pageWidth / 2, pageHeight - 14, { align: 'center' });
+    drawRunningHeader(doc, pageNumber, totalPages, offsetX, isEvenPage);
 
-  // ==========================================
-  // PAGE 3+: SEQUENTIAL BIAL LEDGERS
-  // ==========================================
-  doc.addPage('a5', 'portrait');
-  let currentY = marginTop;
-  let globalSlNo = 1;
-
-  const drawPageHeader = () => {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9.5);
-    doc.setTextColor(0, 0, 0);
-    doc.text('BETHLEHEM KOHHRAN', pageWidth / 2, 6.5, { align: 'center' });
+    doc.setFontSize(10.5);
+    doc.text('THUHMAHRUAI (PREFACE)', cx, 18, { align: 'center' });
+    doc.setLineWidth(0.35);
+    doc.line(cx - 20, 20.5, cx + 20, 20.5);
 
+    doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(0, 0, 0);
-    doc.text(`PATHIAN RAM — ANNUAL MEMBER BOOKLET (FY ${year}-${year + 1})`, pageWidth / 2, 10.5, { align: 'center' });
 
-    doc.setLineWidth(0.3);
+    const prefaceParas = [
+      "Pathian hruaina leh vengphanna changin kumtluanin Kohhran mipuite'n Pathian Ram, Ramthar, Tualchhung leh Building thawhlawm rinawm takin kan thawhkhawm thei a, Pathian hnenah lawmthu awm sela.",
+      "He buatsaih Thawhlawm Chanchin Bu hi Kohhran mipuite hriatzauna leh chanchin chhinchhiahna atana buatsaih a ni a. Bial tina Bial Collector-te, Bial Secretary-te leh Kohhran Treasurer-te inpekna avangin felfai takin kan peih fel thei ta a ni.",
+      "Lalpan he rawngbawlna hi Kohhran mipuite tana malsawmna ni atan malsawm theuh rawh se."
+    ];
+
+    let pY = 27;
+    prefaceParas.forEach(p => {
+      const lines = doc.splitTextToSize(p, 124.5);
+      doc.text(lines, marginL, pY);
+      pY += lines.length * 4.2 + 3.5;
+    });
+
+    doc.setFillColor(248, 250, 252);
     doc.setDrawColor(0, 0, 0);
-    doc.line(marginLeft, 12.8, pageWidth - marginRight, 12.8);
-  };
+    doc.setLineWidth(0.3);
+    doc.roundedRect(marginL, pY + 2, 124.5, 16, 1, 1, 'FD');
 
-  const drawPageFooter = () => {
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let p = 2; p <= totalPages; p++) {
-      doc.setPage(p);
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7.2);
+    doc.text('“Pek hi chawn lam aiin a engto thlak zawk.”', cx, pY + 8, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7);
+    doc.text('— Tirhkohte 20:35', cx, pY + 13.5, { align: 'center' });
+
+    pY += 26;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.text('KOHHRAN FINANCE SUB-COMMITTEE & HRUAITUTE', cx, pY, { align: 'center' });
+    doc.setLineWidth(0.25);
+    doc.line(cx - 30, pY + 2, cx + 30, pY + 2);
+
+    pY += 7;
+
+    const roles = [
+      { role: 'Chairman / Bialtu Pastor', name: 'Rev. / Pastor' },
+      { role: 'Kohhran Secretary', name: 'Upa / Secretary' },
+      { role: 'Kohhran Treasurer', name: 'Treasurer' },
+      { role: 'Finance Committee Convener', name: 'Convener' },
+      { role: 'Bial Collector-te', name: `Bial 1 to Bial ${sortedBials.length} Collectors` }
+    ];
+
+    roles.forEach((r, idx) => {
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(marginL, pY - 0.5, 124.5, 4.5, 'F');
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.text(r.role, marginL + 2, pY + 2.8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(r.name, marginR - 2, pY + 2.8, { align: 'right' });
+      pY += 5;
+    });
+
+    drawRunningFooter(doc, pageNumber, totalPages, offsetX, isEvenPage);
+  });
+
+  // PAGE 3: Table of Contents & Summaries
+  pages.push((doc, { offsetX, isEvenPage, pageNumber, totalPages }) => {
+    const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
+    const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
+    const cx = offsetX + 74.25;
+
+    drawRunningHeader(doc, pageNumber, totalPages, offsetX, isEvenPage);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('TABLE OF CONTENTS (BIAL-TE CHHINCHHIAHNA)', cx, 16.5, { align: 'center' });
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Bethlehem Kohhran • Kumtluan Thawhlawm Bu • FY ${year}-${year + 1}`, cx, 20.5, { align: 'center' });
+    doc.setLineWidth(0.3);
+    doc.line(marginL, 22.5, marginR, 22.5);
+
+    let tocY = 26;
+    doc.setFillColor(226, 232, 240);
+    doc.rect(marginL, tocY, 124.5, 5.0, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.text('Sl', marginL + 2, tocY + 3.4);
+    doc.text('Bial Name / Hming', marginL + 8, tocY + 3.4);
+    doc.text('Households', marginL + 52, tocY + 3.4);
+    doc.text('Return Rate', marginL + 82, tocY + 3.4);
+    doc.text('Total (Rs.)', marginR - 2, tocY + 3.4, { align: 'right' });
+
+    tocY += 5.2;
+
+    bialSummaries.forEach((bs, idx) => {
+      if (idx % 2 === 1) {
+        doc.setFillColor(248, 250, 252);
+        doc.rect(marginL, tocY - 0.4, 124.5, 4.2, 'F');
+      }
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
-      doc.setTextColor(0, 0, 0);
-      doc.text(`Consolidated Annual Booklet • FY ${year}-${year + 1}`, marginLeft, pageHeight - 5);
-      doc.text(`Page ${p} of ${totalPages}`, pageWidth - marginRight, pageHeight - 5, { align: 'right' });
-    }
+      doc.text(String(idx + 1), marginL + 2, tocY + 2.6);
+      doc.text(`${bs.bialCode ? `${bs.bialCode} - ` : ''}${bs.bialName}`, marginL + 8, tocY + 2.6);
+      doc.text(`${bs.totalHH} HH (${bs.returnedHH} Ret)`, marginL + 52, tocY + 2.6);
+      doc.text(`${bs.returnRate}%`, marginL + 82, tocY + 2.6);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Rs. ${bs.bTotal.toLocaleString('en-IN')}`, marginR - 2, tocY + 2.6, { align: 'right' });
+      tocY += 4.5;
+    });
+
+    doc.setFillColor(224, 231, 255);
+    doc.rect(marginL, tocY, 124.5, 5.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.8);
+    doc.text('KOHHRAN HUAP KHAWKHAWMNA', marginL + 2, tocY + 3.7);
+    doc.text(`${churchTotalHH} HH (${churchReturnedHH} Ret)`, marginL + 52, tocY + 3.7);
+    doc.text(`${overallReturnRate}%`, marginL + 82, tocY + 3.7);
+    doc.text(`Rs. ${finalGrandTotal.toLocaleString('en-IN')}`, marginR - 2, tocY + 3.7, { align: 'right' });
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(6.8);
+    doc.text('“Phek dawtah hian Bial tin chanchin kimchang a inziak chhunzawm e.”', cx, 196, { align: 'center' });
+
+    drawRunningFooter(doc, pageNumber, totalPages, offsetX, isEvenPage);
+  });
+
+  // PAGE 4+: Member Ledgers & Grand Totals
+  let currentPageItems = [];
+  let currentY = 14;
+  let globalSlNo = 1;
+
+  const pushCurrentPage = () => {
+    const items = [...currentPageItems];
+    pages.push((doc, { offsetX, isEvenPage, pageNumber, totalPages }) => {
+      const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
+      const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
+      const cx = offsetX + 74.25;
+
+      drawRunningHeader(doc, pageNumber, totalPages, offsetX, isEvenPage);
+
+      items.forEach(item => {
+        if (item.type === 'header') {
+          doc.setFillColor(241, 245, 249);
+          doc.setDrawColor(0, 0, 0);
+          doc.roundedRect(marginL, item.y, 124.5, 5.5, 1, 1, 'FD');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.5);
+          doc.setTextColor(0, 0, 0);
+          const t = item.isContinuation
+            ? `${item.code ? `${item.code} - ` : ''}${item.name} (Continued...)`
+            : `${item.code ? `${item.code} - ` : ''}${item.name} (${item.totalHH} HH • ${item.returnedHH} Ret • ${item.returnRate}% Return Rate)`;
+          doc.text(t, marginL + 2.5, item.y + 3.8);
+        } else if (item.type === 'tableHeader') {
+          doc.setFillColor(226, 232, 240);
+          doc.rect(marginL, item.y, 124.5, 4.6, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(6.2);
+          doc.setTextColor(0, 0, 0);
+          doc.text('Sl', marginL + 1.5, item.y + 3.1);
+          doc.text('Member Name', marginL + 8, item.y + 3.1);
+          doc.text('PTR (Rs)', marginL + 56, item.y + 3.1, { align: 'right' });
+          doc.text('RT (Rs)', marginL + 72, item.y + 3.1, { align: 'right' });
+          doc.text('Tch (Rs)', marginL + 88, item.y + 3.1, { align: 'right' });
+          doc.text('Bldg (Rs)', marginL + 104, item.y + 3.1, { align: 'right' });
+          doc.text('Total (Rs)', marginR - 2, item.y + 3.1, { align: 'right' });
+        } else if (item.type === 'member') {
+          if (item.isEvenRow) {
+            doc.setFillColor(248, 250, 252);
+            doc.rect(marginL, item.y - 0.4, 124.5, 4.0, 'F');
+          }
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(6.2);
+          doc.setTextColor(0, 0, 0);
+          doc.text(String(item.sl_no), marginL + 1.5, item.y + 2.4);
+          doc.text(item.name.length > 25 ? item.name.substring(0, 25) + '..' : item.name, marginL + 8, item.y + 2.4);
+          doc.setFont('helvetica', 'bold');
+          doc.text(item.pr > 0 ? item.pr.toLocaleString('en-IN') : '-', marginL + 56, item.y + 2.4, { align: 'right' });
+          doc.text(item.rt > 0 ? item.rt.toLocaleString('en-IN') : '-', marginL + 72, item.y + 2.4, { align: 'right' });
+          doc.text(item.tch > 0 ? item.tch.toLocaleString('en-IN') : '-', marginL + 88, item.y + 2.4, { align: 'right' });
+          doc.text(item.bldg > 0 ? item.bldg.toLocaleString('en-IN') : '-', marginL + 104, item.y + 2.4, { align: 'right' });
+          doc.text(item.total > 0 ? `Rs.${item.total.toLocaleString('en-IN')}` : '0', marginR - 2, item.y + 2.4, { align: 'right' });
+        } else if (item.type === 'subtotal') {
+          doc.setFillColor(224, 231, 255);
+          doc.rect(marginL, item.y, 124.5, 4.8, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(6.2);
+          doc.setTextColor(0, 0, 0);
+          doc.text(`Subtotal (${item.code || item.name}) • ${item.returnRate}% Ret`, marginL + 2.5, item.y + 3.2);
+          doc.text(item.pr.toLocaleString('en-IN'), marginL + 56, item.y + 3.2, { align: 'right' });
+          doc.text(item.rt.toLocaleString('en-IN'), marginL + 72, item.y + 3.2, { align: 'right' });
+          doc.text(item.tch.toLocaleString('en-IN'), marginL + 88, item.y + 3.2, { align: 'right' });
+          doc.text(item.bldg.toLocaleString('en-IN'), marginL + 104, item.y + 3.2, { align: 'right' });
+          doc.text(`Rs.${item.total.toLocaleString('en-IN')}`, marginR - 2, item.y + 3.2, { align: 'right' });
+        } else if (item.type === 'grandTotal') {
+          doc.setFillColor(241, 245, 249);
+          doc.setDrawColor(0, 0, 0);
+          doc.roundedRect(marginL, item.y, 124.5, 12, 1.2, 1.2, 'FD');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(7.2);
+          doc.setTextColor(0, 0, 0);
+          doc.text(`KOHHRAN GRAND TOTAL (${churchTotalHH} HH • ${churchReturnedHH} Ret • ${overallReturnRate}% Return Rate)`, marginL + 3, item.y + 4.5);
+          doc.setFontSize(6.2);
+          doc.text(`PTR: Rs.${item.pr.toLocaleString('en-IN')} | RT: Rs.${item.rt.toLocaleString('en-IN')} | Tch: Rs.${item.tch.toLocaleString('en-IN')} | Bldg: Rs.${item.bldg.toLocaleString('en-IN')}`, marginL + 3, item.y + 8.8);
+          doc.setFontSize(9.0);
+          doc.text(`Rs. ${item.grandTotal.toLocaleString('en-IN')}`, marginR - 3, item.y + 6.8, { align: 'right' });
+        } else if (item.type === 'signatures') {
+          const sigY = item.y + 10;
+          const colW = 124.5 / 3;
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.35);
+          doc.line(marginL + 2, sigY, marginL + colW - 2, sigY);
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(6.5);
+          doc.text('Prepared by / Bial Secretary', marginL + 2, sigY + 3.5);
+
+          doc.text('[ Official Church Seal ]', cx, sigY + 3.5, { align: 'center' });
+
+          doc.line(marginR - colW + 2, sigY, marginR - 2, sigY);
+          doc.text('Verified by / Kohhran Treasurer', marginR - colW + 2, sigY + 3.5);
+        }
+      });
+
+      drawRunningFooter(doc, pageNumber, totalPages, offsetX, isEvenPage);
+    });
+    currentPageItems = [];
+    currentY = 14;
   };
 
-  const checkSpace = (neededHeight) => {
-    if (currentY + neededHeight > pageHeight - marginBottom) {
-      doc.addPage('a5', 'portrait');
-      drawPageHeader();
-      currentY = marginTop;
-    }
-  };
-
-  drawPageHeader();
-
-  // Process Bials in natural order (Bial 1, Bial 2, Bial 3...)
-  sortedBials.forEach((bialGroup) => {
+  sortedBials.forEach(bialGroup => {
     const bialName = bialGroup.bial_name || bialGroup.name || 'Bial';
     const bialCode = bialGroup.bial_code || bialGroup.code || '';
     const members = [...(bialGroup.members || [])].sort((m1, m2) => (parseInt(m1.sl_no) || 0) - (parseInt(m2.sl_no) || 0));
@@ -2067,46 +2252,51 @@ export function exportConsolidatedBookletPDF({
     const bialReturnedHH = members.filter(m => (parseFloat(m.grand_total || m.total) || 0) > 0).length;
     const bialReturnRate = bialTotalHH > 0 ? Math.round((bialReturnedHH / bialTotalHH) * 1000) / 10 : 0;
 
-    churchTotalHH += bialTotalHH;
-    churchReturnedHH += bialReturnedHH;
+    // Check space for header + table header + 2 rows = ~20mm
+    if (currentY + 20 > 195) {
+      pushCurrentPage();
+    }
 
-    // Draw Bial Header Banner (Single column)
-    checkSpace(14);
-    doc.setFillColor(241, 245, 249); // slate-100
-    doc.setDrawColor(0, 0, 0);
-    doc.roundedRect(colX, currentY, colWidth, 5.5, 1, 1, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.setTextColor(0, 0, 0);
-    const headerTitle = `${bialCode ? `${bialCode} - ` : ''}${bialName} (${bialTotalHH} HH • ${bialReturnedHH} Ret • ${bialReturnRate}% Return Rate)`;
-    doc.text(headerTitle, colX + 2.5, currentY + 3.8);
-
+    currentPageItems.push({
+      type: 'header',
+      code: bialCode,
+      name: bialName,
+      totalHH: bialTotalHH,
+      returnedHH: bialReturnedHH,
+      returnRate: bialReturnRate,
+      isContinuation: false,
+      y: currentY
+    });
     currentY += 6.5;
 
-    // Draw Table Sub-header (Single column, Rs. currency notation)
-    checkSpace(6);
-    doc.setFillColor(226, 232, 240); // slate-200
-    doc.rect(colX, currentY, colWidth, 4.6, 'F');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.2);
-    doc.setTextColor(0, 0, 0);
-    doc.text('Sl', colX + 1.5, currentY + 3.1);
-    doc.text('Member Name', colX + 8, currentY + 3.1);
-    doc.text('PTR (Rs)', colX + 58, currentY + 3.1, { align: 'right' });
-    doc.text('RT (Rs)', colX + 74, currentY + 3.1, { align: 'right' });
-    doc.text('Tch (Rs)', colX + 90, currentY + 3.1, { align: 'right' });
-    doc.text('Bldg (Rs)', colX + 104, currentY + 3.1, { align: 'right' });
-    doc.text('Total (Rs)', colX + 126, currentY + 3.1, { align: 'right' });
-
+    currentPageItems.push({
+      type: 'tableHeader',
+      y: currentY
+    });
     currentY += 4.8;
 
     let bialPR = 0, bialRT = 0, bialTch = 0, bialBldg = 0, bialTotal = 0;
 
-    // Loop Members
     members.forEach((m, idx) => {
-      checkSpace(4.2);
+      if (currentY + 4.2 > 195) {
+        pushCurrentPage();
+        currentPageItems.push({
+          type: 'header',
+          code: bialCode,
+          name: bialName,
+          totalHH: bialTotalHH,
+          returnedHH: bialReturnedHH,
+          returnRate: bialReturnRate,
+          isContinuation: true,
+          y: currentY
+        });
+        currentY += 6.5;
+        currentPageItems.push({
+          type: 'tableHeader',
+          y: currentY
+        });
+        currentY += 4.8;
+      }
 
       const pr = parseFloat(m.total_pathian_ram || m.pathian_ram) || 0;
       const rt = parseFloat(m.total_ramthar || m.ramthar) || 0;
@@ -2114,93 +2304,230 @@ export function exportConsolidatedBookletPDF({
       const bldg = parseFloat(m.total_building || m.building) || 0;
       const total = parseFloat(m.grand_total || m.total) || (pr + rt + tch + bldg);
 
-      bialPR += pr;
-      bialRT += rt;
-      bialTch += tch;
-      bialBldg += bldg;
-      bialTotal += total;
+      bialPR += pr; bialRT += rt; bialTch += tch; bialBldg += bldg; bialTotal += total;
 
-      // Alternating row background
-      if (idx % 2 === 1) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(colX, currentY - 0.4, colWidth, 4.0, 'F');
-      }
-
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(6.2);
-      doc.setTextColor(0, 0, 0);
-
-      // Continuous Sl No across all Bials
-      doc.text(String(globalSlNo++), colX + 1.5, currentY + 2.4);
-
-      const mName = String(m.member_name || m.name || '');
-      doc.text(mName.length > 24 ? mName.substring(0, 24) + '..' : mName, colX + 8, currentY + 2.4);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text(pr > 0 ? pr.toLocaleString('en-IN') : '-', colX + 58, currentY + 2.4, { align: 'right' });
-      doc.text(rt > 0 ? rt.toLocaleString('en-IN') : '-', colX + 74, currentY + 2.4, { align: 'right' });
-      doc.text(tch > 0 ? tch.toLocaleString('en-IN') : '-', colX + 90, currentY + 2.4, { align: 'right' });
-      doc.text(bldg > 0 ? bldg.toLocaleString('en-IN') : '-', colX + 104, currentY + 2.4, { align: 'right' });
-
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 0, 0);
-      doc.text(total > 0 ? `Rs. ${total.toLocaleString('en-IN')}` : '0', colX + 126, currentY + 2.4, { align: 'right' });
-
+      currentPageItems.push({
+        type: 'member',
+        sl_no: globalSlNo++,
+        name: String(m.member_name || m.name || ''),
+        pr, rt, tch, bldg, total,
+        isEvenRow: idx % 2 === 1,
+        y: currentY
+      });
       currentY += 4.2;
     });
 
-    // Draw Bial Subtotal Row
-    checkSpace(5.5);
-    doc.setFillColor(224, 231, 255); // indigo-100
-    doc.rect(colX, currentY, colWidth, 4.8, 'F');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6.2);
-    doc.setTextColor(0, 0, 0);
-    doc.text(`Subtotal (${bialCode || bialName}) • ${bialReturnRate}% Ret (${bialReturnedHH}/${bialTotalHH} HH)`, colX + 2.5, currentY + 3.2);
-
-    doc.text(bialPR.toLocaleString('en-IN'), colX + 58, currentY + 3.2, { align: 'right' });
-    doc.text(bialRT.toLocaleString('en-IN'), colX + 74, currentY + 3.2, { align: 'right' });
-    doc.text(bialTch.toLocaleString('en-IN'), colX + 90, currentY + 3.2, { align: 'right' });
-    doc.text(bialBldg.toLocaleString('en-IN'), colX + 104, currentY + 3.2, { align: 'right' });
-    doc.text(`Rs. ${bialTotal.toLocaleString('en-IN')}`, colX + 126, currentY + 3.2, { align: 'right' });
-
+    // Bial Subtotal
+    if (currentY + 6.0 > 195) {
+      pushCurrentPage();
+    }
+    currentPageItems.push({
+      type: 'subtotal',
+      code: bialCode,
+      name: bialName,
+      pr: bialPR, rt: bialRT, tch: bialTch, bldg: bialBldg, total: bialTotal,
+      returnRate: bialReturnRate,
+      returnedHH: bialReturnedHH,
+      totalHH: bialTotalHH,
+      y: currentY
+    });
     currentY += 7.0;
   });
 
-  // Final Church Grand Total Box (100% Black Text)
-  checkSpace(14);
-  const finalX = colX;
-  doc.setFillColor(241, 245, 249); // slate-100
-  doc.setDrawColor(0, 0, 0);
-  doc.roundedRect(finalX, currentY, colWidth, 12, 1.2, 1.2, 'FD');
+  // Grand Total & Signatures
+  if (currentY + 36 > 195) {
+    pushCurrentPage();
+  }
 
-  const gPR = churchTotals.total_pathian_ram || sortedBials.reduce((acc, b) => acc + (b.subtotal?.total_pathian_ram || 0), 0);
-  const gRT = churchTotals.total_ramthar || sortedBials.reduce((acc, b) => acc + (b.subtotal?.total_ramthar || 0), 0);
-  const gTch = churchTotals.total_tualchhung || sortedBials.reduce((acc, b) => acc + (b.subtotal?.total_tualchhung || 0), 0);
-  const gBldg = churchTotals.total_building || sortedBials.reduce((acc, b) => acc + (b.subtotal?.total_building || 0), 0);
-  const gTotal = churchTotals.grand_total || sortedBials.reduce((acc, b) => acc + (b.subtotal?.grand_total || 0), 0);
+  currentPageItems.push({
+    type: 'grandTotal',
+    pr: finalPR,
+    rt: finalRT,
+    tch: finalTch,
+    bldg: finalBldg,
+    grandTotal: finalGrandTotal,
+    totalHH: churchTotalHH,
+    returnedHH: churchReturnedHH,
+    returnRate: overallReturnRate,
+    avgPerHH,
+    y: currentY
+  });
+  currentY += 14;
 
-  const overallChurchReturnRate = churchTotalHH > 0 ? Math.round((churchReturnedHH / churchTotalHH) * 1000) / 10 : 0;
-  const finalAvgPerHH = churchReturnedHH > 0 ? Math.round(gTotal / churchReturnedHH) : 0;
+  currentPageItems.push({
+    type: 'signatures',
+    y: currentY
+  });
+  pushCurrentPage();
 
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7.2);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`KOHHRAN GRAND TOTAL (${churchTotalHH} HH • ${churchReturnedHH} Ret • ${overallChurchReturnRate}% Return Rate)`, finalX + 3, currentY + 4.5);
+  // 4-PAGE SIGNATURE RULE (MULTIPLE OF 4 CALCULATION)
+  // Total pages needed = multiple of 4, where Back Cover is the last page (N)
+  const currentTotalWithBack = pages.length + 1; // +1 for Back Cover
+  const totalTargetPages = Math.ceil(currentTotalWithBack / 4) * 4;
+  const paddingPagesNeeded = totalTargetPages - 1 - pages.length;
 
-  doc.setFontSize(6.2);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`PTR: Rs.${gPR.toLocaleString('en-IN')} | RT: Rs.${gRT.toLocaleString('en-IN')} | Tch: Rs.${gTch.toLocaleString('en-IN')} | Bldg: Rs.${gBldg.toLocaleString('en-IN')} | Avg/HH: Rs.${finalAvgPerHH.toLocaleString('en-IN')}`, finalX + 3, currentY + 8.8);
+  for (let pad = 0; pad < paddingPagesNeeded; pad++) {
+    pages.push((doc, { offsetX, isEvenPage, pageNumber, totalPages }) => {
+      const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
+      const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
+      const cx = offsetX + 74.25;
 
-  doc.setFontSize(9.0);
-  doc.setTextColor(0, 0, 0);
-  doc.text(`Rs. ${gTotal.toLocaleString('en-IN')}`, finalX + 125, currentY + 6.8, { align: 'right' });
+      drawRunningHeader(doc, pageNumber, totalPages, offsetX, isEvenPage);
 
-  // Draw Page Footers on all pages
-  drawPageFooter();
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text('HRIATTURTE LEH CHHINCHHIAHNA (NOTES & RECORDS)', cx, 16.5, { align: 'center' });
+      doc.setLineWidth(0.3);
+      doc.line(marginL, 19, marginR, 19);
 
-  doc.save(`Consolidated_Annual_Booklet_A5_${year}.pdf`);
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.2);
+      let lineY = 27;
+      while (lineY < 192) {
+        doc.line(marginL, lineY, marginR, lineY);
+        lineY += 7.5;
+      }
+
+      drawRunningFooter(doc, pageNumber, totalPages, offsetX, isEvenPage);
+    });
+  }
+
+  // FINAL PAGE: Back Cover (Kulh Hnung)
+  pages.push((doc, { offsetX, totalPages }) => {
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.75);
+    doc.rect(offsetX + 7, 7, 134.5, 196);
+    doc.setLineWidth(0.25);
+    doc.rect(offsetX + 8.5, 8.5, 131.5, 193);
+
+    const cx = offsetX + 74.25;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('†', cx, 40, { align: 'center' });
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(8.5);
+    doc.text('“Mi tinin ui chhung leh phut luihna vang ni lovin,', cx, 65, { align: 'center' });
+    doc.text('thinlunga an tum ang zelin pe theuh rawh se;', cx, 71, { align: 'center' });
+    doc.text('Pathianin hlim taka petu a hmangaih si a.”', cx, 77, { align: 'center' });
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('— 2 Korinth 9:7', cx, 84, { align: 'center' });
+
+    doc.setLineWidth(0.35);
+    doc.line(cx - 25, 96, cx + 25, 96);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('BETHLEHEM KOHHRAN', cx, 120, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('PRESBYTERIAN CHURCH OF INDIA', cx, 126, { align: 'center' });
+    doc.text('AIZAWL, MIZORAM • PIN: 796001', cx, 131, { align: 'center' });
+
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(offsetX + 18, 148, 112.5, 26, 1.5, 1.5, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.text('BETHLEHEM KOHHRAN COMMITTEE BUATSAIH', cx, 155, { align: 'center' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.text('Press-Ready Edition • Chhutan In Atana Buatsaih', cx, 161, { align: 'center' });
+    doc.text(`Publication Year: Financial Year ${year} – ${year + 1}`, cx, 167, { align: 'center' });
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(6.5);
+    doc.text('He bu hi Kohhran chhunga semdarh atana buatsaih liau liau a ni.', cx, 192, { align: 'center' });
+  });
+
+  const totalBookletPages = pages.length;
+
+  // Center fold ticks helper for A4 Imposed
+  const drawCenterFoldTicks = (doc) => {
+    doc.setDrawColor(160, 160, 160);
+    doc.setLineWidth(0.2);
+    doc.line(148.5, 0, 148.5, 4);
+    doc.line(148.5, 206, 148.5, 210);
+  };
+
+  // --- OUTPUT GENERATION ---
+  if (mode === 'sequential') {
+    // Mode 2: Pure A5 Single Pages (1 to N)
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+    pages.forEach((pageFn, index) => {
+      if (index > 0) doc.addPage('a5', 'portrait');
+      const isEvenPage = (index + 1) % 2 === 0;
+      pageFn(doc, { offsetX: 0, isEvenPage, pageNumber: index + 1, totalPages: totalBookletPages });
+    });
+    doc.save(`Bethlehem_Kohhran_Booklet_A5_Master_${year}.pdf`);
+  } else {
+    // Mode 1: A4 Imposed Saddle-Stitch Spreads (Print & Fold)
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const totalSheets = totalBookletPages / 4;
+
+    for (let k = 1; k <= totalSheets; k++) {
+      // Side 1 (Front/Outer): Left = Page N - 2(k-1), Right = Page 2k - 1
+      if (k > 1) doc.addPage('a4', 'landscape');
+      drawCenterFoldTicks(doc);
+
+      const leftPageIdx = totalBookletPages - 2 * (k - 1) - 1;
+      const rightPageIdx = 2 * k - 1 - 1;
+
+      pages[leftPageIdx](doc, {
+        offsetX: 0,
+        isEvenPage: true,
+        pageNumber: leftPageIdx + 1,
+        totalPages: totalBookletPages
+      });
+
+      pages[rightPageIdx](doc, {
+        offsetX: 148.5,
+        isEvenPage: false,
+        pageNumber: rightPageIdx + 1,
+        totalPages: totalBookletPages
+      });
+
+      // Side 2 (Back/Inner): Left = Page 2k, Right = Page N - 2k + 1
+      doc.addPage('a4', 'landscape');
+      drawCenterFoldTicks(doc);
+
+      const innerLeftIdx = 2 * k - 1;
+      const innerRightIdx = totalBookletPages - 2 * k;
+
+      pages[innerLeftIdx](doc, {
+        offsetX: 0,
+        isEvenPage: true,
+        pageNumber: innerLeftIdx + 1,
+        totalPages: totalBookletPages
+      });
+
+      pages[innerRightIdx](doc, {
+        offsetX: 148.5,
+        isEvenPage: false,
+        pageNumber: innerRightIdx + 1,
+        totalPages: totalBookletPages
+      });
+    }
+
+    doc.save(`Bethlehem_Kohhran_Booklet_A4_Imposed_Duplex_${year}.pdf`);
+  }
+}
+
+/**
+ * Consolidated Annual Member Contribution Booklet (A5 Portrait Layout, Single Column, Sequential Bial Order)
+ */
+export function exportConsolidatedBookletPDF({
+  year = new Date().getFullYear(),
+  bialsData = [],
+  churchTotals = {},
+  mode = 'imposed',
+  columns = []
+}) {
+  return exportPressReadyBookletPDF({ year, bialsData, churchTotals, mode, columns });
 }
 
 /**
@@ -2380,13 +2707,14 @@ export function exportCleanPDF({ options = {}, data = {} }) {
     });
   }
 
-  // Preset 2: Booklet Route
+  // Preset 2: Press-Ready Booklet Route
   if (preset === 'booklet' && (data.bialsData || data.processedBials)) {
-    return exportConsolidatedBookletPDF({
+    return exportPressReadyBookletPDF({
       year: data.year || new Date().getFullYear(),
-      processedBials: data.bialsData || data.processedBials || [],
-      financialYears: data.financialYears || [data.year || new Date().getFullYear()],
-      bials: data.bials || []
+      bialsData: data.bialsData || data.processedBials || [],
+      churchTotals: data.churchTotals || data.churchGrandTotal || {},
+      mode: options.bookletMode || 'imposed',
+      columns: cols
     });
   }
 

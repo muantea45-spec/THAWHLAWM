@@ -55,9 +55,9 @@ export default function AdminDashboard({ user, showToast }) {
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [bialViewMode, setBialViewMode] = useState('table'); // 'table' | 'card'
-  const [inspectorViewMode, setInspectorViewMode] = useState('table'); // 'table' | 'card'
+  const [inspectorViewMode, setInspectorViewMode] = useState('card'); // 'table' | 'card' - Card View by default
   const [showAllBialCards, setShowAllBialCards] = useState(false);
-  const [showAllInspectorCards, setShowAllInspectorCards] = useState(false);
+  const [showAllInspectorCards, setShowAllInspectorCards] = useState(true);
 
   // Modals
   const [showBialModal, setShowBialModal] = useState(false);
@@ -1413,7 +1413,7 @@ export default function AdminDashboard({ user, showToast }) {
                         No tithes recorded.
                       </div>
                     ) : (
-                      ((!showAllInspectorCards && sortedInspectorMembers.length > 4)
+                      ((!showAllInspectorCards && sortedInspectorMembers.length > 4 && !inspectorSearchQuery.trim())
                         ? sortedInspectorMembers.slice(0, 4)
                         : sortedInspectorMembers
                       ).map((m) => (
@@ -1492,7 +1492,7 @@ export default function AdminDashboard({ user, showToast }) {
                   </div>
 
                   {/* More / Show Less Toggle Button */}
-                  {sortedInspectorMembers.length > 4 && (
+                  {sortedInspectorMembers.length > 4 && !inspectorSearchQuery.trim() && (
                     <button
                       type="button"
                       onClick={() => setShowAllInspectorCards(prev => !prev)}

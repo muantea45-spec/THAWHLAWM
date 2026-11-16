@@ -506,7 +506,7 @@ export default function OfficialReportModal({
         showToast('Official Certificate PDF downloaded successfully!', 'success');
       } catch (reactPdfErr) {
         console.warn('React-PDF export encountered an issue, falling back to pure vector jsPDF engine:', reactPdfErr);
-        exportOfficialCertificatePDF({
+        await exportOfficialCertificatePDF({
           title: 'PATHIAN RAM REPORT',
           denomination: 'Presbyterian Church of India',
           churchName: 'Bethlehem Kohhran',
@@ -628,7 +628,7 @@ export default function OfficialReportModal({
         throw new Error('No consolidated member data found for this year.');
       }
 
-      exportPressReadyBookletPDF({
+      await exportPressReadyBookletPDF({
         year: selectedYear,
         bialsData: res.bials,
         churchTotals: res.churchGrandTotal || {},
@@ -694,10 +694,10 @@ export default function OfficialReportModal({
     }
   };
 
-  const handleExportConsolidatedCleanPDF = () => {
+  const handleExportConsolidatedCleanPDF = async () => {
     try {
       showToast('Generating Consolidated Church PDF...', 'info');
-      exportCleanPDF({
+      await exportCleanPDF({
         options: {
           preset: 'summary',
           pageSize,

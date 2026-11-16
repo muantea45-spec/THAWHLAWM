@@ -12,6 +12,74 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+let cachedRegularB64 = null;
+let cachedBoldB64 = null;
+let cachedItalicB64 = null;
+
+const bufferToBase64 = (buffer) => {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode.apply(null, chunk);
+  }
+  return typeof window !== 'undefined' && window.btoa 
+    ? window.btoa(binary) 
+    : (typeof Buffer !== 'undefined' ? Buffer.from(binary, 'binary').toString('base64') : '');
+};
+
+/**
+ * Ensures custom Unicode TrueType fonts (Roboto Regular, Bold, Italic) with
+ * complete Indian Rupee symbol (₹ / U+20B9) support are embedded in jsPDF.
+ */
+export async function ensureUnicodeFonts(doc) {
+  if (!doc) return false;
+  try {
+    if (!cachedRegularB64 || !cachedBoldB64 || !cachedItalicB64) {
+      if (typeof fetch === 'function') {
+        const base = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.BASE_URL)
+          ? import.meta.env.BASE_URL.replace(/\/$/, '')
+          : '';
+        const [regRes, boldRes, itaRes] = await Promise.all([
+          fetch(`${base}/fonts/Roboto-Regular.ttf`),
+          fetch(`${base}/fonts/Roboto-Bold.ttf`),
+          fetch(`${base}/fonts/Roboto-Italic.ttf`)
+        ]);
+        if (regRes.ok && boldRes.ok && itaRes.ok) {
+          const [regBuf, boldBuf, itaBuf] = await Promise.all([
+            regRes.arrayBuffer(),
+            boldRes.arrayBuffer(),
+            itaRes.arrayBuffer()
+          ]);
+          cachedRegularB64 = bufferToBase64(regBuf);
+          cachedBoldB64 = bufferToBase64(boldBuf);
+          cachedItalicB64 = bufferToBase64(itaBuf);
+        }
+      }
+    }
+
+    if (cachedRegularB64 && cachedBoldB64 && cachedItalicB64) {
+      // 1. Register under 'Roboto'
+      doc.addFileToVFS('Roboto-Regular.ttf', cachedRegularB64);
+      doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+      doc.addFileToVFS('Roboto-Bold.ttf', cachedBoldB64);
+      doc.addFont('Roboto-Bold.ttf', 'Roboto', 'bold');
+      doc.addFileToVFS('Roboto-Italic.ttf', cachedItalicB64);
+      doc.addFont('Roboto-Italic.ttf', 'Roboto', 'italic');
+
+      // 2. Also register under 'helvetica' so existing PDF layouts automatically render the Rupee glyph
+      doc.addFont('Roboto-Regular.ttf', 'helvetica', 'normal');
+      doc.addFont('Roboto-Bold.ttf', 'helvetica', 'bold');
+      doc.addFont('Roboto-Italic.ttf', 'helvetica', 'italic');
+      return true;
+    }
+  } catch (err) {
+    console.warn('Could not load Unicode Roboto fonts for PDF, falling back to Helvetica:', err);
+  }
+  return false;
+}
+
 /**
  * Excel Export (.xlsx)
  */
@@ -96,10 +164,11 @@ export function exportToExcel({ bialName, year, month, members, summary, columns
 /**
  * Printable PDF Report Export
  */
-export function exportToPDF({ bialName, year, month, members, summary, columns }) {
+export async function exportToPDF({ bialName, year, month, members, summary, columns }) {
   const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
   const monthName = MONTH_NAMES[month - 1] || month;
   const doc = new jsPDF({ orientation: cols.length > 5 ? 'landscape' : 'portrait', unit: 'mm', format: 'a4' });
+  await ensureUnicodeFonts(doc);
   const hasBialCol = members.some(m => m.bial_name);
 
   // Title Header Block
@@ -1309,7 +1378,7 @@ export function printCertificateDirectly(element, title = 'Pathian_Ram_Report', 
  * Official Church Certificate & Report PDF Generator (A4 / Legal)
  * Pure high-definition vector rendering matching the exact screen certificate styling.
  */
-export function exportOfficialCertificatePDF({
+export async function exportOfficialCertificatePDF({
   title = 'PATHIAN RAM REPORT',
   denomination = 'Presbyterian Church of India',
   churchName = 'Bethlehem Kohhran',
@@ -1334,6 +1403,7 @@ export function exportOfficialCertificatePDF({
   const format = pageSize === 'legal' ? 'legal' : 'a4';
   const isLandscape = orientation === 'landscape';
   const doc = new jsPDF({ orientation, unit: 'mm', format });
+  await ensureUnicodeFonts(doc);
   
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -1843,7 +1913,7 @@ export const formatBialLabel = (code, name) => {
   return `${prefix ? `${prefix} - ` : ''}${n}`.trim();
 };
 
-export function exportPressReadyBookletPDF({
+export async function exportPressReadyBookletPDF({
   year = new Date().getFullYear(),
   bialsData = [],
   churchTotals = {},
@@ -2449,6 +2519,7 @@ export function exportPressReadyBookletPDF({
   if (mode === 'sequential') {
     // Mode 2: Pure A5 Single Pages (1 to N)
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
+    await ensureUnicodeFonts(doc);
     pages.forEach((pageFn, index) => {
       if (index > 0) doc.addPage('a5', 'portrait');
       const isEvenPage = (index + 1) % 2 === 0;
@@ -2458,6 +2529,7 @@ export function exportPressReadyBookletPDF({
   } else {
     // Mode 1: A4 Imposed Saddle-Stitch Spreads (Print & Fold)
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    await ensureUnicodeFonts(doc);
     const totalSheets = totalBookletPages / 4;
 
     for (let k = 1; k <= totalSheets; k++) {
@@ -2511,7 +2583,7 @@ export function exportPressReadyBookletPDF({
 /**
  * Consolidated Annual Member Contribution Booklet (A5 Portrait Layout, Single Column, Sequential Bial Order)
  */
-export function exportConsolidatedBookletPDF({
+export async function exportConsolidatedBookletPDF({
   year = new Date().getFullYear(),
   bialsData = [],
   churchTotals = {},
@@ -2520,7 +2592,7 @@ export function exportConsolidatedBookletPDF({
   logoBase64 = null,
   prefaceText = ''
 }) {
-  return exportPressReadyBookletPDF({ year, bialsData, churchTotals, mode, columns, logoBase64, prefaceText });
+  return await exportPressReadyBookletPDF({ year, bialsData, churchTotals, mode, columns, logoBase64, prefaceText });
 }
 
 /**
@@ -2664,7 +2736,7 @@ export function exportConsolidatedBookletExcel({
  * - Typography Densities: 'compact' (8pt) | 'standard' (10pt)
  * - Inclusions: Signatures, Fund Allocation % Breakdown, Zero-Giving Members, Page Numbers
  */
-export function exportCleanPDF({ options = {}, data = {} }) {
+export async function exportCleanPDF({ options = {}, data = {} }) {
   const {
     preset = 'ledger',
     pageSize = 'a4',
@@ -2684,7 +2756,7 @@ export function exportCleanPDF({ options = {}, data = {} }) {
 
   // Preset 1: Official Certificate Route
   if (preset === 'certificate') {
-    return exportOfficialCertificatePDF({
+    return await exportOfficialCertificatePDF({
       title: data.title || 'PATHIAN RAM REPORT',
       denomination: 'Presbyterian Church of India',
       churchName: 'Bethlehem Kohhran',
@@ -2702,7 +2774,7 @@ export function exportCleanPDF({ options = {}, data = {} }) {
 
   // Preset 2: Press-Ready Booklet Route
   if (preset === 'booklet' && (data.bialsData || data.processedBials)) {
-    return exportPressReadyBookletPDF({
+    return await exportPressReadyBookletPDF({
       year: data.year || new Date().getFullYear(),
       bialsData: data.bialsData || data.processedBials || [],
       churchTotals: data.churchTotals || data.churchGrandTotal || {},
@@ -2719,6 +2791,7 @@ export function exportCleanPDF({ options = {}, data = {} }) {
     unit: 'mm',
     format
   });
+  await ensureUnicodeFonts(doc);
 
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();

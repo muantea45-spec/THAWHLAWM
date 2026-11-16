@@ -1914,7 +1914,7 @@ export default function OfficialReportModal({
                             <div className="border border-black rounded-xl overflow-hidden bg-white shadow-2xs">
                               <div className="bg-slate-100 border-b border-black/40 px-3 py-2 text-center">
                                 <h3 className="font-black text-xs text-black uppercase tracking-wider">
-                                  Table of Contents (Bial-te Chhinchhiahna)
+                                  CONTENTS
                                 </h3>
                                 <p className="text-[10px] text-black font-medium">
                                   Bial tin thawhlawm chanchin bu kimchang leh phek awmna

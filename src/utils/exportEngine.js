@@ -2093,7 +2093,7 @@ export function exportPressReadyBookletPDF({
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text('TABLE OF CONTENTS (BIAL-TE CHHINCHHIAHNA)', cx, 16.5, { align: 'center' });
+    doc.text('CONTENTS', cx, 16.5, { align: 'center' });
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.text(`Bethlehem Kohhran • Pathian Ram Thawhlawm Report • FY ${year}-${year + 1}`, cx, 20.5, { align: 'center' });

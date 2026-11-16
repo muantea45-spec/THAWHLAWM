@@ -101,7 +101,7 @@ export default function AdminDashboard({ user, showToast }) {
   const [loadingAuditLogs, setLoadingAuditLogs] = useState(false);
   const [auditSearchQuery, setAuditSearchQuery] = useState('');
   const [auditFilterAction, setAuditFilterAction] = useState('all');
-  const [reportModalInitialTab, setReportModalInitialTab] = useState('consolidated');
+  const [reportModalInitialTab, setReportModalInitialTab] = useState('certificate');
 
   const filteredAuditLogs = useMemo(() => {
     return auditLogs.filter(log => {
@@ -846,12 +846,11 @@ export default function AdminDashboard({ user, showToast }) {
             setShowTransferModal(true);
           }}
           onOpenReports={() => {
-            setReportModalInitialTab('consolidated');
+            setReportModalInitialTab('certificate');
             setShowReportFormModal(true);
           }}
           onOpenConsolidated={() => {
-            setReportModalInitialTab('consolidated');
-            setShowReportFormModal(true);
+            setShowConsolidatedModal(true);
           }}
           onOpenReportForm={() => {
             setReportModalInitialTab('certificate');

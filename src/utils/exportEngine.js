@@ -948,7 +948,17 @@ export async function exportCertificateWYSIWYGPDF({
   reportData = null
 }) {
   if (reportData && !isPrint) {
-    return await exportCertificateReactPDF(reportData, title);
+    try {
+      return await exportCertificateReactPDF(reportData, title);
+    } catch (e) {
+      console.warn('exportCertificateReactPDF failed, falling back to pure jsPDF vector engine:', e);
+      return exportOfficialCertificatePDF({
+        ...reportData,
+        title: reportData.title || title,
+        pageSize,
+        orientation
+      });
+    }
   }
   if (!element) return;
 
@@ -1821,7 +1831,9 @@ export function exportPressReadyBookletPDF({
   bialsData = [],
   churchTotals = {},
   mode = 'imposed', // 'imposed' | 'sequential'
-  columns = []
+  columns = [],
+  logoBase64 = null,
+  prefaceText = ''
 }) {
   const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
 
@@ -1897,7 +1909,7 @@ export function exportPressReadyBookletPDF({
       doc.setFont('helvetica', 'normal');
       doc.text('BETHLEHEM KOHHRAN • AIZAWL', marginR, 8.5, { align: 'right' });
     } else {
-      doc.text(`KUMTLUAN THAWHLAWM CHANCHIN BU (FY ${year}-${year + 1})`, marginL, 8.5);
+      doc.text(`PATHIAN RAM THAWHLAWM (FY ${year}-${year + 1})`, marginL, 8.5);
       doc.setFont('helvetica', 'bold');
       doc.text(String(pageNumber), marginR, 8.5, { align: 'right' });
     }
@@ -1943,67 +1955,80 @@ export function exportPressReadyBookletPDF({
 
     const cx = offsetX + 74.25;
 
+    // Header 1: Mizoram Presbyterian Kohhran (Large, almost same as Bethlehem Kohhran)
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
+    doc.setFontSize(13.5);
     doc.setTextColor(0, 0, 0);
-    doc.text('MIZORAM PRESBYTERIAN CHURCH', cx, 28, { align: 'center' });
+    doc.text('MIZORAM PRESBYTERIAN KOHHRAN', cx, 22, { align: 'center' });
+
+    // Below that: Centered Church Logo
+    const logoSize = 17;
+    if (logoBase64) {
+      try {
+        doc.addImage(logoBase64, 'JPEG', cx - (logoSize / 2), 26, logoSize, logoSize);
+      } catch (e) {
+        console.warn('Cover logo render skipped:', e);
+      }
+    }
+
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(14.5);
-    doc.text('BETHLEHEM KOHHRAN', cx, 36, { align: 'center' });
+    doc.text('BETHLEHEM KOHHRAN', cx, 50, { align: 'center' });
     doc.setFontSize(8);
     doc.setFont('helvetica', 'normal');
-    doc.text('AIZAWL, MIZORAM', cx, 42, { align: 'center' });
+    doc.text('AIZAWL, MIZORAM', cx, 55.5, { align: 'center' });
 
     doc.setLineWidth(0.4);
-    doc.line(cx - 25, 46.5, cx + 25, 46.5);
+    doc.line(cx - 25, 59.5, cx + 25, 59.5);
 
+    // Title: PATHIAN RAM THAWHLAWM REPORT
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(14.5);
-    doc.text('KUMTLUAN THAWHLAWM', cx, 66, { align: 'center' });
-    doc.setFontSize(12.5);
-    doc.text('CHANCHIN BU', cx, 73, { align: 'center' });
+    doc.setFontSize(13.5);
+    doc.text('PATHIAN RAM THAWHLAWM REPORT', cx, 71, { align: 'center' });
 
     doc.setFontSize(9.5);
     doc.setFont('helvetica', 'bold');
-    doc.text(`FINANCIAL YEAR: ${year} – ${year + 1}`, cx, 83, { align: 'center' });
+    doc.text(`FINANCIAL YEAR: ${year} – ${year + 1}`, cx, 80, { align: 'center' });
     doc.setFontSize(7.5);
     doc.setFont('helvetica', 'normal');
-    doc.text('(Pathian Ram, Ramthar, Tualchhung leh Building Thawhlawmte)', cx, 88.5, { align: 'center' });
+    doc.text('(Pathian Ram, Ramthar, Tualchhung leh Building Thawhlawmte)', cx, 85.5, { align: 'center' });
 
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(8);
-    doc.text('“LALPA chu i sumin chawimawi la,', cx, 108, { align: 'center' });
-    doc.text('I thil thar chhuah zawng zawng a parithain chawimawi rawh.”', cx, 113, { align: 'center' });
+    doc.text('“LALPA chu i sumin chawimawi la,', cx, 102, { align: 'center' });
+    doc.text('I thil thar chhuah zawng zawng a parithain chawimawi rawh.”', cx, 107, { align: 'center' });
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.text('— Thufingte 3:9', cx, 119, { align: 'center' });
+    doc.text('— Thufingte 3:9', cx, 113, { align: 'center' });
 
+    // Summary Box: KHAIKHAWMNA
     doc.setFillColor(248, 250, 252);
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.35);
-    doc.roundedRect(offsetX + 18, 132, 112.5, 38, 1.5, 1.5, 'FD');
+    doc.roundedRect(offsetX + 18, 126, 112.5, 38, 1.5, 1.5, 'FD');
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
-    doc.text('KOHHRAN KHAWKHAWMNA (SUMMARY)', cx, 139, { align: 'center' });
+    doc.setFontSize(8.5);
+    doc.text('KHAIKHAWMNA', cx, 133, { align: 'center' });
     doc.setLineWidth(0.2);
-    doc.line(offsetX + 25, 141.5, offsetX + 123.5, 141.5);
+    doc.line(offsetX + 25, 135.5, offsetX + 123.5, 135.5);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
-    doc.text(`Bial Zat: ${sortedBials.length} Bials`, offsetX + 24, 148);
-    doc.text(`Chhungkua (Households): ${churchTotalHH} (${churchReturnedHH} Ret)`, offsetX + 24, 154);
-    doc.text(`Thawh Zat Percentage: ${overallReturnRate}% Return Rate`, offsetX + 24, 160);
+    doc.text(`Bial Zat: ${sortedBials.length} Bials`, offsetX + 24, 142);
+    doc.text(`Chhungkua (Households): ${churchTotalHH} (${churchReturnedHH} Ret)`, offsetX + 24, 148);
+    doc.text(`Thawh Zat Percentage: ${overallReturnRate}% Return Rate`, offsetX + 24, 154);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
-    doc.text(`Grand Total: Rs. ${finalGrandTotal.toLocaleString('en-IN')}`, cx, 166, { align: 'center' });
+    doc.text(`Grand Total: Rs. ${finalGrandTotal.toLocaleString('en-IN')}`, cx, 160, { align: 'center' });
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.text('Bethlehem Kohhran • Kohhran Committee Buatsaih', cx, 194, { align: 'center' });
   });
 
-  // PAGE 2: Preface & Leadership
+  // PAGE 2: THUHMAHRUAI
   pages.push((doc, { offsetX, isEvenPage, pageNumber, totalPages }) => {
     const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
     const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
@@ -2012,70 +2037,31 @@ export function exportPressReadyBookletPDF({
     drawRunningHeader(doc, pageNumber, totalPages, offsetX, isEvenPage);
 
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(10.5);
-    doc.text('THUHMAHRUAI (PREFACE)', cx, 18, { align: 'center' });
+    doc.setFontSize(11);
+    doc.text('THUHMAHRUAI', cx, 18, { align: 'center' });
     doc.setLineWidth(0.35);
     doc.line(cx - 20, 20.5, cx + 20, 20.5);
 
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
+    doc.setFontSize(8.5);
     doc.setTextColor(0, 0, 0);
 
-    const prefaceParas = [
-      "Pathian hruaina leh vengphanna changin kumtluanin Kohhran mipuite'n Pathian Ram, Ramthar, Tualchhung leh Building thawhlawm rinawm takin kan thawhkhawm thei a, Pathian hnenah lawmthu awm sela.",
-      "He buatsaih Thawhlawm Chanchin Bu hi Kohhran mipuite hriatzauna leh chanchin chhinchhiahna atana buatsaih a ni a. Bial tina Bial Collector-te, Bial Secretary-te leh Kohhran Treasurer-te inpekna avangin felfai takin kan peih fel thei ta a ni.",
-      "Lalpan he rawngbawlna hi Kohhran mipuite tana malsawmna ni atan malsawm theuh rawh se."
-    ];
-
-    let pY = 27;
-    prefaceParas.forEach(p => {
-      const lines = doc.splitTextToSize(p, 124.5);
-      doc.text(lines, marginL, pY);
-      pY += lines.length * 4.2 + 3.5;
-    });
-
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(marginL, pY + 2, 124.5, 16, 1, 1, 'FD');
-
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(7.2);
-    doc.text('“Pek hi chawn lam aiin a engto thlak zawk.”', cx, pY + 8, { align: 'center' });
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.text('— Tirhkohte 20:35', cx, pY + 13.5, { align: 'center' });
-
-    pY += 26;
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8.5);
-    doc.text('KOHHRAN FINANCE SUB-COMMITTEE & HRUAITUTE', cx, pY, { align: 'center' });
-    doc.setLineWidth(0.25);
-    doc.line(cx - 30, pY + 2, cx + 30, pY + 2);
-
-    pY += 7;
-
-    const roles = [
-      { role: 'Chairman / Bialtu Pastor', name: 'Rev. / Pastor' },
-      { role: 'Kohhran Secretary', name: 'Upa / Secretary' },
-      { role: 'Kohhran Treasurer', name: 'Treasurer' },
-      { role: 'Finance Committee Convener', name: 'Convener' },
-      { role: 'Bial Collector-te', name: `Bial 1 to Bial ${sortedBials.length} Collectors` }
-    ];
-
-    roles.forEach((r, idx) => {
-      if (idx % 2 === 1) {
-        doc.setFillColor(248, 250, 252);
-        doc.rect(marginL, pY - 0.5, 124.5, 4.5, 'F');
-      }
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.text(r.role, marginL + 2, pY + 2.8);
-      doc.setFont('helvetica', 'normal');
-      doc.text(r.name, marginR - 2, pY + 2.8, { align: 'right' });
-      pY += 5;
-    });
+    const userText = (prefaceText && prefaceText.trim()) ? prefaceText.trim() : '';
+    if (userText) {
+      const paragraphs = userText.split('\n');
+      let pY = 28;
+      paragraphs.forEach(p => {
+        if (!p.trim()) {
+          pY += 3.5;
+          return;
+        }
+        const lines = doc.splitTextToSize(p, 124.5);
+        if (pY < 192) {
+          doc.text(lines, marginL, pY);
+          pY += lines.length * 4.6 + 3.5;
+        }
+      });
+    }
 
     drawRunningFooter(doc, pageNumber, totalPages, offsetX, isEvenPage);
   });
@@ -2093,7 +2079,7 @@ export function exportPressReadyBookletPDF({
     doc.text('TABLE OF CONTENTS (BIAL-TE CHHINCHHIAHNA)', cx, 16.5, { align: 'center' });
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Bethlehem Kohhran • Kumtluan Thawhlawm Bu • FY ${year}-${year + 1}`, cx, 20.5, { align: 'center' });
+    doc.text(`Bethlehem Kohhran • Pathian Ram Thawhlawm Report • FY ${year}-${year + 1}`, cx, 20.5, { align: 'center' });
     doc.setLineWidth(0.3);
     doc.line(marginL, 22.5, marginR, 22.5);
 
@@ -2407,10 +2393,10 @@ export function exportPressReadyBookletPDF({
     doc.text('†', cx, 40, { align: 'center' });
 
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8.5);
-    doc.text('“Mi tinin ui chhung leh phut luihna vang ni lovin,', cx, 65, { align: 'center' });
-    doc.text('thinlunga an tum ang zelin pe theuh rawh se;', cx, 71, { align: 'center' });
-    doc.text('Pathianin hlim taka petu a hmangaih si a.”', cx, 77, { align: 'center' });
+    doc.setFontSize(8);
+    doc.text('“Mi tinin ui chunga pe lovin, pêk loh theih loh anga ngaia pe hek lovin,', cx, 65, { align: 'center' });
+    doc.text('an thinlunga an tum ang zêlin pe theuh rawh se;', cx, 71, { align: 'center' });
+    doc.text('Pathian chuan hlim taka petu a ni a hmangaih ni.”', cx, 77, { align: 'center' });
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.text('— 2 Korinth 9:7', cx, 84, { align: 'center' });
@@ -2425,19 +2411,6 @@ export function exportPressReadyBookletPDF({
     doc.setFont('helvetica', 'normal');
     doc.text('PRESBYTERIAN CHURCH OF INDIA', cx, 126, { align: 'center' });
     doc.text('AIZAWL, MIZORAM • PIN: 796001', cx, 131, { align: 'center' });
-
-    doc.setFillColor(248, 250, 252);
-    doc.setDrawColor(0, 0, 0);
-    doc.setLineWidth(0.3);
-    doc.roundedRect(offsetX + 18, 148, 112.5, 26, 1.5, 1.5, 'FD');
-
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7.5);
-    doc.text('BETHLEHEM KOHHRAN COMMITTEE BUATSAIH', cx, 155, { align: 'center' });
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
-    doc.text('Press-Ready Edition • Chhutan In Atana Buatsaih', cx, 161, { align: 'center' });
-    doc.text(`Publication Year: Financial Year ${year} – ${year + 1}`, cx, 167, { align: 'center' });
 
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(6.5);
@@ -2525,9 +2498,11 @@ export function exportConsolidatedBookletPDF({
   bialsData = [],
   churchTotals = {},
   mode = 'imposed',
-  columns = []
+  columns = [],
+  logoBase64 = null,
+  prefaceText = ''
 }) {
-  return exportPressReadyBookletPDF({ year, bialsData, churchTotals, mode, columns });
+  return exportPressReadyBookletPDF({ year, bialsData, churchTotals, mode, columns, logoBase64, prefaceText });
 }
 
 /**
@@ -2714,7 +2689,9 @@ export function exportCleanPDF({ options = {}, data = {} }) {
       bialsData: data.bialsData || data.processedBials || [],
       churchTotals: data.churchTotals || data.churchGrandTotal || {},
       mode: options.bookletMode || 'imposed',
-      columns: cols
+      columns: cols,
+      logoBase64: data.logoBase64 || null,
+      prefaceText: options.prefaceText || data.prefaceText || ''
     });
   }
 

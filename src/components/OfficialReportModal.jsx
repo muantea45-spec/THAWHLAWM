@@ -14,6 +14,7 @@ import {
   exportCertificatePNG,
   printCertificateDirectly,
   exportOfficialCertificateExcel,
+  exportOfficialCertificatePDF,
   exportConsolidatedBookletPDF,
   exportConsolidatedBookletExcel,
   exportPressReadyBookletPDF,
@@ -37,7 +38,7 @@ export default function OfficialReportModal({
   fixedBialId = null,
   titheColumns = [],
   categoryShares = [],
-  initialTab = 'consolidated',
+  initialTab = 'certificate',
   showToast = () => { }
 }) {
   const [reportType, setReportType] = useState('annual'); // 'annual' | 'monthly'
@@ -48,14 +49,19 @@ export default function OfficialReportModal({
   const [pageSize, setPageSize] = useState('a4'); // 'a4' | 'legal'
   const [orientation, setOrientation] = useState('portrait'); // 'portrait' | 'landscape'
 
-  // Preview Mode: 'consolidated' | 'certificate' | 'booklet'
-  const [previewTab, setPreviewTab] = useState(initialTab || 'consolidated');
+  // Preview Mode: 'certificate' | 'booklet' (Consolidated removed from report form)
+  const [previewTab, setPreviewTab] = useState(
+    initialTab && initialTab !== 'consolidated' ? initialTab : 'certificate'
+  );
 
   useEffect(() => {
     if (isOpen && initialTab) {
-      setPreviewTab(initialTab);
+      setPreviewTab(initialTab === 'consolidated' ? 'certificate' : initialTab);
     }
   }, [isOpen, initialTab]);
+
+  // Booklet Page 2 Thuhmahruai custom manual text
+  const [bookletPrefaceText, setBookletPrefaceText] = useState('');
 
   // Manual Signatory Details & B/I/U Styling
   const [signatoryName, setSignatoryName] = useState(user?.username || 'Secretary / Treasurer');
@@ -498,19 +504,29 @@ export default function OfficialReportModal({
         await exportCertificateReactPDF(reportData, safeTitle);
         showToast('Official Certificate PDF downloaded successfully!', 'success');
       } catch (reactPdfErr) {
-        console.warn('React-PDF export encountered an issue, falling back to canvas engine:', reactPdfErr);
-        if (certificateRef.current) {
-          await exportCertificateWYSIWYGPDF({
-            element: certificateRef.current,
-            title: safeTitle,
-            pageSize,
-            orientation,
-            reportData
-          });
-          showToast('Official Certificate PDF downloaded successfully!', 'success');
-        } else {
-          throw reactPdfErr;
-        }
+        console.warn('React-PDF export encountered an issue, falling back to pure vector jsPDF engine:', reactPdfErr);
+        exportOfficialCertificatePDF({
+          title: 'PATHIAN RAM REPORT',
+          denomination: 'Presbyterian Church of India',
+          churchName: 'Bethlehem Kohhran',
+          periodText,
+          reportType: reportType === 'annual' ? 'Annual' : 'Monthly',
+          year: selectedYear,
+          grandTotals: dynamicTotals,
+          bialsBreakdown: dynamicBreakdown,
+          signatory: reportData.signatory,
+          pageSize,
+          orientation,
+          logoBase64: logoBase64 || churchLogo,
+          tableType,
+          scopeName,
+          signatureBase64,
+          signatureSize,
+          sealBase64,
+          sealSize,
+          isPrint: false
+        });
+        showToast('Official Certificate PDF downloaded successfully (Vector Engine)!', 'success');
       }
     } catch (err) {
       console.error('PDF export error:', err);
@@ -616,7 +632,9 @@ export default function OfficialReportModal({
         bialsData: res.bials,
         churchTotals: res.churchGrandTotal || {},
         mode,
-        columns: titheColumns
+        columns: titheColumns,
+        logoBase64: logoBase64 || churchLogo,
+        prefaceText: bookletPrefaceText
       });
 
       showToast(
@@ -1051,6 +1069,26 @@ export default function OfficialReportModal({
                   <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
                   <span>Download Booklet Excel</span>
                 </button>
+
+                {/* Manual Thuhmahruai Textarea for Page 2 */}
+                <div className="space-y-1.5 pt-2 border-t border-indigo-200/70">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-indigo-950 uppercase tracking-wide">
+                      Thuhmahruai (Page 2 Text)
+                    </label>
+                    <span className="text-[9.5px] text-slate-500 font-medium">Manual Input</span>
+                  </div>
+                  <textarea
+                    rows={4}
+                    value={bookletPrefaceText}
+                    onChange={(e) => setBookletPrefaceText(e.target.value)}
+                    placeholder="Ziak rawh le (Write or paste manual Thuhmahruai text here before exporting)..."
+                    className="w-full p-2 text-xs rounded-xl border border-indigo-200 focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 font-normal text-slate-800 bg-white placeholder:text-slate-400"
+                  />
+                  <p className="text-[9.5px] text-slate-500 leading-tight">
+                    Whatever text is written here will be exported directly onto Page 2 under THUHMAHRUAI.
+                  </p>
+                </div>
               </div>
             </div>
 
@@ -1316,20 +1354,9 @@ export default function OfficialReportModal({
           {/* RIGHT COLUMN: PREVIEW CANVAS (CERTIFICATE OR BOOKLET) (8 COLS) */}
           <div className="lg:col-span-8 flex flex-col">
 
-            {/* TAB SELECTOR: CONSOLIDATED & LEDGERS vs CERTIFICATE SHEET vs YEARLY REPORT BOOKLET */}
+            {/* TAB SELECTOR: CERTIFICATE SHEET vs YEARLY REPORT BOOKLET */}
             <div className="flex flex-wrap items-center justify-between gap-2 px-1 pb-2.5">
               <div className="flex items-center gap-1 bg-slate-200/90 p-1 rounded-xl shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setPreviewTab('consolidated')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${previewTab === 'consolidated'
-                    ? 'bg-white text-black shadow-xs font-black'
-                    : 'text-slate-600 hover:text-black font-semibold'
-                    }`}
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Consolidated & Ledgers</span>
-                </button>
                 <button
                   type="button"
                   onClick={() => setPreviewTab('certificate')}
@@ -1360,28 +1387,7 @@ export default function OfficialReportModal({
               </div>
 
               <div className="flex items-center gap-2">
-                {previewTab === 'consolidated' ? (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={handleExportConsolidatedExcel}
-                      className="flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2.5 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer"
-                      title="Download Consolidated Summary Excel"
-                    >
-                      <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>Summary Excel</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleExportConsolidatedCleanPDF}
-                      className="flex items-center gap-1 text-[11px] font-bold text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-300 px-2.5 py-1.5 rounded-lg shadow-2xs transition-all cursor-pointer"
-                      title="Download Consolidated Summary PDF"
-                    >
-                      <Download className="w-3.5 h-3.5 text-rose-600" />
-                      <span>Summary PDF</span>
-                    </button>
-                  </div>
-                ) : previewTab === 'certificate' ? (
+                {previewTab === 'certificate' ? (
                   <>
                     <button
                       type="button"
@@ -1444,141 +1450,9 @@ export default function OfficialReportModal({
               </div>
             </div>
 
-            {/* PREVIEW CONTAINER: SWITCHES BETWEEN CONSOLIDATED LEDGER, CERTIFICATE, AND YEARLY REPORT BOOKLET */}
-            {previewTab === 'consolidated' ? (
-              <div className="flex-1 bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-sm space-y-4 text-slate-900">
-                {/* Letterhead */}
-                <div className="text-center pb-2.5 border-b border-slate-200">
-                  <div className="flex items-center justify-center gap-2 mb-1">
-                    <img src={churchLogo} alt="Bethlehem Kohhran" className="w-7 h-7 rounded-full object-cover border border-slate-200" />
-                    <span className="font-black text-sm text-slate-900 tracking-wider">BETHLEHEM KOHHRAN</span>
-                  </div>
-                  <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">
-                    PRESBYTERIAN CHURCH OF INDIA • AIZAWL, MIZORAM
-                  </div>
-                  <h4 className="text-xs sm:text-sm font-black text-slate-900 mt-1">
-                    CONSOLIDATED TITHE SUMMARY & OVERALL LEDGERS (FY {selectedYear}-{selectedYear + 1})
-                  </h4>
-                </div>
-
-                {/* KPI Metrics */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Grand Total Tithes</span>
-                    <span className="text-base font-black text-slate-900">
-                      ₹{(stats?.grandTotals?.grand_total || grandTotals?.grand_total || dynamicTotals.grand_total || 0).toLocaleString('en-IN')}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Participating HH</span>
-                    <span className="text-base font-black text-indigo-700">
-                      {stats?.totalReturnedMembers || dynamicTotals.total_returned_members || 0} / {stats?.totalSystemMembers || dynamicTotals.total_system_members || 0}
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Return Rate</span>
-                    <span className="text-base font-black text-emerald-700">
-                      {stats?.overallReturnRate || dynamicTotals.overall_return_rate || 0}%
-                    </span>
-                  </div>
-                  <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200">
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Registered Bials</span>
-                    <span className="text-base font-black text-slate-900">
-                      {bials.length} Bials
-                    </span>
-                  </div>
-                </div>
-
-                {/* Section 1: Bial Breakdown Table */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-900 uppercase tracking-wide flex items-center gap-1.5">
-                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                      1. Consolidated Bial-by-Bial Totals
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={handleExportConsolidatedExcel}
-                        className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs flex items-center gap-1 cursor-pointer"
-                      >
-                        <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Excel (.xlsx)</span>
-                      </button>
-                      <button
-                        onClick={handleExportConsolidatedCleanPDF}
-                        className="px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs flex items-center gap-1 cursor-pointer"
-                      >
-                        <FileText className="w-3.5 h-3.5 text-rose-600" />
-                        <span>PDF (.pdf)</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="overflow-x-auto rounded-xl border border-slate-200 max-h-[300px] overflow-y-auto">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead className="sticky top-0 bg-slate-100 z-10 shadow-2xs">
-                        <tr className="text-slate-700 font-bold uppercase text-[10px] border-b border-slate-200">
-                          <th className="py-2 px-3 text-center">Code</th>
-                          <th className="py-2 px-3">Bial Name</th>
-                          <th className="py-2 px-3 text-center">Returned HH</th>
-                          <th className="py-2 px-3 text-right">Pathian Ram</th>
-                          <th className="py-2 px-3 text-right">Ramthar</th>
-                          <th className="py-2 px-3 text-right">Tualchhung</th>
-                          <th className="py-2 px-3 text-right">Building</th>
-                          <th className="py-2 px-3 text-right">Total (₹)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                        {((stats?.bialBreakdown?.length ? stats.bialBreakdown : dynamicBreakdown) || []).map((b, idx) => (
-                          <tr key={b.id || idx} className="hover:bg-slate-50/80 font-medium">
-                            <td className="py-1.5 px-3 text-center font-mono font-bold text-indigo-700">{b.code || `B${idx + 1}`}</td>
-                            <td className="py-1.5 px-3 font-bold text-slate-800">{b.name}</td>
-                            <td className="py-1.5 px-3 text-center text-[11px] text-slate-600">
-                              {b.returned_members || 0} / {b.total_members || 0} ({b.return_rate || 0}%)
-                            </td>
-                            <td className="py-1.5 px-3 text-right font-mono text-slate-700">{(b.pathian_ram || 0).toLocaleString('en-IN')}</td>
-                            <td className="py-1.5 px-3 text-right font-mono text-slate-700">{(b.ramthar || 0).toLocaleString('en-IN')}</td>
-                            <td className="py-1.5 px-3 text-right font-mono text-slate-700">{(b.tualchhung || 0).toLocaleString('en-IN')}</td>
-                            <td className="py-1.5 px-3 text-right font-mono text-slate-700">{(b.building || 0).toLocaleString('en-IN')}</td>
-                            <td className="py-1.5 px-3 text-right font-mono font-bold text-slate-900">{(b.total || 0).toLocaleString('en-IN')}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Section 2: Overall Member-by-Member Ledger Card */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/70 via-purple-50/60 to-slate-50 border border-indigo-200/80 space-y-2.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <span className="text-xs font-bold text-indigo-950 uppercase tracking-wide block">
-                        2. Overall Member-by-Member Ledger (Full Church Summation)
-                      </span>
-                      <p className="text-[11px] text-slate-600 mt-0.5">
-                        Complete annual summation of every member across all Bials (Bial 1 to Bial {bials.length}) with sequential Sl No.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={handleExportOverallMemberExcel}
-                        className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                      >
-                        <FileSpreadsheet className="w-3.5 h-3.5" />
-                        <span>Overall Excel</span>
-                      </button>
-                      <button
-                        onClick={handleExportOverallMemberCleanPDF}
-                        className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                      >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>Overall PDF</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : previewTab === 'certificate' ? (
+            {/* PREVIEW CONTAINER: SWITCHES BETWEEN CERTIFICATE SHEET AND YEARLY REPORT BOOKLET */}
+            {previewTab === 'certificate' ? (
+              /* PREVIEW CANVAS SHEET / EXACT CERTIFICATE ELEMENT */
               /* PREVIEW CANVAS SHEET / EXACT CERTIFICATE ELEMENT */
               <div
                 ref={certificateRef}
@@ -1867,22 +1741,22 @@ export default function OfficialReportModal({
 
                 {/* Booklet Sheet Header */}
                 <div className="relative z-10 text-center space-y-1 pb-2.5 border-b-2 border-black mb-3">
-                  <div className="flex justify-center mb-1">
+                  <h3 className="font-heading font-black text-sm sm:text-base uppercase tracking-wider text-black">
+                    MIZORAM PRESBYTERIAN KOHHRAN
+                  </h3>
+                  <div className="flex justify-center my-1.5">
                     <img
                       src={churchLogo}
                       alt="Church Logo"
                       className="w-14 h-14 object-contain rounded-full border border-black/30 bg-white p-0.5"
                     />
                   </div>
-                  <h3 className="font-heading font-black text-xs uppercase tracking-wider text-black">
-                    Presbyterian Church of India
-                  </h3>
                   <h2 className="font-heading font-black text-base sm:text-lg uppercase tracking-tight text-black">
-                    BETHLEHEM KOHHRAN — PATHIAN RAM
+                    BETHLEHEM KOHHRAN
                   </h2>
                   <div className="flex flex-wrap items-center justify-center gap-1.5 pt-0.5">
                     <span className="px-3 py-0.5 rounded-full bg-slate-100 border border-slate-300 text-black font-extrabold text-xs">
-                      CONSOLIDATED ANNUAL MEMBER BOOKLET (FY {selectedYear} - {selectedYear + 1})
+                      PATHIAN RAM THAWHLAWM REPORT (FY {selectedYear} - {selectedYear + 1})
                     </span>
                     <span className="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-300 text-black font-bold text-xs">
                       A5 Format • Single Column • Continuous Sl No across Bial 1 to Bial 12
@@ -2189,7 +2063,7 @@ export default function OfficialReportModal({
 
                       {/* Booklet Footer Note */}
                       <div className="mt-2 text-center text-[10px] text-black font-semibold">
-                        Bethlehem Kohhran • Consolidated Annual Booklet (12-Month Aggregated) • FY {selectedYear}-{selectedYear + 1}
+                        Bethlehem Kohhran • Pathian Ram Thawhlawm Report • FY {selectedYear}-{selectedYear + 1}
                       </div>
                     </>
                   )}
@@ -2204,55 +2078,15 @@ export default function OfficialReportModal({
         {/* MODAL ACTION FOOTER */}
         <div className="px-4 sm:px-6 py-3 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-500 font-medium">
-            {previewTab === 'consolidated' ? (
-              <>Viewing <span className="font-bold text-slate-800">Consolidated Church Summary & Overall Ledger</span> • FY {selectedYear}-{selectedYear + 1}</>
-            ) : previewTab === 'booklet' ? (
-              <>Viewing <span className="font-bold text-slate-800">Consolidated Annual Booklet (A5)</span> • Single Column • FY {selectedYear}-{selectedYear + 1}</>
+            {previewTab === 'booklet' ? (
+              <>Viewing <span className="font-bold text-slate-800">Pathian Ram Thawhlawm Report (A5 Booklet)</span> • FY {selectedYear}-{selectedYear + 1}</>
             ) : (
               <>Export formatted in <span className="font-bold text-slate-800">{pageSize.toUpperCase()}</span> ({orientation}) • <span className="text-indigo-600 font-semibold">{scopeName}</span></>
             )}
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap justify-end">
-            {previewTab === 'consolidated' ? (
-              <>
-                <button
-                  onClick={handleExportConsolidatedExcel}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs shadow-2xs transition-all cursor-pointer"
-                  title="Download Consolidated Summary Excel"
-                >
-                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                  <span>Summary Excel</span>
-                </button>
-
-                <button
-                  onClick={handleExportConsolidatedCleanPDF}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs shadow-2xs transition-all cursor-pointer"
-                  title="Download Consolidated Summary PDF"
-                >
-                  <FileText className="w-4 h-4 text-rose-600" />
-                  <span>Summary PDF</span>
-                </button>
-
-                <button
-                  onClick={handleExportOverallMemberExcel}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-300 font-bold text-xs shadow-2xs transition-all cursor-pointer"
-                  title="Download Overall Member Ledger Excel (All Bials)"
-                >
-                  <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
-                  <span>Overall Member Excel</span>
-                </button>
-
-                <button
-                  onClick={handleExportOverallMemberCleanPDF}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-600/20 transition-all cursor-pointer"
-                  title="Download Overall Member Ledger PDF (All Bials)"
-                >
-                  <Download className="w-4 h-4" />
-                  <span>Overall Member PDF</span>
-                </button>
-              </>
-            ) : previewTab === 'booklet' ? (
+            {previewTab === 'booklet' ? (
               <>
                 <button
                   onClick={handlePrint}

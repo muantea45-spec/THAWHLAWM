@@ -688,9 +688,9 @@ export function exportOverallMemberPDF({ year, bialsData, churchGrandTotal, colu
   const summaryBody = [
     ...cols.map(c => [
       `${c.name} (${c.code})`,
-      `Rs. ${(churchGrandTotal?.[c.field_key] ?? churchGrandTotal?.[`total_${c.field_key}`] ?? 0).toLocaleString('en-IN')}`
+      `₹${(churchGrandTotal?.[c.field_key] ?? churchGrandTotal?.[`total_${c.field_key}`] ?? 0).toLocaleString('en-IN')}`
     ]),
-    ['OVERALL GRAND TOTAL', `Rs. ${(churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}`]
+    ['OVERALL GRAND TOTAL', `₹${(churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}`]
   ];
 
   doc.autoTable({
@@ -1471,7 +1471,7 @@ export function exportOfficialCertificatePDF({
         `${returnedHH} / ${totalHH} HH`,
         `${returnRate}%`,
         `${totalHH} Families`,
-        `Rs. ${avgPerHH.toLocaleString('en-IN')}`
+        `₹${avgPerHH.toLocaleString('en-IN')}`
       ]],
       theme: 'grid',
       headStyles: {
@@ -1826,6 +1826,23 @@ export function exportOfficialCertificateExcel({
  * - Standard Presbyterian Church booklet ordering: Front Cover, Preface, TOC, Sequential Bials (B1..B12),
  *   Church Grand Total & Signatures, Ruled Committee Notes pages, and Back Cover with Scripture & Colophon.
  */
+export const formatBialLabel = (code, name) => {
+  const c = (code || '').trim();
+  const n = (name || '').trim();
+  let prefix = '';
+  if (c) {
+    const num = c.replace(/\D/g, '');
+    if (num) {
+      prefix = `Bial ${num}`;
+    } else if (/^bial/i.test(c)) {
+      prefix = c;
+    } else {
+      prefix = `Bial ${c}`;
+    }
+  }
+  return `${prefix ? `${prefix} - ` : ''}${n}`.trim();
+};
+
 export function exportPressReadyBookletPDF({
   year = new Date().getFullYear(),
   bialsData = [],
@@ -2016,12 +2033,12 @@ export function exportPressReadyBookletPDF({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.text(`Bial Zat: ${sortedBials.length} Bials`, offsetX + 24, 142);
-    doc.text(`Chhungkua (Households): ${churchTotalHH} (${churchReturnedHH} Ret)`, offsetX + 24, 148);
-    doc.text(`Thawh Zat Percentage: ${overallReturnRate}% Return Rate`, offsetX + 24, 154);
+    doc.text(`Chhungkua: ${churchTotalHH} (${churchReturnedHH} Ret)`, offsetX + 24, 148);
+    doc.text(`Kir zat: ${overallReturnRate}%`, offsetX + 24, 154);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
-    doc.text(`Grand Total: Rs. ${finalGrandTotal.toLocaleString('en-IN')}`, cx, 160, { align: 'center' });
+    doc.text(`Grand Total: ₹${finalGrandTotal.toLocaleString('en-IN')}`, cx, 160, { align: 'center' });
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
@@ -2089,10 +2106,10 @@ export function exportPressReadyBookletPDF({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
     doc.text('Sl', marginL + 2, tocY + 3.4);
-    doc.text('Bial Name / Hming', marginL + 8, tocY + 3.4);
-    doc.text('Households', marginL + 52, tocY + 3.4);
-    doc.text('Return Rate', marginL + 82, tocY + 3.4);
-    doc.text('Total (Rs.)', marginR - 2, tocY + 3.4, { align: 'right' });
+    doc.text('Bialtu', marginL + 8, tocY + 3.4);
+    doc.text('Chhungkua', marginL + 52, tocY + 3.4);
+    doc.text('Kir zat', marginL + 82, tocY + 3.4);
+    doc.text('Total (₹)', marginR - 2, tocY + 3.4, { align: 'right' });
 
     tocY += 5.2;
 
@@ -2104,11 +2121,11 @@ export function exportPressReadyBookletPDF({
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
       doc.text(String(idx + 1), marginL + 2, tocY + 2.6);
-      doc.text(`${bs.bialCode ? `${bs.bialCode} - ` : ''}${bs.bialName}`, marginL + 8, tocY + 2.6);
-      doc.text(`${bs.totalHH} HH (${bs.returnedHH} Ret)`, marginL + 52, tocY + 2.6);
+      doc.text(formatBialLabel(bs.bialCode, bs.bialName), marginL + 8, tocY + 2.6);
+      doc.text(`${bs.totalHH} (${bs.returnedHH} Ret)`, marginL + 52, tocY + 2.6);
       doc.text(`${bs.returnRate}%`, marginL + 82, tocY + 2.6);
       doc.setFont('helvetica', 'bold');
-      doc.text(`Rs. ${bs.bTotal.toLocaleString('en-IN')}`, marginR - 2, tocY + 2.6, { align: 'right' });
+      doc.text(`₹${bs.bTotal.toLocaleString('en-IN')}`, marginR - 2, tocY + 2.6, { align: 'right' });
       tocY += 4.5;
     });
 
@@ -2116,10 +2133,10 @@ export function exportPressReadyBookletPDF({
     doc.rect(marginL, tocY, 124.5, 5.5, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.8);
-    doc.text('KOHHRAN HUAP KHAWKHAWMNA', marginL + 2, tocY + 3.7);
-    doc.text(`${churchTotalHH} HH (${churchReturnedHH} Ret)`, marginL + 52, tocY + 3.7);
+    doc.text('KHAIKHAWMNA', marginL + 2, tocY + 3.7);
+    doc.text(`${churchTotalHH} (${churchReturnedHH} Ret)`, marginL + 52, tocY + 3.7);
     doc.text(`${overallReturnRate}%`, marginL + 82, tocY + 3.7);
-    doc.text(`Rs. ${finalGrandTotal.toLocaleString('en-IN')}`, marginR - 2, tocY + 3.7, { align: 'right' });
+    doc.text(`₹${finalGrandTotal.toLocaleString('en-IN')}`, marginR - 2, tocY + 3.7, { align: 'right' });
 
     doc.setFont('helvetica', 'italic');
     doc.setFontSize(6.8);
@@ -2150,9 +2167,10 @@ export function exportPressReadyBookletPDF({
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(7.5);
           doc.setTextColor(0, 0, 0);
+          const formattedBial = formatBialLabel(item.code, item.name);
           const t = item.isContinuation
-            ? `${item.code ? `${item.code} - ` : ''}${item.name} (Continued...)`
-            : `${item.code ? `${item.code} - ` : ''}${item.name} (${item.totalHH} HH • ${item.returnedHH} Ret • ${item.returnRate}% Return Rate)`;
+            ? `${formattedBial} (Chhunzawmna)`
+            : formattedBial;
           doc.text(t, marginL + 2.5, item.y + 3.8);
         } else if (item.type === 'tableHeader') {
           doc.setFillColor(226, 232, 240);
@@ -2162,11 +2180,11 @@ export function exportPressReadyBookletPDF({
           doc.setTextColor(0, 0, 0);
           doc.text('Sl', marginL + 1.5, item.y + 3.1);
           doc.text('Member Name', marginL + 8, item.y + 3.1);
-          doc.text('PTR (Rs)', marginL + 56, item.y + 3.1, { align: 'right' });
-          doc.text('RT (Rs)', marginL + 72, item.y + 3.1, { align: 'right' });
-          doc.text('Tch (Rs)', marginL + 88, item.y + 3.1, { align: 'right' });
-          doc.text('Bldg (Rs)', marginL + 104, item.y + 3.1, { align: 'right' });
-          doc.text('Total (Rs)', marginR - 2, item.y + 3.1, { align: 'right' });
+          doc.text('PTR (₹)', marginL + 56, item.y + 3.1, { align: 'right' });
+          doc.text('RT (₹)', marginL + 72, item.y + 3.1, { align: 'right' });
+          doc.text('Tch (₹)', marginL + 88, item.y + 3.1, { align: 'right' });
+          doc.text('Bldg (₹)', marginL + 104, item.y + 3.1, { align: 'right' });
+          doc.text('Total (₹)', marginR - 2, item.y + 3.1, { align: 'right' });
         } else if (item.type === 'member') {
           if (item.isEvenRow) {
             doc.setFillColor(248, 250, 252);
@@ -2182,19 +2200,19 @@ export function exportPressReadyBookletPDF({
           doc.text(item.rt > 0 ? item.rt.toLocaleString('en-IN') : '-', marginL + 72, item.y + 2.4, { align: 'right' });
           doc.text(item.tch > 0 ? item.tch.toLocaleString('en-IN') : '-', marginL + 88, item.y + 2.4, { align: 'right' });
           doc.text(item.bldg > 0 ? item.bldg.toLocaleString('en-IN') : '-', marginL + 104, item.y + 2.4, { align: 'right' });
-          doc.text(item.total > 0 ? `Rs.${item.total.toLocaleString('en-IN')}` : '0', marginR - 2, item.y + 2.4, { align: 'right' });
+          doc.text(item.total > 0 ? `₹${item.total.toLocaleString('en-IN')}` : '0', marginR - 2, item.y + 2.4, { align: 'right' });
         } else if (item.type === 'subtotal') {
           doc.setFillColor(224, 231, 255);
           doc.rect(marginL, item.y, 124.5, 4.8, 'F');
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(6.2);
           doc.setTextColor(0, 0, 0);
-          doc.text(`Subtotal (${item.code || item.name}) • ${item.returnRate}% Ret`, marginL + 2.5, item.y + 3.2);
+          doc.text(`Subtotal (${formatBialLabel(item.code, item.name)}) • ${item.returnRate}% Kir zat`, marginL + 2.5, item.y + 3.2);
           doc.text(item.pr.toLocaleString('en-IN'), marginL + 56, item.y + 3.2, { align: 'right' });
           doc.text(item.rt.toLocaleString('en-IN'), marginL + 72, item.y + 3.2, { align: 'right' });
           doc.text(item.tch.toLocaleString('en-IN'), marginL + 88, item.y + 3.2, { align: 'right' });
           doc.text(item.bldg.toLocaleString('en-IN'), marginL + 104, item.y + 3.2, { align: 'right' });
-          doc.text(`Rs.${item.total.toLocaleString('en-IN')}`, marginR - 2, item.y + 3.2, { align: 'right' });
+          doc.text(`₹${item.total.toLocaleString('en-IN')}`, marginR - 2, item.y + 3.2, { align: 'right' });
         } else if (item.type === 'grandTotal') {
           doc.setFillColor(241, 245, 249);
           doc.setDrawColor(0, 0, 0);
@@ -2202,11 +2220,11 @@ export function exportPressReadyBookletPDF({
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(7.2);
           doc.setTextColor(0, 0, 0);
-          doc.text(`KOHHRAN GRAND TOTAL (${churchTotalHH} HH • ${churchReturnedHH} Ret • ${overallReturnRate}% Return Rate)`, marginL + 3, item.y + 4.5);
+          doc.text(`KHAIKHAWMNA (${churchTotalHH} Chhungkua • ${churchReturnedHH} Ret • ${overallReturnRate}% Kir zat)`, marginL + 3, item.y + 4.5);
           doc.setFontSize(6.2);
-          doc.text(`PTR: Rs.${item.pr.toLocaleString('en-IN')} | RT: Rs.${item.rt.toLocaleString('en-IN')} | Tch: Rs.${item.tch.toLocaleString('en-IN')} | Bldg: Rs.${item.bldg.toLocaleString('en-IN')}`, marginL + 3, item.y + 8.8);
+          doc.text(`PTR: ₹${item.pr.toLocaleString('en-IN')} | RT: ₹${item.rt.toLocaleString('en-IN')} | Tch: ₹${item.tch.toLocaleString('en-IN')} | Bldg: ₹${item.bldg.toLocaleString('en-IN')}`, marginL + 3, item.y + 8.8);
           doc.setFontSize(9.0);
-          doc.text(`Rs. ${item.grandTotal.toLocaleString('en-IN')}`, marginR - 3, item.y + 6.8, { align: 'right' });
+          doc.text(`₹${item.grandTotal.toLocaleString('en-IN')}`, marginR - 3, item.y + 6.8, { align: 'right' });
         } else if (item.type === 'signatures') {
           const sigY = item.y + 10;
           const colW = 124.5 / 3;

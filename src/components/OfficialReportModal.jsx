@@ -23,6 +23,7 @@ import {
   exportOverallMemberExcel,
   exportOverallMemberPDF,
   exportCleanPDF,
+  formatBialLabel,
   getBase64ImageFromUrl
 } from '../utils/exportEngine';
 
@@ -1890,11 +1891,11 @@ export default function OfficialReportModal({
                                     <span className="font-black">{processedBookletBials.length} Bials</span>
                                   </div>
                                   <div>
-                                    <span className="font-semibold block text-[10px] text-slate-700">Chhungkua (Households):</span>
+                                    <span className="font-semibold block text-[10px] text-slate-700">Chhungkua:</span>
                                     <span className="font-black">{totalBookletHH} ({totalBookletReturned} Ret)</span>
                                   </div>
                                   <div>
-                                    <span className="font-semibold block text-[10px] text-slate-700">Return Rate:</span>
+                                    <span className="font-semibold block text-[10px] text-slate-700">Kir zat:</span>
                                     <span className="font-black">{overallBookletReturnRate}%</span>
                                   </div>
                                   <div>
@@ -1924,10 +1925,10 @@ export default function OfficialReportModal({
                                 <thead className="bg-slate-50 border-b border-black/30 font-black uppercase text-[9px]">
                                   <tr>
                                     <th className="py-1.5 px-2 text-center w-8">Sl</th>
-                                    <th className="py-1.5 px-3">Bial Name</th>
-                                    <th className="py-1.5 px-3 text-center">Households</th>
-                                    <th className="py-1.5 px-3 text-center">Return Rate</th>
-                                    <th className="py-1.5 px-3 text-right">Subtotal (₹)</th>
+                                    <th className="py-1.5 px-3">Bialtu</th>
+                                    <th className="py-1.5 px-3 text-center">Chhungkua</th>
+                                    <th className="py-1.5 px-3 text-center">Kir zat</th>
+                                    <th className="py-1.5 px-3 text-right">Total (₹)</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-black/10">
@@ -1939,8 +1940,8 @@ export default function OfficialReportModal({
                                     return (
                                       <tr key={b.bial_id} className={idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'}>
                                         <td className="py-1.5 px-2 text-center font-bold">{idx + 1}</td>
-                                        <td className="py-1.5 px-3 font-bold">{b.bial_code ? `${b.bial_code} - ` : ''}{b.bial_name}</td>
-                                        <td className="py-1.5 px-3 text-center">{hh} HH ({ret} Ret)</td>
+                                        <td className="py-1.5 px-3 font-bold">{formatBialLabel(b.bial_code, b.bial_name)}</td>
+                                        <td className="py-1.5 px-3 text-center">{hh} ({ret} Ret)</td>
                                         <td className="py-1.5 px-3 text-center font-bold">{rate}%</td>
                                         <td className="py-1.5 px-3 text-right font-black">₹{sub.toLocaleString('en-IN')}</td>
                                       </tr>
@@ -1949,8 +1950,8 @@ export default function OfficialReportModal({
                                 </tbody>
                                 <tfoot>
                                   <tr className="bg-slate-200 border-t-2 border-black font-black">
-                                    <td colSpan={2} className="py-1.5 px-3">KOHHRAN GRAND TOTAL</td>
-                                    <td className="py-1.5 px-3 text-center">{totalBookletHH} HH ({totalBookletReturned} Ret)</td>
+                                    <td colSpan={2} className="py-1.5 px-3">KHAIKHAWMNA</td>
+                                    <td className="py-1.5 px-3 text-center">{totalBookletHH} ({totalBookletReturned} Ret)</td>
                                     <td className="py-1.5 px-3 text-center">{overallBookletReturnRate}%</td>
                                     <td className="py-1.5 px-3 text-right font-black">₹{(bookletData.churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}</td>
                                   </tr>
@@ -1974,19 +1975,8 @@ export default function OfficialReportModal({
                                 const returnRate = totalHH > 0 ? Math.round((returnedHH / totalHH) * 1000) / 10 : 0;
                                 return (
                                   <>
-                                    <div className="bg-slate-100 border-b border-black/40 px-3 py-1.5 flex flex-wrap items-center justify-between gap-1.5 text-black font-black text-xs">
-                                      <span>{bial.bial_code ? `${bial.bial_code} - ` : ''}{bial.bial_name}</span>
-                                      <div className="flex items-center gap-1.5 text-[10px] font-bold">
-                                        <span className="bg-white px-2 py-0.5 rounded border border-slate-300">
-                                          {totalHH} HH
-                                        </span>
-                                        <span className="bg-white px-2 py-0.5 rounded border border-slate-300">
-                                          {returnedHH} Returned
-                                        </span>
-                                        <span className="bg-slate-200 px-2 py-0.5 rounded border border-black/40 font-black">
-                                          {returnRate}% Return Rate
-                                        </span>
-                                      </div>
+                                    <div className="bg-slate-100 border-b border-black/40 px-3 py-1.5 text-black font-black text-xs">
+                                      <span>{formatBialLabel(bial.bial_code, bial.bial_name)}</span>
                                     </div>
 
                                     {/* Table with continuous Sl No */}
@@ -2018,7 +2008,7 @@ export default function OfficialReportModal({
                                       <tfoot className="bg-slate-100 border-t-2 border-black text-black font-black text-[9.5px]">
                                         <tr>
                                           <td colSpan={2} className="py-1 px-2 uppercase font-extrabold">
-                                            Subtotal ({bial.bial_code || bial.bial_name}) • {returnRate}% Return Rate ({returnedHH}/{totalHH} HH)
+                                            Subtotal ({formatBialLabel(bial.bial_code, bial.bial_name)}) • {returnRate}% Kir zat
                                           </td>
                                           <td className="py-1 px-1 text-right">{(sub.total_pathian_ram || 0).toLocaleString('en-IN')}</td>
                                           <td className="py-1 px-1 text-right">{(sub.total_ramthar || 0).toLocaleString('en-IN')}</td>
@@ -2040,7 +2030,7 @@ export default function OfficialReportModal({
                       <div className="mt-4 bg-slate-100 text-black rounded-xl p-3.5 border-2 border-black flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
                         <div>
                           <h4 className="font-heading font-black text-sm uppercase tracking-wider text-black">
-                            KOHHRAN GRAND TOTAL ({totalBookletHH} Households • {totalBookletReturned} Returned • {overallBookletReturnRate}% Return Rate)
+                            KHAIKHAWMNA ({totalBookletHH} Chhungkua • {totalBookletReturned} Returned • {overallBookletReturnRate}% Kir zat)
                           </h4>
                           <p className="text-[11px] text-black font-semibold mt-0.5">
                             PTR: ₹{(bookletData.churchGrandTotal?.total_pathian_ram || 0).toLocaleString('en-IN')} •

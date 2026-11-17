@@ -1,8 +1,9 @@
-import React from 'react';
-import { Share2, Church } from 'lucide-react';
+import React, { useState } from 'react';
+import { Share2, Church, Download, Loader2, MessageCircle, FileText } from 'lucide-react';
 import Modal from './common/Modal';
 import churchLogo from '../assets/church_logo.jpg';
 import { FINANCIAL_MONTHS, DEFAULT_TITHE_COLUMNS } from '../utils/constants';
+import { generateDigitalReceiptPDF } from '../utils/exportEngine';
 
 export default function DigitalReceiptModal({ 
   isOpen, 
@@ -14,6 +15,8 @@ export default function DigitalReceiptModal({
   columns = DEFAULT_TITHE_COLUMNS,
   showToast 
 }) {
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+
   if (!isOpen || !member) return null;
 
   const activeCols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
@@ -40,6 +43,77 @@ export default function DigitalReceiptModal({
     year: 'numeric'
   });
 
+  // Direct PDF Sharing via Web Share API (with native WhatsApp/App file attachment)
+  const handleSharePDF = async () => {
+    try {
+      setIsGeneratingPDF(true);
+      const { file, filename, doc } = await generateDigitalReceiptPDF({
+        elementId: 'printable-receipt',
+        member,
+        monthName,
+        year,
+        bialName
+      });
+
+      // Check if Web Share API with files is supported (mobile browsers, macOS Safari, Windows Edge/Chrome)
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: `Receipt - ${member.name} (${monthName} ${year})`,
+          text: `Bethlehem Kohhran Pathian Ram Khawnna Receipt for ${member.name} (${monthName} ${year}).`
+        });
+        if (showToast) showToast('Receipt PDF shared successfully!', 'success');
+      } else {
+        // Fallback for browsers without file share capability: download file and notify
+        doc.save(filename);
+        if (showToast) {
+          showToast('Receipt PDF downloaded! You can attach and share it on WhatsApp.', 'success');
+        }
+      }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('Failed to share PDF:', err);
+        try {
+          const { doc, filename } = await generateDigitalReceiptPDF({
+            elementId: 'printable-receipt',
+            member,
+            monthName,
+            year,
+            bialName
+          });
+          doc.save(filename);
+          if (showToast) showToast('Receipt PDF downloaded to your device.', 'success');
+        } catch (e) {
+          if (showToast) showToast('Failed to generate receipt PDF.', 'error');
+        }
+      }
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  // Direct PDF Download
+  const handleDownloadPDF = async () => {
+    try {
+      setIsGeneratingPDF(true);
+      const { doc, filename } = await generateDigitalReceiptPDF({
+        elementId: 'printable-receipt',
+        member,
+        monthName,
+        year,
+        bialName
+      });
+      doc.save(filename);
+      if (showToast) showToast('Receipt PDF downloaded!', 'success');
+    } catch (err) {
+      console.error('Failed to download PDF:', err);
+      if (showToast) showToast('Failed to generate receipt PDF', 'error');
+    } finally {
+      setIsGeneratingPDF(false);
+    }
+  };
+
+  // Plain WhatsApp text summary
   const handleWhatsAppShare = () => {
     let breakdownLines = colAmounts.map(c => `• ${c.name} (${c.code}): ₹${c.amount.toLocaleString('en-IN')}`).join('\n');
 
@@ -48,7 +122,7 @@ export default function DigitalReceiptModal({
     const encodedText = encodeURIComponent(text);
     const whatsappUrl = `https://api.whatsapp.com/send?text=${encodedText}`;
     window.open(whatsappUrl, '_blank');
-    if (showToast) showToast('Opened WhatsApp share!', 'success');
+    if (showToast) showToast('Opened WhatsApp text share!', 'success');
   };
 
   return (
@@ -135,21 +209,60 @@ export default function DigitalReceiptModal({
       </Modal.Body>
 
       <Modal.Footer>
-        <div className="flex justify-between items-center w-full">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 w-full">
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer"
+            className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-colors cursor-pointer text-center"
           >
             Close
           </button>
 
-          <button
-            onClick={handleWhatsAppShare}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shadow-emerald-600/30 transition-all cursor-pointer"
-          >
-            <Share2 className="w-4 h-4" />
-            <span>Share to WhatsApp</span>
-          </button>
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap justify-end">
+            {/* Download PDF button */}
+            <button
+              type="button"
+              onClick={handleDownloadPDF}
+              disabled={isGeneratingPDF}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold border border-slate-300 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+              title="Download official receipt as PDF file"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-600" />
+              <span>Download PDF</span>
+            </button>
+
+            {/* Share PDF Button */}
+            <button
+              type="button"
+              onClick={handleSharePDF}
+              disabled={isGeneratingPDF}
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs shadow-indigo-600/30 transition-all cursor-pointer disabled:opacity-50"
+              title="Share receipt directly in PDF format (WhatsApp, Email, etc.)"
+            >
+              {isGeneratingPDF ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Preparing...</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5" />
+                  <span>Share PDF</span>
+                </>
+              )}
+            </button>
+
+            {/* WhatsApp Text Share */}
+            <button
+              type="button"
+              onClick={handleWhatsAppShare}
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shadow-emerald-600/30 transition-all cursor-pointer"
+              title="Send text summary to WhatsApp"
+            >
+              <MessageCircle className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">WhatsApp Text</span>
+            </button>
+          </div>
         </div>
       </Modal.Footer>
     </Modal>

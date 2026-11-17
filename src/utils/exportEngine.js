@@ -982,6 +982,83 @@ export async function exportCertificatePNG({
 }
 
 /**
+ * High-Resolution Contribution Digital Receipt PDF Generator
+ * Renders the receipt card into a professional, printable and shareable A5 PDF.
+ */
+export async function generateDigitalReceiptPDF({
+  elementId = 'printable-receipt',
+  member,
+  monthName,
+  year,
+  bialName
+}) {
+  const element = document.getElementById(elementId);
+  if (!element) throw new Error('Receipt element not found');
+
+  // 1. Ensure all images inside the receipt (church logo, etc.) are loaded
+  const imgs = Array.from(element.querySelectorAll('img'));
+  await Promise.all(
+    imgs.map((img) => {
+      if (img.complete) return Promise.resolve();
+      return new Promise((resolve) => {
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      });
+    })
+  );
+
+  // 2. High-res capture at 3x scale (300 DPI quality)
+  const canvas = await safeHtml2Canvas(element, {
+    scale: 3,
+    useCORS: true,
+    allowTaint: true,
+    logging: false,
+    backgroundColor: '#ffffff'
+  });
+
+  const imgData = canvas.toDataURL('image/jpeg', 0.95);
+  const imgWidth = canvas.width;
+  const imgHeight = canvas.height;
+
+  // 3. Create clean A5 portrait jsPDF document
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a5',
+    compress: true
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 8;
+  const maxW = pageWidth - margin * 2;
+  const maxH = pageHeight - margin * 2;
+
+  const ratio = imgWidth / imgHeight;
+  let renderW = maxW;
+  let renderH = maxW / ratio;
+
+  if (renderH > maxH) {
+    renderH = maxH;
+    renderW = maxH * ratio;
+  }
+
+  const posX = (pageWidth - renderW) / 2;
+  const posY = (pageHeight - renderH) / 2;
+
+  doc.addImage(imgData, 'JPEG', posX, posY, renderW, renderH, undefined, 'FAST');
+
+  const safeMemberName = (member?.name || 'Member').replace(/[^a-zA-Z0-9_\-\s]/g, '').trim().replace(/\s+/g, '_');
+  const safeMonth = (monthName || 'Month').replace(/[^a-zA-Z0-9_\-]/g, '');
+  const filename = `Receipt_${safeMemberName}_${safeMonth}_${year || ''}.pdf`;
+
+  const blob = doc.output('blob');
+  const file = new File([blob], filename, { type: 'application/pdf' });
+
+  return { doc, blob, file, filename };
+}
+
+/**
  * Native Vector Certificate & Report PDF Generator using @react-pdf/renderer
  * Generates ultra-crisp vector PDFs with full typography, logos, signatures, and zero oklch color errors.
  */

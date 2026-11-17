@@ -559,37 +559,39 @@ export default function BialDashboard({ user, showToast }) {
         <div className="flex-1 min-w-0 w-full space-y-2.5 sm:space-y-3">
 
           {/* Active Tab & Bial Name Sub-Header Badge */}
-          <div className="glass-panel px-3.5 py-2.5 rounded-2xl flex items-center justify-between gap-3 shadow-xs relative">
-            <div className="flex items-center gap-2.5 z-10">
+          <div className="glass-panel px-3.5 py-2.5 rounded-2xl relative shadow-xs border border-slate-200/80 bg-white/90 backdrop-blur-md">
+            {/* Left: Mobile Menu Trigger & Bial Indicator */}
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-2 z-10">
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
                 title="Open Navigation Menu"
                 aria-label="Open Navigation Menu"
               >
                 <Menu className="w-4 h-4" />
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-600 shrink-0"></span>
-                <span className="text-xs font-semibold uppercase tracking-wider text-slate-600">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-600 truncate max-w-[150px] md:max-w-xs">
                   Bial: <span className="text-slate-900 font-bold">{bialName}</span>
                 </span>
               </div>
             </div>
 
-            {/* Centered Capital Tab Header */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <h1 className="text-xs sm:text-sm font-heading font-black tracking-widest uppercase text-slate-900 text-center">
+            {/* Center: TAB HEADER IN CAPITAL LETTERS (Full width single line) & FY below */}
+            <div className="flex flex-col items-center justify-center text-center px-10 sm:px-4">
+              <h1 className="whitespace-nowrap text-xs sm:text-sm md:text-base font-heading font-black tracking-widest uppercase text-slate-900 text-center">
                 {activeTab === 'main' ? 'PATHIAN RAM ZIAHNA' : 'STATS & ANALYTICS'}
               </h1>
-            </div>
 
-            <div className="flex items-center gap-1.5 ml-auto z-10">
-              <span className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-xs border border-indigo-100">
-                FY {year}
-              </span>
+              {/* Financial Year Badge Below Header */}
+              <div className="mt-1 flex items-center justify-center">
+                <span className="px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] sm:text-xs border border-indigo-100">
+                  FY {year} - {year + 1}
+                </span>
+              </div>
             </div>
           </div>
 

@@ -880,55 +880,52 @@ export default function AdminDashboard({ user, showToast }) {
           {activeTab === 'bials' && (
             <div className="glass-panel p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl space-y-2">
               {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 gap-2 relative">
-                <div className="flex items-center gap-2.5 z-10">
+              <div className="relative border-b border-slate-100 pb-2.5">
+                {/* Mobile Menu Trigger (hidden on desktop) */}
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 lg:hidden z-10">
                   <button
                     type="button"
                     onClick={() => setIsMobileMenuOpen(true)}
-                    className="lg:hidden p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                    className="p-1.5 sm:p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer"
                     title="Open Admin Menu"
                     aria-label="Open Admin Menu"
                   >
                     <Menu className="w-4 h-4" />
                   </button>
-
-                  <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-100">
-                    FY {year}
-                  </span>
                 </div>
 
-                {/* Centered Capital Tab Header */}
-                <div className="sm:absolute sm:inset-0 flex items-center justify-center pointer-events-none">
-                  <span className="text-xs sm:text-sm font-heading font-black tracking-wider uppercase text-slate-800 text-center">
-                    MAIN OVERVIEW ({year} - {year + 1})
-                  </span>
-                </div>
+                {/* Centered Tab Header & Centered Dropdowns (No FY 2026) */}
+                <div className="flex flex-col items-center justify-center text-center px-10 sm:px-0 space-y-2">
+                  <h1 className="whitespace-nowrap text-xs sm:text-sm md:text-base font-heading font-black tracking-widest uppercase text-slate-900 text-center">
+                    MAIN OVERVIEW
+                  </h1>
 
-                {/* Dropdowns */}
-                <div className="flex items-center gap-1.5 sm:gap-2 self-end sm:self-auto z-10">
-                  <select
-                    value={overallBialFilter}
-                    onChange={(e) => setOverallBialFilter(e.target.value)}
-                    className="px-2 sm:px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
-                    title="Filter contributions by Bial"
-                  >
-                    <option value="all">All Bials</option>
-                    {bials.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
+                  {/* Centered Dropdowns */}
+                  <div className="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap">
+                    <select
+                      value={overallBialFilter}
+                      onChange={(e) => setOverallBialFilter(e.target.value)}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
+                      title="Filter contributions by Bial"
+                    >
+                      <option value="all">ALL BIALS</option>
+                      {bials.map(b => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
 
-                  <select
-                    value={overallMonthFilter}
-                    onChange={(e) => setOverallMonthFilter(e.target.value)}
-                    className="px-2 sm:px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
-                    title="Filter contributions by Month"
-                  >
-                    <option value="all">All Months</option>
-                    {FINANCIAL_MONTHS.map(m => (
-                      <option key={m.id} value={m.id}>{m.name}</option>
-                    ))}
-                  </select>
+                    <select
+                      value={overallMonthFilter}
+                      onChange={(e) => setOverallMonthFilter(e.target.value)}
+                      className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
+                      title="Filter contributions by Month"
+                    >
+                      <option value="all">ALL MONTHS</option>
+                      {FINANCIAL_MONTHS.map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -977,15 +974,15 @@ export default function AdminDashboard({ user, showToast }) {
             </div>
           )}
 
-          {/* Top Tab Header Bar when on other tabs (Centered and in Capital Letters) */}
+          {/* Top Tab Header Bar when on other tabs (Centered and in Capital Letters with FY below) */}
           {activeTab !== 'bials' && (
-            <div className="glass-panel px-3.5 py-2.5 rounded-2xl flex items-center justify-between relative shadow-2xs border border-slate-200/80 bg-white/90 backdrop-blur-md">
+            <div className="glass-panel px-3.5 py-2.5 rounded-2xl relative shadow-2xs border border-slate-200/80 bg-white/90 backdrop-blur-md">
               {/* Left: Mobile Menu Trigger (hidden on desktop) */}
-              <div className="flex items-center gap-2 z-10">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 lg:hidden z-10">
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(true)}
-                  className="lg:hidden p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                  className="p-1.5 sm:p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
                   title="Open Admin Menu"
                   aria-label="Open Admin Menu"
                 >
@@ -993,9 +990,9 @@ export default function AdminDashboard({ user, showToast }) {
                 </button>
               </div>
 
-              {/* Center: TAB HEADER IN CAPITAL LETTERS AND ALIGNED AT THE CENTER */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <h1 className="text-xs sm:text-sm md:text-base font-heading font-black tracking-widest uppercase text-slate-900 text-center">
+              {/* Center: TAB HEADER IN CAPITAL LETTERS (Full width single line) & FY below */}
+              <div className="flex flex-col items-center justify-center text-center px-10 sm:px-4">
+                <h1 className="whitespace-nowrap text-xs sm:text-sm md:text-base font-heading font-black tracking-widest uppercase text-slate-900 text-center">
                   {activeTab === 'inspector' && 'BIAL INSPECTOR'}
                   {activeTab === 'columns' && 'TITHE COLUMNS'}
                   {activeTab === 'credentials' && 'PASSWORDS & ADMINS'}
@@ -1003,13 +1000,13 @@ export default function AdminDashboard({ user, showToast }) {
                   {activeTab === 'backups' && 'BACKUP & RESTORE'}
                   {activeTab === 'audit' && 'ACTIVITY AUDIT LOG'}
                 </h1>
-              </div>
 
-              {/* Right: Financial Year Badge */}
-              <div className="flex items-center gap-1.5 ml-auto z-10">
-                <span className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-100">
-                  FY {year} - {year + 1}
-                </span>
+                {/* Financial Year Badge Below Header */}
+                <div className="mt-1 flex items-center justify-center">
+                  <span className="px-2.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] sm:text-xs border border-indigo-100">
+                    FY {year} - {year + 1}
+                  </span>
+                </div>
               </div>
             </div>
           )}

@@ -876,102 +876,132 @@ export default function AdminDashboard({ user, showToast }) {
 
 
 
-          {/* AGGREGATED SYSTEM TOTALS */}
-          <div className="glass-panel p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl space-y-2">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 gap-2">
-              <div className="flex items-center gap-2.5">
+          {/* AGGREGATED SYSTEM TOTALS (Displayed ONLY on Main Overview tab) */}
+          {activeTab === 'bials' && (
+            <div className="glass-panel p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl space-y-2">
+              {/* Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 gap-2">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileMenuOpen(true)}
+                    className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                    title="Open Admin Menu"
+                  >
+                    <Menu className="w-3.5 h-3.5" />
+                    <span>Menu</span>
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-slate-700 tracking-wide">
+                      OVERALL ({year}-{year + 1})
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-100">
+                      FY {year}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Dropdowns */}
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <select
+                    value={overallBialFilter}
+                    onChange={(e) => setOverallBialFilter(e.target.value)}
+                    className="px-2 sm:px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
+                    title="Filter contributions by Bial"
+                  >
+                    <option value="all">All Bials</option>
+                    {bials.map(b => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={overallMonthFilter}
+                    onChange={(e) => setOverallMonthFilter(e.target.value)}
+                    className="px-2 sm:px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
+                    title="Filter contributions by Month"
+                  >
+                    <option value="all">All Months</option>
+                    {FINANCIAL_MONTHS.map(m => (
+                      <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Dynamic Tithe Category Summary Cards + Grand Total */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
+                {titheColumns.map((col) => {
+                  const amount = grandTotals[col.field_key] || grandTotals[`total_${col.field_key}`] || 0;
+                  return (
+                    <div
+                      key={col.id}
+                      className="p-2 sm:p-2.5 rounded-xl border flex flex-col justify-between transition-all shadow-2xs"
+                      style={{
+                        backgroundColor: `${col.color || '#6366f1'}10`,
+                        borderColor: `${col.color || '#6366f1'}35`
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-1 gap-1 min-w-0">
+                        <span
+                          className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider truncate"
+                          style={{ color: col.color || '#1e293b' }}
+                        >
+                          {col.code}
+                        </span>
+                        <span className="text-[9px] font-semibold text-slate-500 truncate text-right">
+                          {col.name}
+                        </span>
+                      </div>
+                      <div className="font-mono tabular-nums font-black text-slate-900 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                        ₹{amount.toLocaleString('en-IN')}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* GRAND TOTAL BOX */}
+                <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-slate-900 p-2 sm:p-2.5 rounded-xl border border-slate-950 text-white shadow-2xs flex flex-col justify-between">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">TOTAL</span>
+                    <span className="text-[9px] font-medium text-slate-400">Grand Total</span>
+                  </div>
+                  <div className="font-mono tabular-nums font-bold text-white text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                    ₹{(grandTotals.grand_total || 0).toLocaleString('en-IN')}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Top Navigation Bar when on other tabs so mobile users can open the menu */}
+          {activeTab !== 'bials' && (
+            <div className="lg:hidden flex items-center justify-between bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl border border-slate-200/80 shadow-2xs">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(true)}
-                  className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
                   title="Open Admin Menu"
                 >
                   <Menu className="w-3.5 h-3.5" />
                   <span>Menu</span>
                 </button>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-700 tracking-wide">
-                    OVERALL ({year}-{year + 1})
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-100">
-                    FY {year}
-                  </span>
-                </div>
+                <span className="text-xs font-bold text-slate-800">
+                  {activeTab === 'inspector' && 'Bial Inspector'}
+                  {activeTab === 'columns' && 'Tithe Columns'}
+                  {activeTab === 'credentials' && 'Passwords & Admins'}
+                  {activeTab === 'analytics' && 'Stats & Analytics'}
+                  {activeTab === 'backups' && 'Backup & Restore'}
+                  {activeTab === 'audit' && 'Activity Audit Log'}
+                </span>
               </div>
-
-              {/* Dropdowns */}
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <select
-                  value={overallBialFilter}
-                  onChange={(e) => setOverallBialFilter(e.target.value)}
-                  className="px-2 sm:px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
-                  title="Filter contributions by Bial"
-                >
-                  <option value="all">All Bials</option>
-                  {bials.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={overallMonthFilter}
-                  onChange={(e) => setOverallMonthFilter(e.target.value)}
-                  className="px-2 sm:px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-slate-900 font-bold text-xs focus:outline-none focus:border-indigo-600 shadow-2xs cursor-pointer"
-                  title="Filter contributions by Month"
-                >
-                  <option value="all">All Months</option>
-                  {FINANCIAL_MONTHS.map(m => (
-                    <option key={m.id} value={m.id}>{m.name}</option>
-                  ))}
-                </select>
-              </div>
+              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-100">
+                FY {year}
+              </span>
             </div>
-
-            {/* Dynamic Tithe Category Summary Cards + Grand Total */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5">
-              {titheColumns.map((col) => {
-                const amount = grandTotals[col.field_key] || grandTotals[`total_${col.field_key}`] || 0;
-                return (
-                  <div
-                    key={col.id}
-                    className="p-2 sm:p-2.5 rounded-xl border flex flex-col justify-between transition-all shadow-2xs"
-                    style={{
-                      backgroundColor: `${col.color || '#6366f1'}10`,
-                      borderColor: `${col.color || '#6366f1'}35`
-                    }}
-                  >
-                    <div className="flex items-center justify-between mb-1 gap-1 min-w-0">
-                      <span
-                        className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider truncate"
-                        style={{ color: col.color || '#1e293b' }}
-                      >
-                        {col.code}
-                      </span>
-                      <span className="text-[9px] font-semibold text-slate-500 truncate text-right">
-                        {col.name}
-                      </span>
-                    </div>
-                    <div className="font-mono tabular-nums font-black text-slate-900 text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
-                      ₹{amount.toLocaleString('en-IN')}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* GRAND TOTAL BOX */}
-              <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-slate-900 p-2 sm:p-2.5 rounded-xl border border-slate-950 text-white shadow-2xs flex flex-col justify-between">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wider">TOTAL</span>
-                  <span className="text-[9px] font-medium text-slate-400">Grand Total</span>
-                </div>
-                <div className="font-mono tabular-nums font-bold text-white text-sm sm:text-base lg:text-lg tracking-tight whitespace-nowrap overflow-hidden text-ellipsis">
-                  ₹{(grandTotals.grand_total || 0).toLocaleString('en-IN')}
-                </div>
-              </div>
-            </div>
-          </div>
+          )}
 
 
 

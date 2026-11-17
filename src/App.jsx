@@ -10,19 +10,66 @@ const BialDashboard = React.lazy(() => import('./pages/BialDashboard'));
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, isChunkError: false };
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true, error };
+    const isChunkError = Boolean(
+      error?.message?.includes('Failed to fetch dynamically imported module') ||
+      error?.message?.includes('Importing a module script failed') ||
+      error?.message?.includes('dynamically imported') ||
+      error?.name === 'ChunkLoadError'
+    );
+    return { hasError: true, error, isChunkError };
   }
 
   componentDidCatch(error, errorInfo) {
     console.error('App Uncaught Error:', error, errorInfo);
+    // If it's a dynamic import failure due to a new deployment, auto-reload seamlessly
+    const isChunk = Boolean(
+      error?.message?.includes('Failed to fetch dynamically imported module') ||
+      error?.message?.includes('Importing a module script failed') ||
+      error?.message?.includes('dynamically imported')
+    );
+    if (isChunk) {
+      const lastRetry = sessionStorage.getItem('chunk_retry_timestamp');
+      const now = Date.now();
+      // If we haven't retried within the last 15 seconds, auto-reload once seamlessly
+      if (!lastRetry || now - Number(lastRetry) > 15000) {
+        sessionStorage.setItem('chunk_retry_timestamp', String(now));
+        window.location.reload();
+      }
+    }
   }
 
   render() {
     if (this.state.hasError) {
+      // If the error is due to an updated deployment, offer a clean reload WITHOUT clearing auth session
+      if (this.state.isChunkError) {
+        return (
+          <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 text-slate-800">
+            <div className="max-w-md w-full bg-white p-6 rounded-3xl border border-slate-200 shadow-xl text-center space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto font-bold text-xl">
+                ⚡
+              </div>
+              <h2 className="text-lg font-black text-slate-900">Application Update Available</h2>
+              <p className="text-xs text-slate-600">
+                A new version of the application was just deployed. Click below to load the latest version (your login session will remain active).
+              </p>
+              <button
+                onClick={() => {
+                  sessionStorage.removeItem('chunk_retry_timestamp');
+                  window.location.reload();
+                }}
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-600/20"
+              >
+                Reload to Latest Version
+              </button>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 text-slate-800">
           <div className="max-w-md w-full bg-white p-6 rounded-3xl border border-slate-200 shadow-xl text-center space-y-4">

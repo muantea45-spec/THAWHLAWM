@@ -14,6 +14,16 @@
         // If access to window.top is blocked by sandbox, blank out the body
         document.documentElement.style.display = 'none';
       }
+      // Instant Persistent Font Size Application
+      try {
+        const sz = localStorage.getItem('pathian_ram_font_size') || 'normal';
+        const scales = { small: '90%', normal: '100%', large: '112.5%', xlarge: '125%' };
+        if (scales[sz]) {
+          document.documentElement.style.fontSize = scales[sz];
+          document.documentElement.style.setProperty('--app-font-scale', scales[sz]);
+          document.documentElement.setAttribute('data-font-size', sz);
+        }
+      } catch (e) {}
     </script>
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="shortcut icon" href="/favicon.ico" />

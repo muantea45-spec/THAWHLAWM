@@ -1,8 +1,9 @@
 import React from 'react';
 import {
   Building2, BarChart3, CalendarDays,
-  ChevronLeft, ChevronRight, X, UserCheck, LogOut, Award, FileText, KeyRound
+  ChevronLeft, ChevronRight, X, UserCheck, LogOut, Award, FileText, KeyRound, Type
 } from 'lucide-react';
+import { useFontSize } from '../context/FontSizeContext';
 
 export default function BialSidebar({
   activeTab,
@@ -20,6 +21,7 @@ export default function BialSidebar({
   onLogout,
   bialName = 'Selected Bial'
 }) {
+  const { fontSize, setFontSize, currentPreset, cycleFontSize, presets } = useFontSize();
   const navTabs = [
     {
       id: 'main',
@@ -187,6 +189,47 @@ export default function BialSidebar({
 
         {/* Section 3: Bottom Controls (Financial Year & Logout) */}
         <div className="p-2 space-y-2 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
+          {/* Font Size Selector (Both Admin & Bial users can adjust) */}
+          {showFull ? (
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-slate-500 px-1">
+                <span className="flex items-center gap-1 text-slate-600">
+                  <Type className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Font Size</span>
+                </span>
+                <span className="font-mono text-[10px] text-indigo-700 bg-indigo-50 px-1.5 py-0.2 rounded border border-indigo-100 font-bold">
+                  {currentPreset.label}
+                </span>
+              </div>
+              <div className="grid grid-cols-4 gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+                {presets.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setFontSize(p.id)}
+                    className={`py-1 text-[11px] rounded-lg transition-all cursor-pointer font-bold ${
+                      fontSize === p.id
+                        ? 'bg-white text-indigo-600 shadow-2xs font-black'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                    title={`${p.label} (${p.scale})`}
+                  >
+                    {p.shortLabel}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={cycleFontSize}
+              className="w-full text-center py-1 font-mono font-bold text-[10px] text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-100 cursor-pointer transition-colors"
+              title={`Font Size: ${currentPreset.label} (${currentPreset.scale}) - Click to toggle`}
+            >
+              {currentPreset.shortLabel}
+            </button>
+          )}
+
           {showFull ? (
             <div className="space-y-1.5">
               <label className="block text-[11px] font-semibold text-slate-500 px-1">

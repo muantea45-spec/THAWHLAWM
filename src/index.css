@@ -6,6 +6,12 @@
     --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
     --font-heading: 'Outfit', 'Inter', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+    --app-font-scale: 100%;
+  }
+
+  html {
+    font-size: var(--app-font-scale, 100%);
+    transition: font-size 0.15s ease-in-out;
   }
 
   body {

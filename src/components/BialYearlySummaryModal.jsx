@@ -30,6 +30,16 @@ export default function BialYearlySummaryModal({
   const [sortField, setSortField] = useState('sl_no');
   const [sortDirection, setSortDirection] = useState('asc');
 
+  // Selected month detail view per member in Household History
+  const [selectedMonthByMember, setSelectedMonthByMember] = useState({});
+
+  const handleToggleMonthDetails = (memberId, monthId) => {
+    setSelectedMonthByMember(prev => ({
+      ...prev,
+      [memberId]: prev[memberId] === monthId ? null : monthId
+    }));
+  };
+
   useEffect(() => {
     if (isOpen && initialTab) {
       setActiveTab(initialTab);
@@ -379,9 +389,12 @@ export default function BialYearlySummaryModal({
                       </div>
 
                       {/* 12-Month Matrix: Card View of every month's payments */}
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-                          <span>Thla Tin Thawh Dan</span>
+                          <span className="flex items-center gap-1">
+                            <span>Thla Tin Thawh Dan</span>
+                            <span className="text-[9px] text-indigo-600 font-semibold normal-case">(hmet la, kimchang en rawh)</span>
+                          </span>
                           <span className="text-slate-400 font-mono text-[9.5px]">FY {year}</span>
                         </div>
 
@@ -390,34 +403,114 @@ export default function BialYearlySummaryModal({
                             const monthData = m.monthly?.[fm.id];
                             const amount = monthData?.total || 0;
                             const hasPaid = amount > 0;
+                            const isSelected = selectedMonthByMember[m.member_id] === fm.id;
 
                             return (
-                              <div
+                              <button
                                 key={fm.id}
-                                className={`py-1 px-1 rounded-xl border text-center flex flex-col justify-between transition-colors ${
-                                  hasPaid
-                                    ? 'bg-emerald-50/70 border-emerald-200/80 shadow-2xs'
-                                    : 'bg-slate-50/70 border-slate-200/50'
+                                type="button"
+                                onClick={() => handleToggleMonthDetails(m.member_id, fm.id)}
+                                className={`py-1 px-1 rounded-xl border text-center flex flex-col justify-between transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'ring-2 ring-indigo-600 bg-indigo-50 border-indigo-400 shadow-xs'
+                                    : hasPaid
+                                    ? 'bg-emerald-50/70 border-emerald-200/80 hover:bg-emerald-100/70 hover:border-emerald-300 shadow-2xs'
+                                    : 'bg-slate-50/70 border-slate-200/50 hover:bg-slate-100/70 hover:border-slate-300'
                                 }`}
-                                title={`${fm.name}: ₹${amount.toLocaleString('en-IN')}`}
+                                title={`Click to view ${fm.name} breakdown (Total: ₹${amount.toLocaleString('en-IN')})`}
                               >
                                 <span className={`text-[9.5px] font-bold uppercase tracking-wider block leading-none ${
-                                  hasPaid ? 'text-emerald-900' : 'text-slate-400'
+                                  isSelected ? 'text-indigo-900 font-black' : hasPaid ? 'text-emerald-900' : 'text-slate-400'
                                 }`}>
                                   {fm.short}
                                 </span>
                                 <span className={`font-mono text-[10px] sm:text-[10.5px] font-extrabold truncate block mt-0.5 tabular-nums ${
-                                  hasPaid ? 'text-emerald-800' : 'text-slate-300'
+                                  isSelected ? 'text-indigo-800' : hasPaid ? 'text-emerald-800' : 'text-slate-300'
                                 }`}>
                                   {hasPaid ? `₹${amount.toLocaleString('en-IN')}` : '—'}
                                 </span>
-                              </div>
+                              </button>
                             );
                           })}
                         </div>
+
+                        {/* Expanded Month Payment Breakdown */}
+                        {selectedMonthByMember[m.member_id] && (() => {
+                          const selMonthId = selectedMonthByMember[m.member_id];
+                          const selectedFm = FINANCIAL_MONTHS.find(f => f.id === selMonthId) || { name: `Month ${selMonthId}`, short: '' };
+                          const selData = m.monthly?.[selMonthId] || {};
+                          const selTotal = selData.total || 0;
+                          const hasPayment = selTotal > 0;
+
+                          return (
+                            <div className="mt-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-2 animate-in fade-in duration-150 shadow-2xs">
+                              <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                                  <span className="font-heading font-black text-slate-900 text-xs truncate">
+                                    {selectedFm.name} ({year})
+                                  </span>
+                                  <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">Details</span>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <span className={`font-mono font-black text-[11px] px-2 py-0.5 rounded-md border tabular-nums ${
+                                    hasPayment 
+                                      ? 'text-emerald-800 bg-emerald-50 border-emerald-200' 
+                                      : 'text-slate-500 bg-slate-100 border-slate-200'
+                                  }`}>
+                                    ₹{selTotal.toLocaleString('en-IN')}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleMonthDetails(m.member_id, selMonthId)}
+                                    className="w-5 h-5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer text-xs font-bold"
+                                    title="Close details"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              </div>
+
+                              {hasPayment ? (
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  {activeCols.map(col => {
+                                    const colVal = selData[col.field_key] || 0;
+                                    return (
+                                      <div
+                                        key={col.id}
+                                        className="flex items-center justify-between px-2 py-1 rounded-lg border text-[10.5px]"
+                                        style={{
+                                          backgroundColor: `${col.color || '#6366f1'}0d`,
+                                          borderColor: `${col.color || '#6366f1'}25`
+                                        }}
+                                      >
+                                        <div className="flex items-center gap-1 min-w-0">
+                                          <span
+                                            className="w-2 h-2 rounded-full shrink-0"
+                                            style={{ backgroundColor: col.color || '#6366f1' }}
+                                          />
+                                          <span className="font-bold text-[10px] truncate" style={{ color: col.color || '#3730a3' }}>
+                                            {col.name} ({col.code})
+                                          </span>
+                                        </div>
+                                        <span className="font-mono font-black text-slate-900 shrink-0 ml-1.5 tabular-nums">
+                                          ₹{colVal.toLocaleString('en-IN')}
+                                        </span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="py-2 text-center text-slate-500 text-[10.5px] italic bg-white/70 rounded-lg border border-dashed border-slate-200">
+                                  {selectedFm.name} thlaah hian thawhlawm engmah chhunluh a ni lo.
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
 
-                      {/* Footer: Category breakdown & details view button */}
+                      {/* Footer: Category breakdown (annual summary badges) */}
                       <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-1 flex-wrap text-[10.5px]">
                         <div className="flex items-center gap-1 flex-wrap min-w-0">
                           {activeCols.map(col => {
@@ -433,15 +526,6 @@ export default function BialYearlySummaryModal({
                             );
                           })}
                         </div>
-
-                        <button
-                          type="button"
-                          onClick={() => onSelectMember && onSelectMember(m.member_id)}
-                          className="p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors cursor-pointer shrink-0 ml-auto"
-                          title="View full ledger for this member"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
                       </div>
                     </div>
                   );

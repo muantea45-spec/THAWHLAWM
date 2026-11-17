@@ -146,7 +146,7 @@ export default function BialModal({ isOpen, onClose, onSave, bialToEdit }) {
           <button
             type="submit"
             disabled={loading}
-            className="px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50"
+            className="px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-all cursor-pointer disabled:opacity-50"
           >
             {loading ? 'Saving...' : bialToEdit ? 'Save' : 'Create Bial'}
           </button>

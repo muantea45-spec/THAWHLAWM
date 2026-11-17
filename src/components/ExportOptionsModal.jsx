@@ -480,7 +480,7 @@ export default function ExportOptionsModal({
             type="button"
             disabled={isExporting}
             onClick={handleDownloadClick}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-all cursor-pointer disabled:opacity-50"
           >
             <Download className="w-4 h-4" />
             <span>

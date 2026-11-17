@@ -223,20 +223,20 @@ export default function MemberTransferModal({
           <Modal.Body className="space-y-3 text-xs">
             
             {/* Visual Route Flow Header */}
-            <div className="p-2.5 rounded-2xl bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border border-indigo-200/80 shadow-2xs">
+            <div className="p-2.5 rounded-2xl bg-slate-50 border border-slate-200">
               <div className="flex items-center justify-between gap-1 text-center font-bold">
-                <div className="flex-1 bg-white/80 p-1.5 rounded-xl border border-blue-200 truncate">
-                  <span className="text-[9px] text-blue-700 uppercase block">FROM</span>
-                  <span className="text-xs text-slate-900 truncate">{sourceBialObj?.name || 'Source'}</span>
+                <div className="flex-1 bg-white p-2 rounded-xl border border-slate-200 truncate">
+                  <span className="text-[9px] text-slate-500 uppercase block font-semibold">FROM</span>
+                  <span className="text-xs text-slate-900 truncate font-bold">{sourceBialObj?.name || 'Source'}</span>
                 </div>
 
                 <div className="px-1.5 shrink-0 flex flex-col items-center">
-                  <ArrowRight className="w-4 h-4 text-indigo-600 animate-pulse" />
+                  <ArrowRight className="w-4 h-4 text-slate-400" />
                 </div>
 
-                <div className="flex-1 bg-white/80 p-1.5 rounded-xl border border-purple-200 truncate">
-                  <span className="text-[9px] text-purple-700 uppercase block">TO</span>
-                  <span className="text-xs text-slate-900 truncate">{destinationBialObj?.name || 'Destination'}</span>
+                <div className="flex-1 bg-white p-2 rounded-xl border border-slate-200 truncate">
+                  <span className="text-[9px] text-indigo-600 uppercase block font-semibold">TO</span>
+                  <span className="text-xs text-slate-900 truncate font-bold">{destinationBialObj?.name || 'Destination'}</span>
                 </div>
               </div>
             </div>
@@ -276,7 +276,7 @@ export default function MemberTransferModal({
               </div>
 
               {loadingMembers ? (
-                <div className="py-4 text-center text-xs text-indigo-600 font-bold animate-pulse">
+                <div className="py-4 text-center text-xs text-slate-500 font-medium">
                   Loading members...
                 </div>
               ) : filteredMembers.length === 0 ? (
@@ -354,7 +354,7 @@ export default function MemberTransferModal({
             <button
               type="submit"
               disabled={transferring || !selectedMemberId || !destinationBialId || String(sourceBialId) === String(destinationBialId)}
-              className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-xs font-bold shadow-xs shadow-indigo-600/20 transition-all disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-2xs transition-colors disabled:opacity-40 flex items-center gap-1.5 cursor-pointer"
             >
               <ArrowRightLeft className="w-3.5 h-3.5" />
               <span>{transferring ? 'Transferring...' : 'Transfer Member'}</span>

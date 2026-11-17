@@ -19,9 +19,9 @@ export default function Toast({ message, type = 'info', onClose, duration = 4000
   };
 
   const bgStyles = {
-    success: 'bg-white/95 border-emerald-300 text-slate-900 shadow-xl shadow-emerald-600/10',
-    error: 'bg-white/95 border-rose-300 text-slate-900 shadow-xl shadow-rose-600/10',
-    info: 'bg-white/95 border-indigo-300 text-slate-900 shadow-xl shadow-indigo-600/10'
+    success: 'bg-white/95 border-emerald-300 text-slate-900 shadow-2xs',
+    error: 'bg-white/95 border-rose-300 text-slate-900 shadow-2xs',
+    info: 'bg-white/95 border-indigo-300 text-slate-900 shadow-2xs'
   };
 
   return (

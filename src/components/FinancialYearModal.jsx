@@ -99,7 +99,7 @@ export default function FinancialYearModal({
           <button
             type="submit"
             disabled={adding || !newYearInput}
-            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 disabled:opacity-40 shadow-xs shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
+            className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 disabled:opacity-40 shadow-2xs transition-all cursor-pointer shrink-0"
           >
             <Plus className="w-3.5 h-3.5" /> <span>Add Year</span>
           </button>
@@ -192,14 +192,14 @@ export default function FinancialYearModal({
         </div>
 
         {/* Rollover Feature Box */}
-        <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-50 via-white to-indigo-50/70 border border-indigo-200 shadow-2xs space-y-2">
+        <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
-              <div className="p-1.5 rounded-xl bg-indigo-100/80 text-indigo-700 shrink-0">
-                <RefreshCw className="w-4 h-4 text-indigo-600" />
+              <div className="p-1.5 rounded-xl bg-slate-200 text-slate-700 shrink-0">
+                <RefreshCw className="w-4 h-4 text-slate-600" />
               </div>
               <div className="min-w-0">
-                <h4 className="text-xs font-extrabold text-slate-900 truncate">Member Names Rollover</h4>
+                <h4 className="text-xs font-bold text-slate-900 truncate">Member Names Rollover</h4>
                 <p className="text-[10.5px] text-slate-500 font-medium truncate">Copy member names to another Financial Year</p>
               </div>
             </div>
@@ -209,7 +209,7 @@ export default function FinancialYearModal({
                 setRolloverSourceYear(activeYear || (years.length > 0 ? years[0] : 2026));
                 setShowRolloverModal(true);
               }}
-              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs shadow-indigo-600/20 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+              className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
               title="Rollover member names to another FY"
             >
               <RefreshCw className="w-3.5 h-3.5" />

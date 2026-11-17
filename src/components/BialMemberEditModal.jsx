@@ -262,7 +262,7 @@ export default function BialMemberEditModal({
               <button
                 type="submit"
                 disabled={saving || isLocked}
-                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs shadow-indigo-600/20 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                className="px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
               >
                 <Save className="w-3.5 h-3.5" />
                 <span>{saving ? 'Saving...' : 'Save Changes'}</span>

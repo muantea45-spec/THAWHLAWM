@@ -886,7 +886,7 @@ export default function AdminDashboard({ user, showToast }) {
                   <button
                     type="button"
                     onClick={() => setIsMobileMenuOpen(true)}
-                    className="p-1.5 sm:p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer"
+                    className="p-1.5 sm:p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-2xs transition-all cursor-pointer"
                     title="Open Admin Menu"
                     aria-label="Open Admin Menu"
                   >
@@ -982,7 +982,7 @@ export default function AdminDashboard({ user, showToast }) {
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(true)}
-                  className="p-1.5 sm:p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                  className="p-1.5 sm:p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-2xs transition-all cursor-pointer shrink-0"
                   title="Open Admin Menu"
                   aria-label="Open Admin Menu"
                 >
@@ -1059,7 +1059,7 @@ export default function AdminDashboard({ user, showToast }) {
 
                   <button
                     onClick={() => { setBialToEdit(null); setShowBialModal(true); }}
-                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer shrink-0"
                   >
                     <Plus className="w-3.5 h-3.5" /> <span>Add</span>
                   </button>
@@ -1343,7 +1343,7 @@ export default function AdminDashboard({ user, showToast }) {
                       </thead>
                       <tbody className="divide-y divide-slate-200 text-xs sm:text-sm font-mono tabular-nums">
                         {inspectorLoading ? (
-                          <tr><td colSpan={3 + titheColumns.length} className="py-10 text-center text-indigo-600 font-semibold animate-pulse font-sans">Loading ledger...</td></tr>
+                          <tr><td colSpan={3 + titheColumns.length} className="py-10 text-center text-slate-500 font-medium font-sans">Loading ledger...</td></tr>
                         ) : sortedInspectorMembers.length === 0 ? (
                           <tr><td colSpan={3 + titheColumns.length} className="py-10 text-center text-slate-500 font-sans">No tithes recorded.</td></tr>
                         ) : (
@@ -1442,7 +1442,7 @@ export default function AdminDashboard({ user, showToast }) {
                 <div className="space-y-2">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                     {inspectorLoading ? (
-                      <div className="col-span-2 py-10 text-center text-xs text-indigo-600 font-semibold animate-pulse bg-white rounded-2xl border border-slate-200">
+                      <div className="col-span-2 py-10 text-center text-xs text-slate-500 font-medium bg-white rounded-2xl border border-slate-200">
                         Loading ledger...
                       </div>
                     ) : sortedInspectorMembers.length === 0 ? (
@@ -2493,13 +2493,13 @@ export default function AdminDashboard({ user, showToast }) {
                       return (
                         <div
                           key={b.id}
-                          className={`p-2 rounded-xl border transition-all space-y-1.5 shadow-2xs ${idx === 0 && b.total > 0
-                            ? 'bg-gradient-to-br from-amber-500/10 via-indigo-50/50 to-white border-amber-300 shadow-xs'
+                          className={`p-2 rounded-xl border transition-colors space-y-1.5 shadow-2xs ${idx === 0 && b.total > 0
+                            ? 'bg-amber-50/40 border-amber-300'
                             : idx === 1 && b.total > 0
-                              ? 'bg-gradient-to-br from-slate-100/80 via-white to-slate-50 border-slate-300'
+                              ? 'bg-slate-50 border-slate-300'
                               : idx === 2 && b.total > 0
-                                ? 'bg-gradient-to-br from-amber-700/10 via-white to-amber-50/40 border-amber-200'
-                                : 'bg-white border-slate-200 hover:border-indigo-200'
+                                ? 'bg-amber-50/20 border-amber-200'
+                                : 'bg-white border-slate-200 hover:border-slate-300'
                             }`}
                         >
                           {/* Line 1: Rank Badge, Bial Name, Code, and Share % */}
@@ -2672,7 +2672,7 @@ export default function AdminDashboard({ user, showToast }) {
                     Initiate a full manual snapshot backup JSON download containing all Bials, members, monthly tithe records, and lock settings.
                   </p>
                 </div>
-                <button onClick={handleBackupNow} className="w-full py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                <button onClick={handleBackupNow} className="w-full py-2.5 rounded-xl font-bold text-xs bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-all flex items-center justify-center gap-2 cursor-pointer">
                   <Download className="w-4 h-4" /> Download Backup Snapshot Now
                 </button>
               </div>
@@ -2694,7 +2694,7 @@ export default function AdminDashboard({ user, showToast }) {
                         <span className="text-xs font-semibold text-slate-700">{selectedFile ? selectedFile.name : 'Select backup JSON snapshot'}</span>
                       </label>
                     </div>
-                    <button type="submit" disabled={!selectedFile || restoring} className="w-full py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs shadow-emerald-600/20 transition-all disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer">
+                    <button type="submit" disabled={!selectedFile || restoring} className="w-full py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs transition-all disabled:opacity-40 flex items-center justify-center gap-2 cursor-pointer">
                       {restoring ? 'Restoring Database...' : 'Restore Database'}
                     </button>
                   </form>
@@ -2809,7 +2809,7 @@ export default function AdminDashboard({ user, showToast }) {
                     <tbody className="divide-y divide-slate-100 font-sans">
                       {loadingAuditLogs ? (
                         <tr>
-                          <td colSpan={5} className="py-12 text-center text-indigo-600 font-bold animate-pulse">
+                          <td colSpan={5} className="py-12 text-center text-slate-500 font-medium">
                             <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-indigo-600" />
                             <span>Loading audit log trail...</span>
                           </td>

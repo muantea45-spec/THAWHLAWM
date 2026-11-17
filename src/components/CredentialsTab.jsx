@@ -257,7 +257,7 @@ export default function CredentialsTab({
 
               <button
                 onClick={onAddNewBial}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" /> <span>Add Bial</span>
               </button>
@@ -412,12 +412,12 @@ export default function CredentialsTab({
             </div>
 
             {/* Explanatory callout */}
-            <div className="p-3 bg-gradient-to-r from-indigo-50/90 via-purple-50/70 to-indigo-50/90 rounded-2xl border border-indigo-200/80 space-y-1 text-xs">
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-1 text-xs">
               <div className="flex items-center gap-2">
                 <GoogleIcon className="w-4 h-4 shrink-0" />
-                <span className="font-bold text-indigo-950 text-xs">Authorize Admin via Google</span>
+                <span className="font-bold text-slate-900 text-xs">Authorize Admin via Google</span>
               </div>
-              <p className="text-[11px] text-indigo-900/80 leading-relaxed">
+              <p className="text-[11px] text-slate-600 leading-relaxed">
                 Add any church leader's Gmail below. They can sign in directly from the login home page with the Google button.
               </p>
             </div>
@@ -438,7 +438,7 @@ export default function CredentialsTab({
               <button
                 type="submit"
                 disabled={addingEmail || !newAdminEmail}
-                className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer disabled:opacity-50 shadow-xs shadow-indigo-600/20 shrink-0"
+                className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" /> <span>{addingEmail ? 'Adding...' : 'Authorize'}</span>
               </button>
@@ -533,7 +533,7 @@ export default function CredentialsTab({
                           type="button"
                           onClick={() => handleTransferOwner(targetOwnerEmail)}
                           disabled={transferringOwner || !targetOwnerEmail}
-                          className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 shadow-xs shadow-amber-600/20 shrink-0"
+                          className="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs shrink-0"
                         >
                           <Check className="w-3 h-3" />
                           <span>{transferringOwner ? 'Transferring...' : 'Transfer'}</span>
@@ -552,7 +552,7 @@ export default function CredentialsTab({
               </span>
 
               {loadingGoogleEmails ? (
-                <div className="py-6 text-center text-xs text-indigo-600 font-bold animate-pulse">
+                <div className="py-6 text-center text-xs text-slate-500 font-medium">
                   Loading authorized Google emails...
                 </div>
               ) : secondaryGoogleAdmins.length === 0 ? (

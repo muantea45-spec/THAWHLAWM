@@ -260,7 +260,7 @@ export default function BialCredentialsModal({
                   onClose();
                   onAddNewBial();
                 }}
-                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shadow-emerald-600/20 transition-all cursor-pointer shrink-0"
+                className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer shrink-0"
               >
                 <Plus className="w-3.5 h-3.5" /> <span>Add Bial User</span>
               </button>
@@ -391,14 +391,14 @@ export default function BialCredentialsModal({
         {activeSection === 'admin_google' && (
           <div className="space-y-3.5 animate-in fade-in duration-150">
             {/* Header Callout */}
-            <div className="p-3.5 bg-gradient-to-r from-indigo-50/90 via-purple-50/70 to-indigo-50/90 rounded-2xl border border-indigo-200/90 space-y-1.5 shadow-2xs">
+            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5">
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs shadow-indigo-600/30">
+                <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-indigo-950">Make Another Admin via Google Login</h4>
-                  <p className="text-[11px] text-indigo-900/80 leading-relaxed">
+                  <h4 className="text-xs font-bold text-slate-900">Make Another Admin via Google Login</h4>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
                     Authorize any church leader or administrator by entering their Google email below. They can immediately log in from the app homepage using the <strong>"Sign in with Google"</strong> button.
                   </p>
                 </div>
@@ -421,7 +421,7 @@ export default function BialCredentialsModal({
               <button
                 type="submit"
                 disabled={addingEmail || !newAdminEmail}
-                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs shadow-indigo-600/20 shrink-0"
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs shrink-0"
               >
                 <Plus className="w-4 h-4" /> <span>{addingEmail ? 'Authorizing...' : 'Authorize Admin'}</span>
               </button>
@@ -531,7 +531,7 @@ export default function BialCredentialsModal({
                               type="button"
                               onClick={() => handleTransferOwner(targetOwnerEmail)}
                               disabled={transferringOwner || !targetOwnerEmail}
-                              className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-xs shadow-amber-600/20 shrink-0"
+                              className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50 shadow-2xs shrink-0"
                             >
                               <Check className="w-3.5 h-3.5" />
                               <span>{transferringOwner ? 'Transferring...' : 'Confirm Transfer'}</span>
@@ -545,7 +545,7 @@ export default function BialCredentialsModal({
               )}
 
               {loadingGoogleEmails ? (
-                <div className="py-6 text-center text-xs text-indigo-600 font-bold animate-pulse">
+                <div className="py-6 text-center text-xs text-slate-500 font-medium">
                   Loading authorized Google emails...
                 </div>
               ) : secondaryGoogleAdmins.length === 0 && !primaryAdminEmail ? (

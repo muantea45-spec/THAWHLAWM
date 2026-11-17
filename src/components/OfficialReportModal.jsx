@@ -826,7 +826,7 @@ export default function OfficialReportModal({
 
             {/* 1. Scope & Selection Options */}
             <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-700">
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700">
                 <div className="flex items-center gap-1.5">
                   <Sliders className="w-3.5 h-3.5 text-indigo-600" />
                   <span>1. Scope & Period</span>
@@ -842,7 +842,7 @@ export default function OfficialReportModal({
                 {fixedBialId ? (
                   <div className="w-full px-2.5 py-1.5 rounded-xl bg-indigo-50/80 border border-indigo-200 text-indigo-950 font-bold text-xs flex items-center justify-between shadow-2xs">
                     <span className="truncate">{bials.find(b => String(b.id) === String(fixedBialId))?.name || `Bial ${fixedBialId}`}</span>
-                    <span className="text-[9px] font-black text-indigo-700 bg-white border border-indigo-200 px-1.5 py-0.5 rounded-md uppercase shrink-0">
+                    <span className="text-[9px] font-bold text-indigo-700 bg-white border border-indigo-200 px-1.5 py-0.5 rounded-md uppercase shrink-0">
                       Bial Scope
                     </span>
                   </div>
@@ -958,14 +958,14 @@ export default function OfficialReportModal({
                       <Users className="w-3.5 h-3.5 text-indigo-600" />
                       <span>Returned / Household:</span>
                     </span>
-                    <span className="font-mono font-black text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-300 text-xs shadow-2xs">
+                    <span className="font-mono font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-300 text-xs shadow-2xs">
                       {dynamicTotals.total_returned_members || 0} / {dynamicTotals.total_system_members || 0} HH
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between text-xs font-bold">
                     <span className="text-slate-700">Rate Percentage:</span>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-black text-xs">
+                    <span className="px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold text-xs">
                       {dynamicTotals.overall_return_rate !== undefined ? `${dynamicTotals.overall_return_rate}%` : '0%'}
                     </span>
                   </div>
@@ -980,7 +980,7 @@ export default function OfficialReportModal({
 
                   <div className="flex items-center justify-between text-[10.5px] text-slate-600 font-semibold pt-0.5">
                     <span>Avg / HH: ₹{(dynamicTotals.avg_contribution_per_member || 0).toLocaleString('en-IN')}</span>
-                    <span className="font-black text-slate-900">Total: ₹{(dynamicTotals.grand_total || 0).toLocaleString('en-IN')}</span>
+                    <span className="font-bold text-slate-900">Total: ₹{(dynamicTotals.grand_total || 0).toLocaleString('en-IN')}</span>
                   </div>
                 </div>
               </div>
@@ -988,7 +988,7 @@ export default function OfficialReportModal({
 
             {/* 2. Paper Layout & Format */}
             <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
-              <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-700">
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700">
                 <FileText className="w-3.5 h-3.5 text-indigo-600" />
                 <span>2. Page Setup</span>
               </div>
@@ -1025,13 +1025,13 @@ export default function OfficialReportModal({
             </div>
 
             {/* 3. YEARLY REPORT & CONSOLIDATED BOOKLET SECTION */}
-            <div className="bg-gradient-to-br from-indigo-50/90 to-purple-50/90 p-3.5 rounded-2xl border border-indigo-200 shadow-2xs space-y-2.5">
-              <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-indigo-950">
+            <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+              <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-900">
                 <div className="flex items-center gap-1.5">
                   <BookOpen className="w-4 h-4 text-indigo-600 shrink-0" />
                   <span>3. YEARLY REPORT BOOKLET</span>
                 </div>
-                <span className="px-2 py-0.5 bg-indigo-600 text-white text-[9.5px] font-black rounded-md uppercase tracking-wider">
+                <span className="px-2 py-0.5 bg-indigo-600 text-white text-[9.5px] font-bold rounded-md uppercase tracking-wider">
                   Press Ready
                 </span>
               </div>
@@ -1040,18 +1040,18 @@ export default function OfficialReportModal({
               </p>
 
               {/* Live Sheet Count & 4-Page Signature Indicator Badge */}
-              <div className="bg-white/95 border border-indigo-200/90 rounded-xl p-2.5 shadow-2xs space-y-1">
-                <div className="flex items-center justify-between text-[11px] font-black text-indigo-950">
+              <div className="bg-white border border-slate-200 rounded-xl p-2.5 space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-900">
                   <span className="flex items-center gap-1.5">
                     <Layers className="w-3.5 h-3.5 text-indigo-600" />
                     Press Sheet & Plate Count
                   </span>
-                  <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-black flex items-center gap-1">
+                  <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold flex items-center gap-1">
                     <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                     4-Page Aligned
                   </span>
                 </div>
-                <div className="text-xs font-black text-slate-900">
+                <div className="text-xs font-bold text-slate-900">
                   Total Booklet: {bookletStats.totalPages || 0} Pages ({bookletStats.totalSheets || 0} A4 Duplex Sheets)
                 </div>
                 <div className="text-[10px] text-slate-500 font-medium">
@@ -1080,7 +1080,7 @@ export default function OfficialReportModal({
                         onClick={() => setBindingType(preset.id)}
                         className={`py-1.5 px-1 rounded-lg text-[10px] font-extrabold transition-all border text-center cursor-pointer ${
                           isSelected
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-black'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-bold'
                             : 'bg-white text-slate-700 border-indigo-200/80 hover:bg-indigo-50/70'
                         }`}
                         title={preset.description}
@@ -1104,7 +1104,7 @@ export default function OfficialReportModal({
                     loadBookletData();
                   }
                 }}
-                className="flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-black text-white font-black text-xs shadow-xs transition-all cursor-pointer"
+                className="flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
                 title="Open interactive preview of the Yearly Report Booklet (A5 Format)"
               >
                 <BookOpen className="w-4 h-4 text-amber-400" />
@@ -1117,7 +1117,7 @@ export default function OfficialReportModal({
                     type="button"
                     onClick={handleExportConsolidatedBookletPDF}
                     disabled={isExportingBooklet}
-                    className="flex items-center justify-center gap-1 px-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] shadow-xs shadow-indigo-600/20 transition-all cursor-pointer disabled:opacity-50 text-center"
+                    className="flex items-center justify-center gap-1 px-2 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[11px] shadow-2xs transition-all cursor-pointer disabled:opacity-50 text-center"
                     title="A4 Landscape 2-up Saddle-Stitch Spreads with Fold Marks: Print duplex (flip short edge) and fold directly into an A5 booklet in 1..N order"
                   >
                     <Download className="w-3.5 h-3.5 shrink-0" />
@@ -1140,7 +1140,7 @@ export default function OfficialReportModal({
                   type="button"
                   onClick={handleExportConsolidatedBookletExcel}
                   disabled={isExportingBooklet}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-xs shadow-emerald-600/20 transition-all cursor-pointer disabled:opacity-50"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-2xs transition-all cursor-pointer disabled:opacity-50"
                   title="Download Consolidated Member Excel spreadsheet"
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5 shrink-0" />
@@ -1172,7 +1172,7 @@ export default function OfficialReportModal({
             {/* 4. Manual Signatory Details & B/I/U Options (Admin Only) */}
             {isAdmin && (
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-2.5">
-                <div className="flex items-center justify-between text-xs font-black uppercase tracking-wider text-slate-700">
+                <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-slate-700">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-indigo-600" />
                     <span>4. Signatory Details</span>
@@ -1189,7 +1189,7 @@ export default function OfficialReportModal({
                       <button
                         type="button"
                         onClick={() => setNameBold(!nameBold)}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-black transition-colors cursor-pointer ${nameBold ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${nameBold ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'}`}
                         title="Bold"
                       >
                         B
@@ -1231,7 +1231,7 @@ export default function OfficialReportModal({
                       <button
                         type="button"
                         onClick={() => setDesigBold(!desigBold)}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-black transition-colors cursor-pointer ${desigBold ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${desigBold ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'}`}
                         title="Bold"
                       >
                         B
@@ -1273,7 +1273,7 @@ export default function OfficialReportModal({
                       <button
                         type="button"
                         onClick={() => setOrgBold(!orgBold)}
-                        className={`px-1.5 py-0.5 rounded text-[10px] font-black transition-colors cursor-pointer ${orgBold ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'}`}
+                        className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-colors cursor-pointer ${orgBold ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:text-slate-900'}`}
                         title="Bold"
                       >
                         B
@@ -1323,7 +1323,7 @@ export default function OfficialReportModal({
             {/* 4. Upload Signature & Stamp/Seal with Size Controls (Admin Only) */}
             {isAdmin && (
               <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs space-y-3">
-                <div className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-slate-700">
+                <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-slate-700">
                   <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                   <span>4. Signature & Seal Upload</span>
                 </div>
@@ -1438,7 +1438,7 @@ export default function OfficialReportModal({
                   type="button"
                   onClick={() => setPreviewTab('certificate')}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${previewTab === 'certificate'
-                    ? 'bg-white text-black shadow-xs font-black'
+                    ? 'bg-white text-black shadow-xs font-bold'
                     : 'text-slate-600 hover:text-black font-semibold'
                     }`}
                 >
@@ -1454,7 +1454,7 @@ export default function OfficialReportModal({
                     }
                   }}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${previewTab === 'booklet'
-                    ? 'bg-white text-black shadow-xs font-black'
+                    ? 'bg-white text-black shadow-xs font-bold'
                     : 'text-slate-600 hover:text-black font-semibold'
                     }`}
                 >
@@ -1545,7 +1545,7 @@ export default function OfficialReportModal({
 
                   {/* LETTERHEAD SECTION (100% BLACK TEXT) */}
                   <div className="text-center space-y-0.5">
-                    <h3 className="font-heading font-black text-xs sm:text-sm uppercase tracking-wider text-black leading-tight">
+                    <h3 className="font-heading font-bold text-xs sm:text-sm uppercase tracking-wider text-black leading-tight">
                       Presbyterian Church of India
                     </h3>
                     <h4 className="font-heading font-extrabold text-xs sm:text-xs text-black leading-tight">
@@ -1562,7 +1562,7 @@ export default function OfficialReportModal({
                     </div>
 
                     <div className="space-y-0.5">
-                      <h2 className="font-heading font-black text-sm sm:text-base text-black uppercase tracking-tight leading-tight">
+                      <h2 className="font-heading font-bold text-sm sm:text-base text-black uppercase tracking-tight leading-tight">
                         Pathian Ram Report
                       </h2>
                       <div className="flex flex-col items-center justify-center gap-0.5">
@@ -1570,7 +1570,7 @@ export default function OfficialReportModal({
                           {periodText}
                         </span>
                         {/* Centered Bial Name */}
-                        <span className="text-center font-black text-black text-xs tracking-tight leading-tight">
+                        <span className="text-center font-bold text-black text-xs tracking-tight leading-tight">
                           {scopeName} {tableType === 'member_annual_summary' ? '• Member Summation' : ''}
                         </span>
                       </div>
@@ -1621,8 +1621,8 @@ export default function OfficialReportModal({
                     </div>
                     {/* Summary Card 5: TOTAL */}
                     <div className={`col-span-2 sm:col-span-1 bg-white rounded-xl border-2 border-black shadow-2xs ${orientation === 'landscape' ? 'p-2.5' : 'p-2'}`}>
-                      <span className="text-[10px] sm:text-[11px] font-black text-black uppercase block tracking-wider">TOTAL</span>
-                      <span className={`font-black text-black block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
+                      <span className="text-[10px] sm:text-[11px] font-bold text-black uppercase block tracking-wider">TOTAL</span>
+                      <span className={`font-bold text-black block mt-0.5 ${orientation === 'landscape' ? 'text-sm sm:text-base' : 'text-xs sm:text-sm'}`}>
                         ₹{(dynamicTotals.grand_total || 0).toLocaleString('en-IN')}
                       </span>
                     </div>
@@ -1633,28 +1633,28 @@ export default function OfficialReportModal({
                     <div className="flex items-center gap-2.5 sm:gap-4 text-xs">
                       <div>
                         <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Returned / Household</span>
-                        <span className="font-black text-black text-xs sm:text-sm">
+                        <span className="font-bold text-black text-xs sm:text-sm">
                           {dynamicTotals.total_returned_members || dynamicBreakdown.filter(m => (m.grand_total || m.total || 0) > 0).length || 0} / {dynamicTotals.total_system_members || dynamicBreakdown.length || 0} HH
                         </span>
                       </div>
                       <div className="h-5 w-px bg-slate-300"></div>
                       <div>
                         <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Rate Percentage</span>
-                        <span className="font-black text-black text-xs sm:text-sm">
+                        <span className="font-bold text-black text-xs sm:text-sm">
                           {dynamicTotals.overall_return_rate !== undefined ? `${dynamicTotals.overall_return_rate}%` : 'N/A'}
                         </span>
                       </div>
                       <div className="h-5 w-px bg-slate-300"></div>
                       <div>
                         <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Avg / Household</span>
-                        <span className="font-black text-black text-xs sm:text-sm">
+                        <span className="font-bold text-black text-xs sm:text-sm">
                           ₹{(dynamicTotals.avg_contribution_per_member || (dynamicTotals.total_returned_members > 0 ? Math.round(dynamicTotals.grand_total / dynamicTotals.total_returned_members) : 0)).toLocaleString('en-IN')}
                         </span>
                       </div>
                     </div>
                     <div className="text-right text-xs">
                       <span className="text-[9px] uppercase font-extrabold tracking-wider text-black block">Total Households</span>
-                      <span className="font-black text-black text-xs sm:text-sm">
+                      <span className="font-bold text-black text-xs sm:text-sm">
                         {dynamicTotals.total_system_members || dynamicBreakdown.length || 0} HH
                       </span>
                     </div>
@@ -1680,7 +1680,7 @@ export default function OfficialReportModal({
                           <th className={`text-right text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>RT (₹)</th>
                           <th className={`text-right text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>Tch (₹)</th>
                           <th className={`text-right text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>Bldg (₹)</th>
-                          <th className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3.5' : 'py-1.5 px-2.5'}`}>Total (₹)</th>
+                          <th className={`text-right font-bold text-black ${orientation === 'landscape' ? 'py-2 px-3.5' : 'py-1.5 px-2.5'}`}>Total (₹)</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200 text-black font-semibold">
@@ -1705,7 +1705,7 @@ export default function OfficialReportModal({
                                   <td className={`text-center text-black font-bold ${orientation === 'landscape' ? 'py-1.5 px-2' : 'py-1 px-1.5'}`}>
                                     {item.returned_members ?? '-'}
                                   </td>
-                                  <td className={`text-center text-black font-black ${orientation === 'landscape' ? 'py-1.5 px-2' : 'py-1 px-1.5'}`}>
+                                  <td className={`text-center text-black font-bold ${orientation === 'landscape' ? 'py-1.5 px-2' : 'py-1 px-1.5'}`}>
                                     {item.return_rate !== undefined ? `${item.return_rate}%` : '-'}
                                   </td>
                                 </>
@@ -1724,27 +1724,27 @@ export default function OfficialReportModal({
                       <tfoot className="bg-slate-100 font-bold border-t-2 border-black text-black">
                         <tr>
                           <td className={`text-center font-bold text-[10px] ${orientation === 'landscape' ? 'py-2 px-2.5' : 'py-1.5 px-2'}`}></td>
-                          <td className={`font-black uppercase text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2.5'}`}>
+                          <td className={`font-bold uppercase text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2.5'}`}>
                             {tableType === 'monthly_breakdown' ? 'ANNUAL TOTAL' : (tableType === 'members' || tableType === 'member_annual_summary') ? `GRAND TOTAL (${dynamicBreakdown.length} Members)` : 'GRAND TOTAL'}
                           </td>
                           {tableType === 'bials' && (
                             <>
-                              <td className={`text-center font-black text-[10px] text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>
+                              <td className={`text-center font-bold text-[10px] text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>
                                 {dynamicTotals.total_system_members || dynamicBreakdown.reduce((acc, b) => acc + (b.total_members || b.member_count || 0), 0)}
                               </td>
-                              <td className={`text-center font-black text-[10px] text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>
+                              <td className={`text-center font-bold text-[10px] text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>
                                 {dynamicTotals.total_returned_members || dynamicBreakdown.reduce((acc, b) => acc + (b.returned_members || 0), 0)}
                               </td>
-                              <td className={`text-center font-black text-[10px] text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>
+                              <td className={`text-center font-bold text-[10px] text-black ${orientation === 'landscape' ? 'py-2 px-2' : 'py-1.5 px-1.5'}`}>
                                 {dynamicTotals.overall_return_rate !== undefined ? `${dynamicTotals.overall_return_rate}%` : '-'}
                               </td>
                             </>
                           )}
-                          <td className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_pathian_ram || 0).toLocaleString('en-IN')}</td>
-                          <td className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_ramthar || 0).toLocaleString('en-IN')}</td>
-                          <td className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_tualchhung || 0).toLocaleString('en-IN')}</td>
-                          <td className={`text-right font-black text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_building || 0).toLocaleString('en-IN')}</td>
-                          <td className={`text-right font-black text-black bg-slate-200 border-l border-black/30 ${orientation === 'landscape' ? 'py-2 px-3.5' : 'py-1.5 px-2.5'}`}>
+                          <td className={`text-right font-bold text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_pathian_ram || 0).toLocaleString('en-IN')}</td>
+                          <td className={`text-right font-bold text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_ramthar || 0).toLocaleString('en-IN')}</td>
+                          <td className={`text-right font-bold text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_tualchhung || 0).toLocaleString('en-IN')}</td>
+                          <td className={`text-right font-bold text-black ${orientation === 'landscape' ? 'py-2 px-3' : 'py-1.5 px-2'}`}>₹{(dynamicTotals.total_building || 0).toLocaleString('en-IN')}</td>
+                          <td className={`text-right font-bold text-black bg-slate-200 border-l border-black/30 ${orientation === 'landscape' ? 'py-2 px-3.5' : 'py-1.5 px-2.5'}`}>
                             ₹{(dynamicTotals.grand_total || 0).toLocaleString('en-IN')}
                           </td>
                         </tr>
@@ -1786,17 +1786,17 @@ export default function OfficialReportModal({
                       )}
 
                       {/* Signatory Name */}
-                      <div className={`text-xs sm:text-sm text-black font-black leading-normal ${nameBold ? 'font-black' : 'font-bold'} ${nameItalic ? 'italic' : ''} ${nameUnderline ? 'underline' : ''}`}>
+                      <div className={`text-xs sm:text-sm text-black font-bold leading-normal ${nameBold ? 'font-bold' : 'font-bold'} ${nameItalic ? 'italic' : ''} ${nameUnderline ? 'underline' : ''}`}>
                         {signatoryName || 'Authorised Signatory'}
                       </div>
 
                       {/* Signatory Designation */}
-                      <div className={`text-xs text-black font-bold leading-normal mt-0.5 ${desigBold ? 'font-black' : 'font-bold'} ${desigItalic ? 'italic' : ''} ${desigUnderline ? 'underline' : ''}`}>
+                      <div className={`text-xs text-black font-bold leading-normal mt-0.5 ${desigBold ? 'font-bold' : 'font-bold'} ${desigItalic ? 'italic' : ''} ${desigUnderline ? 'underline' : ''}`}>
                         {signatoryDesignation || 'Treasurer'}
                       </div>
 
                       {/* Signatory Organization Name */}
-                      <div className={`text-[11px] sm:text-xs text-black font-semibold leading-normal mt-0.5 ${orgBold ? 'font-black' : 'font-medium'} ${orgItalic ? 'italic' : ''} ${orgUnderline ? 'underline' : ''}`}>
+                      <div className={`text-[11px] sm:text-xs text-black font-semibold leading-normal mt-0.5 ${orgBold ? 'font-bold' : 'font-medium'} ${orgItalic ? 'italic' : ''} ${orgUnderline ? 'underline' : ''}`}>
                         {signatoryOrganization || 'Presbyterian Church of India'}
                       </div>
                     </div>
@@ -1818,7 +1818,7 @@ export default function OfficialReportModal({
 
                 {/* Booklet Sheet Header */}
                 <div className="relative z-10 text-center space-y-1 pb-2.5 border-b-2 border-black mb-3">
-                  <h3 className="font-heading font-black text-sm sm:text-base uppercase tracking-wider text-black">
+                  <h3 className="font-heading font-bold text-sm sm:text-base uppercase tracking-wider text-black">
                     MIZORAM PRESBYTERIAN KOHHRAN
                   </h3>
                   <div className="flex justify-center my-1.5">
@@ -1828,14 +1828,14 @@ export default function OfficialReportModal({
                       className="w-14 h-14 object-contain rounded-full border border-black/30 bg-white p-0.5"
                     />
                   </div>
-                  <h2 className="font-heading font-black text-base sm:text-lg uppercase tracking-tight text-black">
+                  <h2 className="font-heading font-bold text-base sm:text-lg uppercase tracking-tight text-black">
                     BETHLEHEM KOHHRAN
                   </h2>
                   <div className="flex flex-wrap items-center justify-center gap-1.5 pt-0.5">
                     <span className="px-3 py-0.5 rounded-full bg-slate-100 border border-slate-300 text-black font-extrabold text-xs">
                       PATHIAN RAM THAWHLAWM REPORT (FY {selectedYear} - {selectedYear + 1})
                     </span>
-                    <span className="px-3 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-950 font-black text-xs flex items-center gap-1 shadow-2xs">
+                    <span className="px-3 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-950 font-bold text-xs flex items-center gap-1 shadow-2xs">
                       <Layers className="w-3.5 h-3.5 text-emerald-700" />
                       Total Booklet: {bookletStats.totalPages || 0} Pages ({bookletStats.totalSheets || 0} A4 Duplex Sheets) • 4-Page Signature Aligned
                     </span>
@@ -1947,10 +1947,10 @@ export default function OfficialReportModal({
                             {/* FRONT COVER PAGE */}
                             <div className="border-2 border-black rounded-2xl p-6 bg-white shadow-sm text-center relative overflow-hidden">
                               <div className="border border-black p-5 rounded-xl">
-                                <p className="text-[10px] tracking-widest font-black uppercase text-black mb-1">
+                                <p className="text-[10px] tracking-widest font-bold uppercase text-black mb-1">
                                   Mizoram Presbyterian Church
                                 </p>
-                                <h2 className="text-xl sm:text-2xl font-black text-black tracking-tight">
+                                <h2 className="text-xl sm:text-2xl font-bold text-black tracking-tight">
                                   BETHLEHEM KOHHRAN
                                 </h2>
                                 <p className="text-[11px] font-semibold text-black mb-3">
@@ -1959,7 +1959,7 @@ export default function OfficialReportModal({
 
                                 <div className="w-16 h-0.5 bg-black mx-auto mb-4" />
 
-                                <h1 className="text-lg sm:text-xl font-black text-black uppercase tracking-wide">
+                                <h1 className="text-lg sm:text-xl font-bold text-black uppercase tracking-wide">
                                   Kumtluan Thawhlawm Chanchin Bu
                                 </h1>
                                 <p className="text-xs font-bold text-black mt-1">
@@ -1983,19 +1983,19 @@ export default function OfficialReportModal({
                                 <div className="p-3 bg-slate-100 rounded-xl border border-black/40 max-w-md mx-auto grid grid-cols-2 gap-2 text-left text-[11px] text-black">
                                   <div>
                                     <span className="font-semibold block text-[10px] text-slate-700">Total Bials:</span>
-                                    <span className="font-black">{processedBookletBials.length} Bials</span>
+                                    <span className="font-bold">{processedBookletBials.length} Bials</span>
                                   </div>
                                   <div>
                                     <span className="font-semibold block text-[10px] text-slate-700">Chhungkua:</span>
-                                    <span className="font-black">{totalBookletHH} ({totalBookletReturned} Ret)</span>
+                                    <span className="font-bold">{totalBookletHH} ({totalBookletReturned} Ret)</span>
                                   </div>
                                   <div>
                                     <span className="font-semibold block text-[10px] text-slate-700">Kir zat:</span>
-                                    <span className="font-black">{overallBookletReturnRate}%</span>
+                                    <span className="font-bold">{overallBookletReturnRate}%</span>
                                   </div>
                                   <div>
                                     <span className="font-semibold block text-[10px] text-slate-700">Grand Total:</span>
-                                    <span className="font-black text-emerald-900">₹{(bookletData.churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}</span>
+                                    <span className="font-bold text-emerald-900">₹{(bookletData.churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}</span>
                                   </div>
                                 </div>
 
@@ -2008,7 +2008,7 @@ export default function OfficialReportModal({
                             {/* TABLE OF CONTENTS / BIAL-TE CHHINCHHIAHNA */}
                             <div className="border border-black rounded-xl overflow-hidden bg-white shadow-2xs">
                               <div className="bg-slate-100 border-b border-black/40 px-3 py-2 text-center">
-                                <h3 className="font-black text-xs text-black uppercase tracking-wider">
+                                <h3 className="font-bold text-xs text-black uppercase tracking-wider">
                                   CONTENTS
                                 </h3>
                                 <p className="text-[10px] text-black font-medium">
@@ -2017,7 +2017,7 @@ export default function OfficialReportModal({
                               </div>
 
                               <table className="w-full text-left border-collapse text-black text-[10px]">
-                                <thead className="bg-slate-50 border-b border-black/30 font-black uppercase text-[9px]">
+                                <thead className="bg-slate-50 border-b border-black/30 font-bold uppercase text-[9px]">
                                   <tr>
                                     <th className="py-1.5 px-2 text-center w-8">Sl</th>
                                     <th className="py-1.5 px-3">Bialtu</th>
@@ -2038,17 +2038,17 @@ export default function OfficialReportModal({
                                         <td className="py-1.5 px-3 font-bold">{formatBialLabel(b.bial_code, b.bial_name)}</td>
                                         <td className="py-1.5 px-3 text-center">{hh} ({ret} Ret)</td>
                                         <td className="py-1.5 px-3 text-center font-bold">{rate}%</td>
-                                        <td className="py-1.5 px-3 text-right font-black">₹{sub.toLocaleString('en-IN')}</td>
+                                        <td className="py-1.5 px-3 text-right font-bold">₹{sub.toLocaleString('en-IN')}</td>
                                       </tr>
                                     );
                                   })}
                                 </tbody>
                                 <tfoot>
-                                  <tr className="bg-slate-200 border-t-2 border-black font-black">
+                                  <tr className="bg-slate-200 border-t-2 border-black font-bold">
                                     <td colSpan={2} className="py-1.5 px-3">KHAIKHAWMNA</td>
                                     <td className="py-1.5 px-3 text-center">{totalBookletHH} ({totalBookletReturned} Ret)</td>
                                     <td className="py-1.5 px-3 text-center">{overallBookletReturnRate}%</td>
-                                    <td className="py-1.5 px-3 text-right font-black">₹{(bookletData.churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}</td>
+                                    <td className="py-1.5 px-3 text-right font-bold">₹{(bookletData.churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}</td>
                                   </tr>
                                 </tfoot>
                               </table>
@@ -2070,7 +2070,7 @@ export default function OfficialReportModal({
                                 const returnRate = totalHH > 0 ? Math.round((returnedHH / totalHH) * 1000) / 10 : 0;
                                 return (
                                   <>
-                                    <div className="bg-slate-100 border-b border-black/40 px-3 py-1.5 text-black font-black text-xs">
+                                    <div className="bg-slate-100 border-b border-black/40 px-3 py-1.5 text-black font-bold text-xs">
                                       <span>{formatBialLabel(bial.bial_code, bial.bial_name)}</span>
                                     </div>
 
@@ -2100,7 +2100,7 @@ export default function OfficialReportModal({
                                           </tr>
                                         ))}
                                       </tbody>
-                                      <tfoot className="bg-slate-100 border-t-2 border-black text-black font-black text-[9.5px]">
+                                      <tfoot className="bg-slate-100 border-t-2 border-black text-black font-bold text-[9.5px]">
                                         <tr>
                                           <td colSpan={2} className="py-1 px-2 uppercase font-extrabold">
                                             Subtotal ({formatBialLabel(bial.bial_code, bial.bial_name)}) • {returnRate}% Kir zat
@@ -2109,7 +2109,7 @@ export default function OfficialReportModal({
                                           <td className="py-1 px-1 text-right">{(sub.total_ramthar || 0).toLocaleString('en-IN')}</td>
                                           <td className="py-1 px-1 text-right">{(sub.total_tualchhung || 0).toLocaleString('en-IN')}</td>
                                           <td className="py-1 px-1 text-right">{(sub.total_building || 0).toLocaleString('en-IN')}</td>
-                                          <td className="py-1 px-2 text-right font-black bg-slate-200">₹{(sub.grand_total || 0).toLocaleString('en-IN')}</td>
+                                          <td className="py-1 px-2 text-right font-bold bg-slate-200">₹{(sub.grand_total || 0).toLocaleString('en-IN')}</td>
                                         </tr>
                                       </tfoot>
                                     </table>
@@ -2124,7 +2124,7 @@ export default function OfficialReportModal({
                       {/* KOHHRAN GRAND TOTAL BANNER AT BOTTOM (100% BLACK TEXT) */}
                       <div className="mt-4 bg-slate-100 text-black rounded-xl p-3.5 border-2 border-black flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md">
                         <div>
-                          <h4 className="font-heading font-black text-sm uppercase tracking-wider text-black">
+                          <h4 className="font-heading font-bold text-sm uppercase tracking-wider text-black">
                             KHAIKHAWMNA ({totalBookletHH} Chhungkua • {totalBookletReturned} Returned • {overallBookletReturnRate}% Kir zat)
                           </h4>
                           <p className="text-[11px] text-black font-semibold mt-0.5">
@@ -2140,7 +2140,7 @@ export default function OfficialReportModal({
                             ₹{(totalBookletReturned > 0 ? Math.round((bookletData.churchGrandTotal?.grand_total || 0) / totalBookletReturned) : 0).toLocaleString('en-IN')}
                           </span>
                           <span className="text-[10px] uppercase font-bold text-black block">Total Collections</span>
-                          <span className="text-base sm:text-lg font-black text-black">
+                          <span className="text-base sm:text-lg font-bold text-black">
                             ₹{(bookletData.churchGrandTotal?.grand_total || 0).toLocaleString('en-IN')}
                           </span>
                         </div>
@@ -2206,7 +2206,7 @@ export default function OfficialReportModal({
                 <button
                   onClick={handleExportConsolidatedBookletPDF}
                   disabled={isExportingBooklet}
-                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50 cursor-pointer"
+                  className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
                   title="Download Press-Ready A4 Imposed PDF: 2-up spreads, ready to print duplex on A4 and fold into A5 booklet"
                 >
                   <Download className="w-4 h-4" />
@@ -2239,7 +2239,7 @@ export default function OfficialReportModal({
                   <button
                     onClick={handleExportPDF}
                     disabled={isExporting || loadingData}
-                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 transition-all disabled:opacity-50 cursor-pointer"
+                    className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 sm:px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
                     title="Download official certificate PDF in A4 / Legal size"
                   >
                     <Download className="w-4 h-4" />

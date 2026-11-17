@@ -52,7 +52,7 @@ class ErrorBoundary extends React.Component {
               <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto font-bold text-xl">
                 ⚡
               </div>
-              <h2 className="text-lg font-black text-slate-900">Application Update Available</h2>
+              <h2 className="text-lg font-bold text-slate-900">Application Update Available</h2>
               <p className="text-xs text-slate-600">
                 A new version of the application was just deployed. Click below to load the latest version (your login session will remain active).
               </p>
@@ -61,7 +61,7 @@ class ErrorBoundary extends React.Component {
                   sessionStorage.removeItem('chunk_retry_timestamp');
                   window.location.reload();
                 }}
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-600/20"
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs"
               >
                 Reload to Latest Version
               </button>
@@ -76,7 +76,7 @@ class ErrorBoundary extends React.Component {
             <div className="w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto font-bold text-xl">
               !
             </div>
-            <h2 className="text-lg font-black text-slate-900">Application Error</h2>
+            <h2 className="text-lg font-bold text-slate-900">Application Error</h2>
             <p className="text-xs text-slate-600">
               An unexpected error occurred while loading this page. Resetting session data will restore access.
             </p>
@@ -88,7 +88,7 @@ class ErrorBoundary extends React.Component {
                 localStorage.clear();
                 window.location.reload();
               }}
-              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-md shadow-indigo-600/20"
+              className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-2xs"
             >
               Reset Session & Reload
             </button>
@@ -163,7 +163,7 @@ function MainApp() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-700">
         <div className="text-center space-y-4">
-          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto shadow-lg shadow-indigo-600/20"></div>
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto shadow-2xs"></div>
           <p className="text-xs font-bold tracking-widest uppercase text-indigo-600">Loading Pathian Ram...</p>
         </div>
       </div>

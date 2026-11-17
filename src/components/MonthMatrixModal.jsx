@@ -160,9 +160,9 @@ export default function MonthMatrixModal({ isOpen, onClose, showToast, currentYe
       </div>
 
       {/* Prominent Global Month Control Banner (All Months Master + Per-Month Bulk) */}
-      <div className="m-3 p-3.5 rounded-2xl bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-950 text-white shadow-md border border-indigo-700/80 space-y-3">
+      <div className="m-3 p-3.5 rounded-2xl bg-slate-900 text-white shadow-xs border border-slate-800 space-y-3">
         {/* Row 1: MASTER ALL MONTHS (JAN - DEC) FOR ALL BIALS */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-indigo-800/60">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-amber-400/20 border border-amber-400/30 flex items-center justify-center shrink-0">
               <Globe className="w-4 h-4 text-amber-300" />
@@ -184,7 +184,7 @@ export default function MonthMatrixModal({ isOpen, onClose, showToast, currentYe
             <button
               type="button"
               onClick={() => handleToggleAllMonths(true)}
-              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-xs shadow-rose-600/40 cursor-pointer active:scale-95"
+              className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
               title="Lock ALL 12 months for ALL Bials at once"
             >
               <Lock className="w-3.5 h-3.5" />
@@ -194,7 +194,7 @@ export default function MonthMatrixModal({ isOpen, onClose, showToast, currentYe
             <button
               type="button"
               onClick={() => handleToggleAllMonths(false)}
-              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-xs shadow-emerald-600/40 cursor-pointer active:scale-95"
+              className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
               title="Unlock ALL 12 months for ALL Bials at once"
             >
               <Unlock className="w-3.5 h-3.5" />
@@ -250,7 +250,7 @@ export default function MonthMatrixModal({ isOpen, onClose, showToast, currentYe
 
       <Modal.Body className="p-3 space-y-3 overflow-y-auto">
         {loading ? (
-          <div className="py-12 text-center text-xs text-indigo-600 font-bold animate-pulse">
+          <div className="py-12 text-center text-xs text-slate-500 font-medium">
             Loading Month Matrix...
           </div>
         ) : bials.length === 0 ? (
@@ -389,7 +389,7 @@ export default function MonthMatrixModal({ isOpen, onClose, showToast, currentYe
 
         <button
           onClick={onClose}
-          className="px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs shadow-indigo-600/20 transition-all cursor-pointer"
+          className="px-4 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-all cursor-pointer"
         >
           Done
         </button>

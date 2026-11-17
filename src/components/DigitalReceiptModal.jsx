@@ -245,7 +245,7 @@ export default function DigitalReceiptModal({
               type="button"
               onClick={handleSharePDF}
               disabled={isGeneratingPDF}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs shadow-indigo-600/30 transition-all cursor-pointer disabled:opacity-50"
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer disabled:opacity-50"
               title="Share receipt directly in PDF format (WhatsApp, Email, etc.)"
             >
               {isGeneratingPDF ? (
@@ -265,7 +265,7 @@ export default function DigitalReceiptModal({
             <button
               type="button"
               onClick={handleWhatsAppShare}
-              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shadow-emerald-600/30 transition-all cursor-pointer"
+              className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer"
               title="Send text summary to WhatsApp"
             >
               <MessageCircle className="w-3.5 h-3.5" />

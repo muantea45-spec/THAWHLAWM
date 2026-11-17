@@ -178,9 +178,9 @@ export default function BialYearlySummaryModal({
               </div>
             ))}
 
-            <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2 sm:p-2.5 rounded-xl border border-indigo-700 text-white shadow-xs flex flex-col justify-between">
-              <span className="text-[9px] sm:text-[10px] font-extrabold text-indigo-200 uppercase tracking-wider block">TOTAL</span>
-              <div className="font-mono text-xs sm:text-sm font-black text-emerald-300 truncate">
+            <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-slate-900 p-2 sm:p-2.5 rounded-xl border border-slate-800 text-white shadow-xs flex flex-col justify-between">
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block">TOTAL</span>
+              <div className="font-mono text-xs sm:text-sm font-bold text-emerald-400 truncate">
                 ₹{(grand.grand_total || 0).toLocaleString('en-IN')}
               </div>
             </div>
@@ -195,7 +195,7 @@ export default function BialYearlySummaryModal({
               onClick={() => setActiveTab('history')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeTab === 'history'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                  ? 'bg-indigo-600 text-white shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               }`}
             >
@@ -214,7 +214,7 @@ export default function BialYearlySummaryModal({
             onClick={() => setActiveTab('monthly')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'monthly'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
@@ -226,7 +226,7 @@ export default function BialYearlySummaryModal({
             onClick={() => setActiveTab('members')}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'members'
-                ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
+                ? 'bg-indigo-600 text-white shadow-2xs'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
@@ -417,7 +417,7 @@ export default function BialYearlySummaryModal({
                             {m.sl_no}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-heading font-black text-xs sm:text-sm text-slate-900 truncate leading-tight">
+                            <h4 className="font-heading font-bold text-xs sm:text-sm text-slate-900 truncate leading-tight">
                               {m.name}
                             </h4>
                             <div className="flex items-center gap-1.5 mt-0.5">
@@ -439,7 +439,7 @@ export default function BialYearlySummaryModal({
                         </div>
 
                         <div className="text-right shrink-0">
-                          <span className="font-mono font-black text-xs sm:text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg block tabular-nums">
+                          <span className="font-mono font-bold text-xs sm:text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg block tabular-nums">
                             ₹{(m.grand_total || 0).toLocaleString('en-IN')}
                           </span>
                           <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider block mt-0.5">
@@ -480,7 +480,7 @@ export default function BialYearlySummaryModal({
                                 title={`Click to view ${fm.name} breakdown (Total: ₹${amount.toLocaleString('en-IN')})`}
                               >
                                 <span className={`text-[9.5px] font-bold uppercase tracking-wider block leading-none ${
-                                  isSelected ? 'text-indigo-900 font-black' : hasPaid ? 'text-emerald-900' : 'text-slate-400'
+                                  isSelected ? 'text-indigo-900 font-bold' : hasPaid ? 'text-emerald-900' : 'text-slate-400'
                                 }`}>
                                   {fm.short}
                                 </span>
@@ -507,13 +507,13 @@ export default function BialYearlySummaryModal({
                               <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
                                 <div className="flex items-center gap-1.5 min-w-0">
                                   <Calendar className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                                  <span className="font-heading font-black text-slate-900 text-xs truncate">
+                                  <span className="font-heading font-bold text-slate-900 text-xs truncate">
                                     {selectedFm.name} ({year})
                                   </span>
                                   <span className="text-[10px] text-slate-500 font-medium hidden sm:inline">Details</span>
                                 </div>
                                 <div className="flex items-center gap-1.5 shrink-0">
-                                  <span className={`font-mono font-black text-[11px] px-2 py-0.5 rounded-md border tabular-nums ${
+                                  <span className={`font-mono font-bold text-[11px] px-2 py-0.5 rounded-md border tabular-nums ${
                                     hasPayment 
                                       ? 'text-emerald-800 bg-emerald-50 border-emerald-200' 
                                       : 'text-slate-500 bg-slate-100 border-slate-200'
@@ -553,7 +553,7 @@ export default function BialYearlySummaryModal({
                                             {col.name} ({col.code})
                                           </span>
                                         </div>
-                                        <span className="font-mono font-black text-slate-900 shrink-0 ml-1.5 tabular-nums">
+                                        <span className="font-mono font-bold text-slate-900 shrink-0 ml-1.5 tabular-nums">
                                           ₹{colVal.toLocaleString('en-IN')}
                                         </span>
                                       </div>
@@ -631,7 +631,7 @@ export default function BialYearlySummaryModal({
                 <div key={m.month} className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs hover:border-indigo-400 transition-all space-y-2">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
                     <span className="font-bold text-xs text-slate-900">{m.month_name} {year}</span>
-                    <span className="font-mono font-black text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                    <span className="font-mono font-bold text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
                       ₹{(m.total || 0).toLocaleString('en-IN')}
                     </span>
                   </div>
@@ -757,7 +757,7 @@ export default function BialYearlySummaryModal({
 
                   <div className="flex justify-between items-center pt-1 border-t border-slate-100 text-xs">
                     <span className="text-[9.5px] font-extrabold text-slate-500 uppercase">ANNUAL TOTAL</span>
-                    <span className="font-mono font-black text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
+                    <span className="font-mono font-bold text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg">
                       ₹{(m.grand_total || 0).toLocaleString('en-IN')}
                     </span>
                   </div>

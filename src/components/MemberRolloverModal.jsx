@@ -178,7 +178,7 @@ export default function MemberRolloverModal({
           <button
             type="submit"
             disabled={loading || sourceYear === targetYear || sourceMemberCount === 0}
-            className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
+            className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-2xs transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
           >
             {loading ? (
               <>

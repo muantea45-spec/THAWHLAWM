@@ -566,7 +566,7 @@ export default function BialDashboard({ user, showToast }) {
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                className="lg:hidden p-1.5 sm:p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-2xs transition-all cursor-pointer shrink-0"
                 title="Open Navigation Menu"
                 aria-label="Open Navigation Menu"
               >
@@ -759,7 +759,7 @@ export default function BialDashboard({ user, showToast }) {
                   <button
                     type="button"
                     onClick={() => { setMemberToEdit(null); setShowMemberModal(true); }}
-                    className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-xs shadow-emerald-600/20 transition-all cursor-pointer w-full"
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs transition-all cursor-pointer w-full"
                     title="Add New Member to Bial"
                   >
                     <UserPlus className="w-3.5 h-3.5" />
@@ -771,7 +771,7 @@ export default function BialDashboard({ user, showToast }) {
                     type="button"
                     disabled={isLocked && user.role !== 'ADMIN'}
                     onClick={handleBulkSave}
-                    className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-xs shadow-indigo-600/20 transition-all disabled:opacity-40 cursor-pointer w-full"
+                    className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-2xs transition-all disabled:opacity-40 cursor-pointer w-full"
                   >
                     <Save className="w-3.5 h-3.5" />
                     <span>{saving ? 'Saving...' : 'Save All'}</span>
@@ -1004,12 +1004,12 @@ export default function BialDashboard({ user, showToast }) {
                     </div>
                   ))}
 
-                  <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2 sm:p-2.5 rounded-xl border border-indigo-700 text-white shadow-xs flex items-center justify-between px-3">
+                  <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-slate-900 p-2 sm:p-2.5 rounded-xl border border-slate-800 text-white shadow-xs flex items-center justify-between px-3">
                     <div>
-                      <span className="text-[9px] sm:text-[10px] font-extrabold text-indigo-200 uppercase tracking-wider block">GRAND TOTAL</span>
-                      <span className="text-[9px] text-slate-300 font-sans">FY {year} Total</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-wider block">GRAND TOTAL</span>
+                      <span className="text-[9px] text-slate-400 font-sans">FY {year} Total</span>
                     </div>
-                    <div className="font-mono font-black text-emerald-300 text-sm sm:text-base lg:text-lg">
+                    <div className="font-mono font-bold text-emerald-400 text-sm sm:text-base lg:text-lg">
                       ₹{(grandTotals.grand_total || 0).toLocaleString('en-IN')}
                     </div>
                   </div>

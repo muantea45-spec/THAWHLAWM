@@ -277,7 +277,7 @@ export default function MemberHistoryModal({
 
       <Modal.Body className="space-y-4">
         {loading ? (
-          <div className="py-16 text-center text-indigo-600 font-bold animate-pulse text-xs flex flex-col items-center justify-center gap-2">
+          <div className="py-16 text-center text-slate-500 font-medium text-xs flex flex-col items-center justify-center gap-2">
             <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
             <span>Loading payment history...</span>
           </div>
@@ -288,22 +288,22 @@ export default function MemberHistoryModal({
         ) : (
           <>
             {/* HOUSEHOLD RETURN COMPLIANCE & CONTRIBUTION HIGHLIGHT */}
-            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-4 text-white shadow-md border border-indigo-900/50">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 mb-3 pb-3 border-b border-indigo-800/40">
+            <div className="bg-slate-900 rounded-2xl p-4 text-white shadow-xs border border-slate-800">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 mb-3 pb-3 border-b border-slate-800">
                 <div>
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-300">
+                  <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400">
                     Household 12-Month Performance ({year})
                   </span>
-                  <h3 className="text-base font-extrabold text-white flex items-center gap-2">
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
                     {member?.name || 'Household'}
-                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-800/80 text-indigo-200 border border-indigo-600/40">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-200 border border-slate-700">
                       Sl No: #{member?.sl_no}
                     </span>
                   </h3>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
                   <span className="text-slate-300 font-medium">Bial:</span>
-                  <span className="font-bold text-amber-300">{member?.bial_name || 'Assigned Bial'}</span>
+                  <span className="font-bold text-emerald-400">{member?.bial_name || 'Assigned Bial'}</span>
                 </div>
               </div>
 
@@ -313,7 +313,7 @@ export default function MemberHistoryModal({
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 flex items-center justify-center gap-1">
                     <CalendarCheck className="w-3 h-3 text-indigo-300" /> Months Returned
                   </span>
-                  <div className="text-base sm:text-lg font-black font-mono text-white mt-0.5">
+                  <div className="text-base sm:text-lg font-bold font-mono text-white mt-0.5">
                     {monthsReturnedCount} <span className="text-xs font-normal text-slate-300">/ 12</span>
                   </div>
                   <div className="w-full bg-white/20 h-1.5 rounded-full mt-1.5 overflow-hidden">
@@ -329,7 +329,7 @@ export default function MemberHistoryModal({
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 flex items-center justify-center gap-1">
                     <Percent className="w-3 h-3 text-emerald-300" /> Return Rate
                   </span>
-                  <div className={`text-base sm:text-lg font-black font-mono mt-0.5 ${returnRatePercent >= 75 ? 'text-emerald-300' : returnRatePercent >= 50 ? 'text-amber-300' : 'text-rose-300'}`}>
+                  <div className={`text-base sm:text-lg font-bold font-mono mt-0.5 ${returnRatePercent >= 75 ? 'text-emerald-300' : returnRatePercent >= 50 ? 'text-amber-300' : 'text-rose-300'}`}>
                     {returnRatePercent}%
                   </div>
                   <span className="text-[10px] text-slate-300 truncate">
@@ -342,7 +342,7 @@ export default function MemberHistoryModal({
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300 flex items-center justify-center gap-1">
                     <TrendingUp className="w-3 h-3 text-cyan-300" /> Avg / Active Mo
                   </span>
-                  <div className="text-base sm:text-lg font-black font-mono text-cyan-300 mt-0.5">
+                  <div className="text-base sm:text-lg font-bold font-mono text-cyan-300 mt-0.5">
                     ₹{avgMonthly.toLocaleString('en-IN')}
                   </div>
                   <span className="text-[10px] text-slate-300 truncate">
@@ -381,12 +381,12 @@ export default function MemberHistoryModal({
                   </div>
                 ))}
 
-                <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-gradient-to-br from-indigo-900 via-indigo-950 to-slate-900 p-2 sm:p-2.5 rounded-xl border border-indigo-700 text-white shadow-2xs flex items-center justify-between px-3">
+                <div className="col-span-2 sm:col-span-1 lg:col-span-1 bg-slate-900 p-2 sm:p-2.5 rounded-xl border border-slate-800 text-white shadow-2xs flex items-center justify-between px-3">
                   <div>
-                    <span className="text-[9px] sm:text-[10px] font-extrabold text-indigo-200 uppercase tracking-wider block">GRAND TOTAL</span>
-                    <span className="text-[9px] text-slate-300 font-sans">Annual Total</span>
+                    <span className="text-[9px] sm:text-[10px] font-bold text-slate-300 uppercase tracking-wider block">GRAND TOTAL</span>
+                    <span className="text-[9px] text-slate-400 font-sans">Annual Total</span>
                   </div>
-                  <div className="font-mono text-sm sm:text-base font-black text-emerald-300">
+                  <div className="font-mono text-sm sm:text-base font-bold text-emerald-400">
                     ₹{(annual.grand_total || 0).toLocaleString('en-IN')}
                   </div>
                 </div>
@@ -629,7 +629,7 @@ export default function MemberHistoryModal({
                         {/* Card Header: Month Name, Sequence & Lock Status */}
                         <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                           <div className="flex items-center gap-2">
-                            <span className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-black text-xs flex items-center justify-center shadow-2xs">
+                            <span className="w-6 h-6 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-mono font-bold text-xs flex items-center justify-center shadow-2xs">
                               M{index + 1}
                             </span>
                             <div>
@@ -718,7 +718,7 @@ export default function MemberHistoryModal({
                             <span className="text-[9px] font-extrabold text-slate-500 uppercase tracking-wider block">
                               MONTH TOTAL
                             </span>
-                            <span className="font-mono font-black text-xs sm:text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg inline-block shadow-2xs">
+                            <span className="font-mono font-bold text-xs sm:text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg inline-block shadow-2xs">
                               ₹{(isCurrentlyEditing ? liveEditTotal : (e.total || 0)).toLocaleString('en-IN')}
                             </span>
                           </div>

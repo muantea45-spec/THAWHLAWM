@@ -142,7 +142,7 @@ export default function AdminSidebar({
           <div className="flex items-center justify-between px-3 pt-3 pb-2 border-b border-slate-100">
             {showFull ? (
               <div className="flex items-center gap-2 min-w-0">
-                <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-xs shadow-indigo-600/20 shrink-0">
+                <div className="p-1.5 rounded-xl bg-indigo-600 text-white shadow-2xs shrink-0">
                   <Shield className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
@@ -197,7 +197,7 @@ export default function AdminSidebar({
                   title={tab.label}
                   className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     isActive
-                      ? 'bg-indigo-600 text-white shadow-xs shadow-indigo-600/30'
+                      ? 'bg-indigo-600 text-white shadow-2xs'
                       : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 bg-transparent'
                   } ${!showFull ? 'justify-center px-0' : ''}`}
                 >

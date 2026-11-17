@@ -212,14 +212,14 @@ export default function TitheColumnsTab({ onColumnsChanged, showToast = () => {}
   return (
     <div className="space-y-4 animate-in fade-in duration-150">
       {/* Top Banner Header */}
-      <div className="glass-panel p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-2 rounded-xl bg-teal-50 text-teal-700 border border-teal-200">
-              <SlidersHorizontal className="w-5 h-5" />
+      <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="text-center md:text-left flex-1">
+          <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-1">
+            <span className="p-1.5 rounded-xl bg-teal-50 text-teal-700 border border-teal-200">
+              <SlidersHorizontal className="w-4 h-4" />
             </span>
-            <h2 className="text-lg sm:text-xl font-heading font-black text-slate-900 tracking-tight">
-              Tithe Columns Management
+            <h2 className="text-base sm:text-lg font-heading font-black tracking-wide uppercase text-slate-900">
+              TITHE COLUMNS MANAGEMENT
             </h2>
             <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 font-mono">
               {columns.length} Active Columns

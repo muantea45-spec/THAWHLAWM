@@ -880,8 +880,8 @@ export default function AdminDashboard({ user, showToast }) {
           {activeTab === 'bials' && (
             <div className="glass-panel p-2.5 sm:p-3.5 rounded-2xl sm:rounded-3xl space-y-2">
               {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 gap-2">
-                <div className="flex items-center gap-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-2 gap-2 relative">
+                <div className="flex items-center gap-2.5 z-10">
                   <button
                     type="button"
                     onClick={() => setIsMobileMenuOpen(true)}
@@ -892,18 +892,20 @@ export default function AdminDashboard({ user, showToast }) {
                     <Menu className="w-4 h-4" />
                   </button>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-700 tracking-wide">
-                      OVERALL ({year}-{year + 1})
-                    </span>
-                    <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-100">
-                      FY {year}
-                    </span>
-                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-100">
+                    FY {year}
+                  </span>
+                </div>
+
+                {/* Centered Capital Tab Header */}
+                <div className="sm:absolute sm:inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="text-xs sm:text-sm font-heading font-black tracking-wider uppercase text-slate-800 text-center">
+                    MAIN OVERVIEW ({year} - {year + 1})
+                  </span>
                 </div>
 
                 {/* Dropdowns */}
-                <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2 self-end sm:self-auto z-10">
                   <select
                     value={overallBialFilter}
                     onChange={(e) => setOverallBialFilter(e.target.value)}
@@ -975,31 +977,40 @@ export default function AdminDashboard({ user, showToast }) {
             </div>
           )}
 
-          {/* Mobile Top Navigation Bar when on other tabs so mobile users can open the menu */}
+          {/* Top Tab Header Bar when on other tabs (Centered and in Capital Letters) */}
           {activeTab !== 'bials' && (
-            <div className="lg:hidden flex items-center justify-between bg-white/90 backdrop-blur-md px-3 py-2 rounded-2xl border border-slate-200/80 shadow-2xs">
-              <div className="flex items-center gap-2">
+            <div className="glass-panel px-3.5 py-2.5 rounded-2xl flex items-center justify-between relative shadow-2xs border border-slate-200/80 bg-white/90 backdrop-blur-md">
+              {/* Left: Mobile Menu Trigger (hidden on desktop) */}
+              <div className="flex items-center gap-2 z-10">
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(true)}
-                  className="p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                  className="lg:hidden p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
                   title="Open Admin Menu"
                   aria-label="Open Admin Menu"
                 >
                   <Menu className="w-4 h-4" />
                 </button>
-                <span className="text-xs font-bold text-slate-800">
-                  {activeTab === 'inspector' && 'Bial Inspector'}
-                  {activeTab === 'columns' && 'Tithe Columns'}
-                  {activeTab === 'credentials' && 'Passwords & Admins'}
-                  {activeTab === 'analytics' && 'Stats & Analytics'}
-                  {activeTab === 'backups' && 'Backup & Restore'}
-                  {activeTab === 'audit' && 'Activity Audit Log'}
+              </div>
+
+              {/* Center: TAB HEADER IN CAPITAL LETTERS AND ALIGNED AT THE CENTER */}
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <h1 className="text-xs sm:text-sm md:text-base font-heading font-black tracking-widest uppercase text-slate-900 text-center">
+                  {activeTab === 'inspector' && 'BIAL INSPECTOR'}
+                  {activeTab === 'columns' && 'TITHE COLUMNS'}
+                  {activeTab === 'credentials' && 'PASSWORDS & ADMINS'}
+                  {activeTab === 'analytics' && 'STATS & ANALYTICS'}
+                  {activeTab === 'backups' && 'BACKUP & RESTORE'}
+                  {activeTab === 'audit' && 'ACTIVITY AUDIT LOG'}
+                </h1>
+              </div>
+
+              {/* Right: Financial Year Badge */}
+              <div className="flex items-center gap-1.5 ml-auto z-10">
+                <span className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-100">
+                  FY {year} - {year + 1}
                 </span>
               </div>
-              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-[11px] border border-indigo-100">
-                FY {year}
-              </span>
             </div>
           )}
 
@@ -2702,8 +2713,8 @@ export default function AdminDashboard({ user, showToast }) {
               <div className="glass-panel p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-3.5 sm:gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                      <History className="w-5 h-5 text-indigo-600" /> Activity Audit Trail
+                    <h3 className="text-base sm:text-lg font-heading font-black tracking-wide uppercase text-slate-900 flex items-center gap-2">
+                      <History className="w-5 h-5 text-indigo-600" /> ACTIVITY AUDIT TRAIL
                     </h3>
                     <span className="text-[10px] font-bold font-mono px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                       {filteredAuditLogs.length} events

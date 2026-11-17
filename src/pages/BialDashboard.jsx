@@ -558,9 +558,9 @@ export default function BialDashboard({ user, showToast }) {
         {/* Main Content Area */}
         <div className="flex-1 min-w-0 w-full space-y-2.5 sm:space-y-3">
 
-          {/* Active Bial Name Sub-Header Badge */}
-          <div className="glass-panel px-3.5 py-2 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
-            <div className="flex items-center gap-2.5">
+          {/* Active Tab & Bial Name Sub-Header Badge */}
+          <div className="glass-panel px-3.5 py-2.5 rounded-2xl flex items-center justify-between gap-3 shadow-xs relative">
+            <div className="flex items-center gap-2.5 z-10">
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(true)}
@@ -577,6 +577,19 @@ export default function BialDashboard({ user, showToast }) {
                   Bial: <span className="text-slate-900 font-bold">{bialName}</span>
                 </span>
               </div>
+            </div>
+
+            {/* Centered Capital Tab Header */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <h1 className="text-xs sm:text-sm font-heading font-black tracking-widest uppercase text-slate-900 text-center">
+                {activeTab === 'main' ? 'PATHIAN RAM ZIAHNA' : 'STATS & ANALYTICS'}
+              </h1>
+            </div>
+
+            <div className="flex items-center gap-1.5 ml-auto z-10">
+              <span className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 font-mono font-bold text-xs border border-indigo-100">
+                FY {year}
+              </span>
             </div>
           </div>
 

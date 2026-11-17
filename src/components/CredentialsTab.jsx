@@ -191,9 +191,9 @@ export default function CredentialsTab({
     <div className="space-y-4 animate-in fade-in duration-150">
       {/* Top Header Card */}
       <div className="glass-panel p-4 sm:p-5 rounded-2xl sm:rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-            <KeyRound className="w-5 h-5 text-indigo-600" /> User Passwords & Admin Access
+        <div className="text-center md:text-left flex-1">
+          <h3 className="text-base sm:text-lg font-heading font-black tracking-wide uppercase text-slate-900 flex items-center justify-center md:justify-start gap-2">
+            <KeyRound className="w-5 h-5 text-indigo-600" /> USER PASSWORDS & ADMIN ACCESS
           </h3>
           <p className="text-xs text-slate-500 mt-0.5">
             Unified management for Bial collector login credentials, password resets, and authorized Google Admin accounts.

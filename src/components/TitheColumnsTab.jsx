@@ -247,9 +247,9 @@ export default function TitheColumnsTab({ onColumnsChanged, showToast = () => {}
             <button
               type="button"
               onClick={handleStartAdd}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-teal-600 to-indigo-600 hover:from-teal-700 hover:to-indigo-700 text-white text-xs font-extrabold shadow-sm shadow-teal-600/20 transition-all cursor-pointer flex items-center gap-2 active:scale-[0.99]"
+              className="px-4 py-2.5 rounded-xl border border-slate-300 hover:border-indigo-600 text-slate-800 hover:text-indigo-600 text-xs font-bold transition-all cursor-pointer flex items-center gap-2 bg-transparent shadow-2xs"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4 h-4 text-indigo-600" />
               <span>Add New Column</span>
             </button>
           )}
@@ -273,9 +273,9 @@ export default function TitheColumnsTab({ onColumnsChanged, showToast = () => {}
 
       {/* Add / Edit Form Drawer */}
       {(isAddingNew || editingId) && (
-        <div className="glass-panel p-4 sm:p-5 rounded-2xl border-2 border-indigo-400 bg-indigo-50/30 shadow-md animate-in slide-in-from-top-2 duration-150 space-y-4">
-          <div className="flex items-center justify-between border-b border-indigo-100 pb-2.5">
-            <h3 className="text-xs sm:text-sm font-extrabold text-indigo-950 flex items-center gap-2">
+        <div className="p-4 sm:p-5 rounded-2xl border-2 border-slate-300 bg-transparent shadow-2xs animate-in slide-in-from-top-2 duration-150 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+            <h3 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-indigo-600" />
               <span>{isAddingNew ? 'Add New Tithe Column' : 'Edit & Rename Tithe Column'}</span>
             </h3>
@@ -366,7 +366,7 @@ export default function TitheColumnsTab({ onColumnsChanged, showToast = () => {}
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-indigo-100">
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
               <button
                 type="button"
                 onClick={resetForm}
@@ -388,11 +388,11 @@ export default function TitheColumnsTab({ onColumnsChanged, showToast = () => {}
         </div>
       )}
 
-      {/* Live Header Preview Bar */}
-      <div className="p-4 bg-slate-900 text-white rounded-2xl sm:rounded-3xl border border-slate-800 shadow-md space-y-2">
+      {/* Live Header Preview Bar (Enclosed with a frame, no dark background) */}
+      <div className="p-4 rounded-2xl sm:rounded-3xl border border-slate-300 bg-transparent shadow-2xs space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-extrabold tracking-wider text-indigo-300 uppercase flex items-center gap-1.5">
-            <Eye className="w-3.5 h-3.5" /> Live Bial Header & Table Preview
+          <span className="text-[10px] font-extrabold tracking-wider text-slate-800 uppercase flex items-center gap-1.5">
+            <Eye className="w-3.5 h-3.5 text-indigo-600" /> Live Bial Header & Table Preview
           </span>
           <span className="text-[10px] text-slate-400">
             This is how collectors will see the columns
@@ -401,11 +401,11 @@ export default function TitheColumnsTab({ onColumnsChanged, showToast = () => {}
 
         {/* Mockup Header Row */}
         <div className="overflow-x-auto pb-1">
-          <div className="flex items-center gap-2 min-w-max p-2 bg-slate-800/80 rounded-xl border border-slate-700">
-            <div className="px-2.5 py-1.5 rounded-lg bg-slate-700 text-[11px] font-mono font-bold text-slate-300">
+          <div className="flex items-center gap-2 min-w-max p-2 rounded-xl border border-slate-200 bg-transparent">
+            <div className="px-2.5 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-[11px] font-mono font-bold text-slate-700">
               # SL
             </div>
-            <div className="px-4 py-1.5 rounded-lg bg-slate-700 text-[11px] font-bold text-slate-300 min-w-[120px]">
+            <div className="px-4 py-1.5 rounded-lg bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-700 min-w-[120px]">
               MEMBER NAME
             </div>
             {columns.map(col => (
@@ -413,17 +413,17 @@ export default function TitheColumnsTab({ onColumnsChanged, showToast = () => {}
                 key={col.id}
                 className="px-3 py-1.5 rounded-lg border text-xs font-mono font-black flex items-center gap-1.5 shadow-2xs"
                 style={{
-                  backgroundColor: `${col.color || '#6366f1'}25`,
-                  borderColor: col.color || '#6366f1',
-                  color: '#ffffff'
+                  backgroundColor: `${col.color || '#6366f1'}15`,
+                  borderColor: `${col.color || '#6366f1'}50`,
+                  color: col.color || '#1e293b'
                 }}
               >
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: col.color || '#6366f1' }}></span>
                 <span>{col.code}</span>
-                <span className="text-[9px] opacity-75 font-sans font-normal">({col.name})</span>
+                <span className="text-[9px] opacity-75 font-sans font-normal text-slate-600">({col.name})</span>
               </div>
             ))}
-            <div className="px-3.5 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/50 text-xs font-mono font-black text-emerald-300">
+            <div className="px-3.5 py-1.5 rounded-lg bg-emerald-50 border border-emerald-300 text-xs font-mono font-black text-emerald-800">
               TOTAL (₹)
             </div>
           </div>
@@ -443,7 +443,7 @@ export default function TitheColumnsTab({ onColumnsChanged, showToast = () => {}
             <p>No tithe columns configured.</p>
             <button
               onClick={handleStartAdd}
-              className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-slate-300 hover:border-indigo-600 text-slate-800 hover:text-indigo-600 font-bold text-xs bg-transparent transition-all cursor-pointer shadow-2xs"
             >
               Add First Column
             </button>

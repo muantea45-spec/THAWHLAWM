@@ -47,12 +47,15 @@ export default function DigitalReceiptModal({
   const handleSharePDF = async () => {
     try {
       setIsGeneratingPDF(true);
-      const { file, filename, doc } = await generateDigitalReceiptPDF({
-        elementId: 'printable-receipt',
+      const { file, filename, download } = await generateDigitalReceiptPDF({
         member,
         monthName,
         year,
-        bialName
+        bialName,
+        columns: colAmounts,
+        grandTotal,
+        receiptDate,
+        logoUrl: churchLogo
       });
 
       // Check if Web Share API with files is supported (mobile browsers, macOS Safari, Windows Edge/Chrome)
@@ -65,7 +68,7 @@ export default function DigitalReceiptModal({
         if (showToast) showToast('Receipt PDF shared successfully!', 'success');
       } else {
         // Fallback for browsers without file share capability: download file and notify
-        doc.save(filename);
+        download();
         if (showToast) {
           showToast('Receipt PDF downloaded! You can attach and share it on WhatsApp.', 'success');
         }
@@ -74,14 +77,17 @@ export default function DigitalReceiptModal({
       if (err.name !== 'AbortError') {
         console.error('Failed to share PDF:', err);
         try {
-          const { doc, filename } = await generateDigitalReceiptPDF({
-            elementId: 'printable-receipt',
+          const { download } = await generateDigitalReceiptPDF({
             member,
             monthName,
             year,
-            bialName
+            bialName,
+            columns: colAmounts,
+            grandTotal,
+            receiptDate,
+            logoUrl: churchLogo
           });
-          doc.save(filename);
+          download();
           if (showToast) showToast('Receipt PDF downloaded to your device.', 'success');
         } catch (e) {
           if (showToast) showToast('Failed to generate receipt PDF.', 'error');
@@ -96,14 +102,17 @@ export default function DigitalReceiptModal({
   const handleDownloadPDF = async () => {
     try {
       setIsGeneratingPDF(true);
-      const { doc, filename } = await generateDigitalReceiptPDF({
-        elementId: 'printable-receipt',
+      const { download } = await generateDigitalReceiptPDF({
         member,
         monthName,
         year,
-        bialName
+        bialName,
+        columns: colAmounts,
+        grandTotal,
+        receiptDate,
+        logoUrl: churchLogo
       });
-      doc.save(filename);
+      download();
       if (showToast) showToast('Receipt PDF downloaded!', 'success');
     } catch (err) {
       console.error('Failed to download PDF:', err);

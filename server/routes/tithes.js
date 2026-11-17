@@ -390,7 +390,7 @@ router.get('/yearly-summary', (req, res) => {
     `).all(bialId, year);
 
     const allYearTithes = db.prepare(`
-      SELECT t.member_id, t.pathian_ram, t.ramthar, t.tualchhung, t.building, t.extra_amounts, t.total
+      SELECT t.member_id, t.month, t.pathian_ram, t.ramthar, t.tualchhung, t.building, t.extra_amounts, t.total
       FROM tithes t
       WHERE t.bial_id = ? AND t.year = ?
     `).all(bialId, year);
@@ -398,19 +398,26 @@ router.get('/yearly-summary', (req, res) => {
     const memberMap = new Map();
     (allYearTithes || []).forEach(t => {
       if (!memberMap.has(t.member_id)) {
-        const initial = { grand_total: 0 };
+        const initial = { grand_total: 0, monthly: {} };
         columns.forEach(c => { initial[c.field_key] = 0; });
         memberMap.set(t.member_id, initial);
       }
       const entry = memberMap.get(t.member_id);
+      entry.monthly = entry.monthly || {};
       const extra = t.extra_amounts ? (typeof t.extra_amounts === 'string' ? JSON.parse(t.extra_amounts || '{}') : t.extra_amounts) : {};
+      const monthData = { total: 0 };
       columns.forEach(c => {
         const v = ['pathian_ram', 'ramthar', 'tualchhung', 'building'].includes(c.field_key)
           ? (t[c.field_key] || 0)
           : (extra[c.field_key] || 0);
         entry[c.field_key] += v;
         entry.grand_total += v;
+        monthData[c.field_key] = v;
+        monthData.total += v;
       });
+      if (t.month) {
+        entry.monthly[t.month] = monthData;
+      }
     });
 
     const memberTotals = (memberList || []).map(m => {
@@ -419,7 +426,8 @@ router.get('/yearly-summary', (req, res) => {
         member_id: m.member_id,
         sl_no: m.sl_no,
         name: m.name,
-        grand_total: entry.grand_total || 0
+        grand_total: entry.grand_total || 0,
+        monthly: entry.monthly || {}
       };
       columns.forEach(c => {
         resMem[c.field_key] = entry[c.field_key] || 0;

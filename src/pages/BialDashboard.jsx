@@ -5,7 +5,7 @@ import {
   FileText, Save, CheckCircle, AlertTriangle,
   ArrowUp, ArrowDown, ArrowUpDown, Layers, Eye,
   ChevronDown, ChevronUp, LogOut, Building2, BarChart3, PieChart as PieChartIcon,
-  RefreshCw, Menu, Award, Users
+  RefreshCw, Menu, Award, Users, History
 } from 'lucide-react';
 import {
   BarChart, Bar, PieChart, Pie, Cell,
@@ -64,6 +64,7 @@ export default function BialDashboard({ user, showToast }) {
   const [showMemberEditModal, setShowMemberEditModal] = useState(false);
   const [selectedMemberForEditModal, setSelectedMemberForEditModal] = useState(null);
   const [showYearlySummaryModal, setShowYearlySummaryModal] = useState(false);
+  const [yearlySummaryInitialTab, setYearlySummaryInitialTab] = useState('history');
   const [selectedMemberForHistory, setSelectedMemberForHistory] = useState(null);
   const [showMemberHistoryModal, setShowMemberHistoryModal] = useState(false);
   const [showCertificateModal, setShowCertificateModal] = useState(false);
@@ -541,7 +542,7 @@ export default function BialDashboard({ user, showToast }) {
         <BialSidebar
           activeTab={activeTab}
           onSelectTab={setActiveTab}
-          onOpenYearlySummary={() => setShowYearlySummaryModal(true)}
+          onOpenYearlySummary={() => { setYearlySummaryInitialTab('history'); setShowYearlySummaryModal(true); }}
           onOpenCertificate={() => setShowCertificateModal(true)}
           year={year}
           setYear={setYear}
@@ -647,7 +648,7 @@ export default function BialDashboard({ user, showToast }) {
 
                 return (
                   <div className="bg-white p-3 sm:p-3.5 rounded-xl border border-slate-200 shadow-2xs space-y-2.5">
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-2 gap-2">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2 gap-2 flex-wrap">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <Layers className="w-4 h-4 text-slate-600 shrink-0" />
                         <span className="font-heading font-semibold text-xs text-slate-800 uppercase tracking-wider">
@@ -655,18 +656,36 @@ export default function BialDashboard({ user, showToast }) {
                         </span>
                       </div>
 
-                      {/* Inline Month Selection Dropdown */}
-                      <div className="flex items-center bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-medium shrink-0">
-                        <select
-                          value={summaryViewMode}
-                          onChange={(e) => setSummaryViewMode(e.target.value)}
-                          className="bg-transparent font-semibold text-slate-900 focus:outline-none cursor-pointer text-xs"
+                      {/* Right Controls: Month Selector & History Button */}
+                      <div className="flex items-center gap-2">
+                        {/* Inline Month Selection Dropdown */}
+                        <div className="flex items-center bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 text-xs font-medium shrink-0">
+                          <select
+                            value={summaryViewMode}
+                            onChange={(e) => setSummaryViewMode(e.target.value)}
+                            className="bg-transparent font-semibold text-slate-900 focus:outline-none cursor-pointer text-xs"
+                            title="Filter summary by Month"
+                          >
+                            <option value="all">All Months</option>
+                            {FINANCIAL_MONTHS.map((mObj) => (
+                              <option key={mObj.id} value={String(mObj.id)}>{mObj.name}</option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* Clickable Option: History */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setYearlySummaryInitialTab('history');
+                            setShowYearlySummaryModal(true);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold border border-indigo-200 shadow-2xs transition-all cursor-pointer"
+                          title="Chhungkaw tin thla tin pek dan enkirna (Household Monthly Payment History Card View)"
                         >
-                          <option value="all">All Months</option>
-                          {FINANCIAL_MONTHS.map((mObj) => (
-                            <option key={mObj.id} value={String(mObj.id)}>{mObj.name}</option>
-                          ))}
-                        </select>
+                          <History className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>History</span>
+                        </button>
                       </div>
                     </div>
 
@@ -1215,6 +1234,7 @@ export default function BialDashboard({ user, showToast }) {
             onClose={() => setShowYearlySummaryModal(false)}
             bialId={targetBialId}
             initialYear={year}
+            initialTab={yearlySummaryInitialTab}
             showToast={showToast}
             onSelectMember={(mId) => {
               setSelectedMemberForHistory(mId);

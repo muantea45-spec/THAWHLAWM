@@ -18,6 +18,8 @@ import {
   exportConsolidatedBookletPDF,
   exportConsolidatedBookletExcel,
   exportPressReadyBookletPDF,
+  calculateBookletPageStats,
+  BOOKLET_BINDING_PRESETS,
   exportAdminConsolidatedExcel,
   exportAdminConsolidatedPDF,
   exportOverallMemberExcel,
@@ -63,6 +65,9 @@ export default function OfficialReportModal({
 
   // Booklet Page 2 Thuhmahruai custom manual text
   const [bookletPrefaceText, setBookletPrefaceText] = useState('');
+
+  // Booklet Gutter Margin / Binding Type: 'saddle_stitch' | 'spiral_bound' | 'compact'
+  const [bindingType, setBindingType] = useState('saddle_stitch');
 
   // Manual Signatory Details & B/I/U Styling
   const [signatoryName, setSignatoryName] = useState(user?.username || 'Secretary / Treasurer');
@@ -196,6 +201,20 @@ export default function OfficialReportModal({
     });
     const rate = hh > 0 ? Math.round((ret / hh) * 1000) / 10 : 0;
     return { totalBookletHH: hh, totalBookletReturned: ret, overallBookletReturnRate: rate };
+  }, [bookletData]);
+
+  // Live Booklet Signature & Sheet Count Stats for Commercial Press Printing
+  const bookletStats = useMemo(() => {
+    if (!bookletData?.bials || bookletData.bials.length === 0) {
+      return {
+        contentPages: 0,
+        totalPages: 0,
+        totalSheets: 0,
+        notesPages: 0,
+        signatureAligned: true
+      };
+    }
+    return calculateBookletPageStats({ bialsData: bookletData.bials });
   }, [bookletData]);
 
   // Pre-load Church Logo as Base64 for instant PDF embedding
@@ -633,6 +652,7 @@ export default function OfficialReportModal({
         bialsData: res.bials,
         churchTotals: res.churchGrandTotal || {},
         mode,
+        bindingType,
         columns: titheColumns,
         logoBase64: logoBase64 || churchLogo,
         prefaceText: bookletPrefaceText
@@ -1018,6 +1038,62 @@ export default function OfficialReportModal({
               <p className="text-[10.5px] text-slate-600 font-medium leading-normal">
                 Automated publication engine for printing presses. Choose <strong>A4 Imposed</strong> (2-up saddle-stitch spreads for duplex printing & folding) or <strong>A5 Master</strong> (for commercial press RIP).
               </p>
+
+              {/* Live Sheet Count & 4-Page Signature Indicator Badge */}
+              <div className="bg-white/95 border border-indigo-200/90 rounded-xl p-2.5 shadow-2xs space-y-1">
+                <div className="flex items-center justify-between text-[11px] font-black text-indigo-950">
+                  <span className="flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                    Press Sheet & Plate Count
+                  </span>
+                  <span className="text-[9.5px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-black flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                    4-Page Aligned
+                  </span>
+                </div>
+                <div className="text-xs font-black text-slate-900">
+                  Total Booklet: {bookletStats.totalPages || 0} Pages ({bookletStats.totalSheets || 0} A4 Duplex Sheets)
+                </div>
+                <div className="text-[10px] text-slate-500 font-medium">
+                  {bookletStats.contentPages || 0} Content Pages • {bookletStats.notesPages || 0} Notes Pages • 0 Paper Waste
+                </div>
+              </div>
+
+              {/* Gutter Margin Adjustment (Saddle-Stitch Creep / Binding Type) */}
+              <div className="space-y-1.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-indigo-950 uppercase tracking-wide flex items-center gap-1">
+                    <Sliders className="w-3.5 h-3.5 text-indigo-600" />
+                    Binding Margin (Creep)
+                  </label>
+                  <span className="text-[9.5px] text-indigo-900 font-extrabold bg-indigo-100/70 px-1.5 py-0.5 rounded">
+                    {BOOKLET_BINDING_PRESETS[bindingType]?.innerGutter}mm Spine
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-1">
+                  {Object.values(BOOKLET_BINDING_PRESETS).map((preset) => {
+                    const isSelected = bindingType === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => setBindingType(preset.id)}
+                        className={`py-1.5 px-1 rounded-lg text-[10px] font-extrabold transition-all border text-center cursor-pointer ${
+                          isSelected
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs font-black'
+                            : 'bg-white text-slate-700 border-indigo-200/80 hover:bg-indigo-50/70'
+                        }`}
+                        title={preset.description}
+                      >
+                        {preset.shortLabel}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[9.5px] text-slate-500 leading-tight">
+                  {BOOKLET_BINDING_PRESETS[bindingType]?.description}
+                </p>
+              </div>
 
               {/* Live Preview Button */}
               <button
@@ -1759,8 +1835,12 @@ export default function OfficialReportModal({
                     <span className="px-3 py-0.5 rounded-full bg-slate-100 border border-slate-300 text-black font-extrabold text-xs">
                       PATHIAN RAM THAWHLAWM REPORT (FY {selectedYear} - {selectedYear + 1})
                     </span>
+                    <span className="px-3 py-0.5 rounded-full bg-emerald-50 border border-emerald-300 text-emerald-950 font-black text-xs flex items-center gap-1 shadow-2xs">
+                      <Layers className="w-3.5 h-3.5 text-emerald-700" />
+                      Total Booklet: {bookletStats.totalPages || 0} Pages ({bookletStats.totalSheets || 0} A4 Duplex Sheets) • 4-Page Signature Aligned
+                    </span>
                     <span className="px-2.5 py-0.5 rounded-full bg-slate-100 border border-slate-300 text-black font-bold text-xs">
-                      A5 Format • Single Column • Continuous Sl No across Bial 1 to Bial 12
+                      {BOOKLET_BINDING_PRESETS[bindingType]?.name} ({BOOKLET_BINDING_PRESETS[bindingType]?.innerGutter}mm Spine)
                     </span>
                   </div>
                   <div className="w-24 h-0.5 bg-black mx-auto mt-1 rounded-full"></div>
@@ -1790,7 +1870,7 @@ export default function OfficialReportModal({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
                     <select
                       value={bookletBialFilter}
                       onChange={(e) => setBookletBialFilter(e.target.value)}
@@ -1803,6 +1883,21 @@ export default function OfficialReportModal({
                         </option>
                       ))}
                     </select>
+
+                    <div className="flex items-center gap-1 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs">
+                      <Sliders className="w-3 h-3 text-slate-500" />
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-extrabold hidden sm:inline">Binding:</span>
+                      <select
+                        value={bindingType}
+                        onChange={(e) => setBindingType(e.target.value)}
+                        className="bg-transparent text-xs font-bold text-black focus:outline-none cursor-pointer"
+                        title="Binding Margin & Saddle-Stitch Creep compensation"
+                      >
+                        {Object.values(BOOKLET_BINDING_PRESETS).map(p => (
+                          <option key={p.id} value={p.id}>{p.label}</option>
+                        ))}
+                      </select>
+                    </div>
 
                     <button
                       type="button"
@@ -2069,7 +2164,7 @@ export default function OfficialReportModal({
         <div className="px-4 sm:px-6 py-3 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="text-xs text-slate-500 font-medium">
             {previewTab === 'booklet' ? (
-              <>Viewing <span className="font-bold text-slate-800">Pathian Ram Thawhlawm Report (A5 Booklet)</span> • FY {selectedYear}-{selectedYear + 1}</>
+              <>Viewing <span className="font-bold text-slate-800">Pathian Ram Thawhlawm Report (A5 Booklet)</span> • FY {selectedYear}-{selectedYear + 1} • <span className="font-bold text-emerald-700">{bookletStats.totalPages || 0} Pages ({bookletStats.totalSheets || 0} A4 Sheets)</span> • <span className="font-semibold text-slate-700">{BOOKLET_BINDING_PRESETS[bindingType]?.name}</span></>
             ) : (
               <>Export formatted in <span className="font-bold text-slate-800">{pageSize.toUpperCase()}</span> ({orientation}) • <span className="text-indigo-600 font-semibold">{scopeName}</span></>
             )}

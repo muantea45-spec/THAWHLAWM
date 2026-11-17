@@ -1913,16 +1913,142 @@ export const formatBialLabel = (code, name) => {
   return `${prefix ? `${prefix} - ` : ''}${n}`.trim();
 };
 
+export const BOOKLET_BINDING_PRESETS = {
+  saddle_stitch: {
+    id: 'saddle_stitch',
+    name: 'Stapled / Center Stitch',
+    label: 'Stapled / Saddle-Stitch (15mm Gutter)',
+    shortLabel: 'Stapled (15mm)',
+    description: 'Standard center fold & saddle stitch. Compensates for inner page creep.',
+    innerGutter: 15,
+    outerMargin: 9,
+    contentWidth: 124.5
+  },
+  spiral_bound: {
+    id: 'spiral_bound',
+    name: 'Spiral / Wire-O Bound',
+    label: 'Spiral / Wire-O (19mm Gutter)',
+    shortLabel: 'Spiral (19mm)',
+    description: 'Extra spine clearance for hole punching and wire coil binding.',
+    innerGutter: 19,
+    outerMargin: 7,
+    contentWidth: 122.5
+  },
+  compact: {
+    id: 'compact',
+    name: 'Compact / Minimal Gutter',
+    label: 'Compact Margin (12mm Gutter)',
+    shortLabel: 'Compact (12mm)',
+    description: 'Maximizes printable area with slim margins for clean digital reading or thin leaflets.',
+    innerGutter: 12,
+    outerMargin: 8,
+    contentWidth: 128.5
+  }
+};
+
+export function calculateBookletPageStats({ bialsData = [] } = {}) {
+  if (!bialsData || bialsData.length === 0) {
+    return {
+      contentPages: 4,
+      totalPages: 4,
+      totalSheets: 1,
+      notesPages: 0,
+      signatureAligned: true
+    };
+  }
+
+  const sortedBials = [...bialsData].sort((a, b) => {
+    const codeA = a.bial_code || a.code || '';
+    const codeB = b.bial_code || b.code || '';
+    const numA = parseInt(codeA.replace(/\D/g, '') || a.bial_id || a.id) || 0;
+    const numB = parseInt(codeB.replace(/\D/g, '') || b.bial_id || b.id) || 0;
+    if (numA !== numB) return numA - numB;
+    return (a.bial_name || a.name || '').localeCompare(b.bial_name || b.name || '', undefined, { numeric: true });
+  });
+
+  // Pages 1 to 3:
+  // Page 1: Front Cover
+  // Page 2: Thuhmahruai (Preface)
+  // Page 3: TOC (Contents)
+  let pageCount = 3;
+  let currentY = 14;
+
+  const pushPage = () => {
+    pageCount++;
+    currentY = 14;
+  };
+
+  sortedBials.forEach(bialGroup => {
+    const members = [...(bialGroup.members || [])];
+
+    // Check space for header + table header + 2 rows = ~20mm
+    if (currentY + 20 > 195) {
+      pushPage();
+    }
+    currentY += 6.5; // Header
+    currentY += 4.8; // TableHeader
+
+    members.forEach(() => {
+      if (currentY + 4.2 > 195) {
+        pushPage();
+        currentY += 6.5; // Continuation Header
+        currentY += 4.8; // TableHeader
+      }
+      currentY += 4.2;
+    });
+
+    // Bial Subtotal
+    if (currentY + 6.0 > 195) {
+      pushPage();
+    }
+    currentY += 7.0;
+  });
+
+  // Grand Total & Signatures (36mm)
+  if (currentY + 36 > 195) {
+    pushPage();
+  }
+  pushPage(); // push the last page containing grand total & signatures
+
+  // 4-PAGE SIGNATURE RULE
+  const currentTotalWithBack = pageCount + 1; // +1 for Back Cover
+  const totalPages = Math.ceil(currentTotalWithBack / 4) * 4;
+  const notesPages = totalPages - 1 - pageCount;
+  const totalSheets = totalPages / 4;
+
+  return {
+    contentPages: pageCount + 1,
+    totalPages,
+    totalSheets,
+    notesPages,
+    signatureAligned: totalPages % 4 === 0
+  };
+}
+
 export async function exportPressReadyBookletPDF({
   year = new Date().getFullYear(),
   bialsData = [],
   churchTotals = {},
   mode = 'imposed', // 'imposed' | 'sequential'
+  bindingType = 'saddle_stitch', // 'saddle_stitch' | 'spiral_bound' | 'compact'
   columns = [],
   logoBase64 = null,
   prefaceText = ''
 }) {
   const cols = (columns && columns.length > 0) ? columns : DEFAULT_TITHE_COLUMNS;
+
+  // Binding Margin Configuration (Gutter & Outer Margins)
+  const bindingConfig = BOOKLET_BINDING_PRESETS[bindingType] || BOOKLET_BINDING_PRESETS.saddle_stitch;
+  const innerGutter = bindingConfig.innerGutter;
+  const outerMargin = bindingConfig.outerMargin;
+  const contentWidth = 148.5 - innerGutter - outerMargin;
+
+  // Margin calculation helper based on Recto (odd) vs Verso (even) pages
+  const getPageMargins = (offsetX, isEvenPage) => {
+    const marginL = isEvenPage ? offsetX + outerMargin : offsetX + innerGutter;
+    const marginR = isEvenPage ? offsetX + 148.5 - innerGutter : offsetX + 148.5 - outerMargin;
+    return { marginL, marginR, contentWidth };
+  };
 
   // 1. Sort Bials strictly starting from the First Bial (Bial 1 / B1) in natural sequential order
   const sortedBials = [...bialsData].sort((a, b) => {
@@ -1983,8 +2109,7 @@ export async function exportPressReadyBookletPDF({
   // Running Header helper
   const drawRunningHeader = (doc, pageNumber, totalPages, offsetX, isEvenPage) => {
     if (pageNumber === 1 || pageNumber === totalPages) return;
-    const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
-    const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
+    const { marginL, marginR } = getPageMargins(offsetX, isEvenPage);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(6.5);
@@ -2009,8 +2134,7 @@ export async function exportPressReadyBookletPDF({
   // Running Footer helper
   const drawRunningFooter = (doc, pageNumber, totalPages, offsetX, isEvenPage) => {
     if (pageNumber === 1 || pageNumber === totalPages) return;
-    const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
-    const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
+    const { marginL, marginR } = getPageMargins(offsetX, isEvenPage);
 
     doc.setDrawColor(0, 0, 0);
     doc.setLineWidth(0.3);
@@ -2142,7 +2266,7 @@ export async function exportPressReadyBookletPDF({
           pY += 3.5;
           return;
         }
-        const lines = doc.splitTextToSize(p, 124.5);
+        const lines = doc.splitTextToSize(p, contentWidth);
         if (pY < 192) {
           doc.text(lines, marginL, pY);
           pY += lines.length * 4.6 + 3.5;
@@ -2155,8 +2279,7 @@ export async function exportPressReadyBookletPDF({
 
   // PAGE 3: Table of Contents & Summaries
   pages.push((doc, { offsetX, isEvenPage, pageNumber, totalPages }) => {
-    const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
-    const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
+    const { marginL, marginR, contentWidth } = getPageMargins(offsetX, isEvenPage);
     const cx = offsetX + 74.25;
 
     drawRunningHeader(doc, pageNumber, totalPages, offsetX, isEvenPage);
@@ -2172,13 +2295,15 @@ export async function exportPressReadyBookletPDF({
 
     let tocY = 26;
     doc.setFillColor(226, 232, 240);
-    doc.rect(marginL, tocY, 124.5, 5.0, 'F');
+    doc.rect(marginL, tocY, contentWidth, 5.0, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.5);
     doc.text('Sl', marginL + 2, tocY + 3.4);
     doc.text('Bialtu', marginL + 8, tocY + 3.4);
-    doc.text('Chhungkua', marginL + 52, tocY + 3.4);
-    doc.text('Kir zat', marginL + 82, tocY + 3.4);
+    const colHH = marginL + Math.round(contentWidth * 0.42);
+    const colRet = marginL + Math.round(contentWidth * 0.66);
+    doc.text('Chhungkua', colHH, tocY + 3.4);
+    doc.text('Kir zat', colRet, tocY + 3.4);
     doc.text('Total (₹)', marginR - 2, tocY + 3.4, { align: 'right' });
 
     tocY += 5.2;
@@ -2186,26 +2311,26 @@ export async function exportPressReadyBookletPDF({
     bialSummaries.forEach((bs, idx) => {
       if (idx % 2 === 1) {
         doc.setFillColor(248, 250, 252);
-        doc.rect(marginL, tocY - 0.4, 124.5, 4.2, 'F');
+        doc.rect(marginL, tocY - 0.4, contentWidth, 4.2, 'F');
       }
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(6.5);
       doc.text(String(idx + 1), marginL + 2, tocY + 2.6);
       doc.text(formatBialLabel(bs.bialCode, bs.bialName), marginL + 8, tocY + 2.6);
-      doc.text(`${bs.totalHH} (${bs.returnedHH} Ret)`, marginL + 52, tocY + 2.6);
-      doc.text(`${bs.returnRate}%`, marginL + 82, tocY + 2.6);
+      doc.text(`${bs.totalHH} (${bs.returnedHH} Ret)`, colHH, tocY + 2.6);
+      doc.text(`${bs.returnRate}%`, colRet, tocY + 2.6);
       doc.setFont('helvetica', 'bold');
       doc.text(`₹${bs.bTotal.toLocaleString('en-IN')}`, marginR - 2, tocY + 2.6, { align: 'right' });
       tocY += 4.5;
     });
 
     doc.setFillColor(224, 231, 255);
-    doc.rect(marginL, tocY, 124.5, 5.5, 'F');
+    doc.rect(marginL, tocY, contentWidth, 5.5, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(6.8);
     doc.text('KHAIKHAWMNA', marginL + 2, tocY + 3.7);
-    doc.text(`${churchTotalHH} (${churchReturnedHH} Ret)`, marginL + 52, tocY + 3.7);
-    doc.text(`${overallReturnRate}%`, marginL + 82, tocY + 3.7);
+    doc.text(`${churchTotalHH} (${churchReturnedHH} Ret)`, colHH, tocY + 3.7);
+    doc.text(`${overallReturnRate}%`, colRet, tocY + 3.7);
     doc.text(`₹${finalGrandTotal.toLocaleString('en-IN')}`, marginR - 2, tocY + 3.7, { align: 'right' });
 
     doc.setFont('helvetica', 'italic');
@@ -2223,17 +2348,21 @@ export async function exportPressReadyBookletPDF({
   const pushCurrentPage = () => {
     const items = [...currentPageItems];
     pages.push((doc, { offsetX, isEvenPage, pageNumber, totalPages }) => {
-      const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
-      const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
+      const { marginL, marginR, contentWidth } = getPageMargins(offsetX, isEvenPage);
       const cx = offsetX + 74.25;
 
       drawRunningHeader(doc, pageNumber, totalPages, offsetX, isEvenPage);
+
+      const colPR = marginL + Math.round(contentWidth * 0.45);
+      const colRT = marginL + Math.round(contentWidth * 0.58);
+      const colTch = marginL + Math.round(contentWidth * 0.71);
+      const colBldg = marginL + Math.round(contentWidth * 0.84);
 
       items.forEach(item => {
         if (item.type === 'header') {
           doc.setFillColor(241, 245, 249);
           doc.setDrawColor(0, 0, 0);
-          doc.roundedRect(marginL, item.y, 124.5, 5.5, 1, 1, 'FD');
+          doc.roundedRect(marginL, item.y, contentWidth, 5.5, 1, 1, 'FD');
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(7.5);
           doc.setTextColor(0, 0, 0);
@@ -2244,21 +2373,21 @@ export async function exportPressReadyBookletPDF({
           doc.text(t, marginL + 2.5, item.y + 3.8);
         } else if (item.type === 'tableHeader') {
           doc.setFillColor(226, 232, 240);
-          doc.rect(marginL, item.y, 124.5, 4.6, 'F');
+          doc.rect(marginL, item.y, contentWidth, 4.6, 'F');
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(6.2);
           doc.setTextColor(0, 0, 0);
           doc.text('Sl', marginL + 1.5, item.y + 3.1);
           doc.text('Member Name', marginL + 8, item.y + 3.1);
-          doc.text('PTR (₹)', marginL + 56, item.y + 3.1, { align: 'right' });
-          doc.text('RT (₹)', marginL + 72, item.y + 3.1, { align: 'right' });
-          doc.text('Tch (₹)', marginL + 88, item.y + 3.1, { align: 'right' });
-          doc.text('Bldg (₹)', marginL + 104, item.y + 3.1, { align: 'right' });
+          doc.text('PTR (₹)', colPR, item.y + 3.1, { align: 'right' });
+          doc.text('RT (₹)', colRT, item.y + 3.1, { align: 'right' });
+          doc.text('Tch (₹)', colTch, item.y + 3.1, { align: 'right' });
+          doc.text('Bldg (₹)', colBldg, item.y + 3.1, { align: 'right' });
           doc.text('Total (₹)', marginR - 2, item.y + 3.1, { align: 'right' });
         } else if (item.type === 'member') {
           if (item.isEvenRow) {
             doc.setFillColor(248, 250, 252);
-            doc.rect(marginL, item.y - 0.4, 124.5, 4.0, 'F');
+            doc.rect(marginL, item.y - 0.4, contentWidth, 4.0, 'F');
           }
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(6.2);
@@ -2266,27 +2395,27 @@ export async function exportPressReadyBookletPDF({
           doc.text(String(item.sl_no), marginL + 1.5, item.y + 2.4);
           doc.text(item.name.length > 25 ? item.name.substring(0, 25) + '..' : item.name, marginL + 8, item.y + 2.4);
           doc.setFont('helvetica', 'bold');
-          doc.text(item.pr > 0 ? item.pr.toLocaleString('en-IN') : '-', marginL + 56, item.y + 2.4, { align: 'right' });
-          doc.text(item.rt > 0 ? item.rt.toLocaleString('en-IN') : '-', marginL + 72, item.y + 2.4, { align: 'right' });
-          doc.text(item.tch > 0 ? item.tch.toLocaleString('en-IN') : '-', marginL + 88, item.y + 2.4, { align: 'right' });
-          doc.text(item.bldg > 0 ? item.bldg.toLocaleString('en-IN') : '-', marginL + 104, item.y + 2.4, { align: 'right' });
+          doc.text(item.pr > 0 ? item.pr.toLocaleString('en-IN') : '-', colPR, item.y + 2.4, { align: 'right' });
+          doc.text(item.rt > 0 ? item.rt.toLocaleString('en-IN') : '-', colRT, item.y + 2.4, { align: 'right' });
+          doc.text(item.tch > 0 ? item.tch.toLocaleString('en-IN') : '-', colTch, item.y + 2.4, { align: 'right' });
+          doc.text(item.bldg > 0 ? item.bldg.toLocaleString('en-IN') : '-', colBldg, item.y + 2.4, { align: 'right' });
           doc.text(item.total > 0 ? `₹${item.total.toLocaleString('en-IN')}` : '0', marginR - 2, item.y + 2.4, { align: 'right' });
         } else if (item.type === 'subtotal') {
           doc.setFillColor(224, 231, 255);
-          doc.rect(marginL, item.y, 124.5, 4.8, 'F');
+          doc.rect(marginL, item.y, contentWidth, 4.8, 'F');
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(6.2);
           doc.setTextColor(0, 0, 0);
           doc.text(`Subtotal (${formatBialLabel(item.code, item.name)}) • ${item.returnRate}% Kir zat`, marginL + 2.5, item.y + 3.2);
-          doc.text(item.pr.toLocaleString('en-IN'), marginL + 56, item.y + 3.2, { align: 'right' });
-          doc.text(item.rt.toLocaleString('en-IN'), marginL + 72, item.y + 3.2, { align: 'right' });
-          doc.text(item.tch.toLocaleString('en-IN'), marginL + 88, item.y + 3.2, { align: 'right' });
-          doc.text(item.bldg.toLocaleString('en-IN'), marginL + 104, item.y + 3.2, { align: 'right' });
+          doc.text(item.pr.toLocaleString('en-IN'), colPR, item.y + 3.2, { align: 'right' });
+          doc.text(item.rt.toLocaleString('en-IN'), colRT, item.y + 3.2, { align: 'right' });
+          doc.text(item.tch.toLocaleString('en-IN'), colTch, item.y + 3.2, { align: 'right' });
+          doc.text(item.bldg.toLocaleString('en-IN'), colBldg, item.y + 3.2, { align: 'right' });
           doc.text(`₹${item.total.toLocaleString('en-IN')}`, marginR - 2, item.y + 3.2, { align: 'right' });
         } else if (item.type === 'grandTotal') {
           doc.setFillColor(241, 245, 249);
           doc.setDrawColor(0, 0, 0);
-          doc.roundedRect(marginL, item.y, 124.5, 12, 1.2, 1.2, 'FD');
+          doc.roundedRect(marginL, item.y, contentWidth, 12, 1.2, 1.2, 'FD');
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(7.2);
           doc.setTextColor(0, 0, 0);
@@ -2297,7 +2426,7 @@ export async function exportPressReadyBookletPDF({
           doc.text(`₹${item.grandTotal.toLocaleString('en-IN')}`, marginR - 3, item.y + 6.8, { align: 'right' });
         } else if (item.type === 'signatures') {
           const sigY = item.y + 10;
-          const colW = 124.5 / 3;
+          const colW = contentWidth / 3;
           doc.setDrawColor(0, 0, 0);
           doc.setLineWidth(0.35);
           doc.line(marginL + 2, sigY, marginL + colW - 2, sigY);
@@ -2442,8 +2571,7 @@ export async function exportPressReadyBookletPDF({
 
   for (let pad = 0; pad < paddingPagesNeeded; pad++) {
     pages.push((doc, { offsetX, isEvenPage, pageNumber, totalPages }) => {
-      const marginL = isEvenPage ? offsetX + 9 : offsetX + 15;
-      const marginR = isEvenPage ? offsetX + 148.5 - 15 : offsetX + 148.5 - 9;
+      const { marginL, marginR } = getPageMargins(offsetX, isEvenPage);
       const cx = offsetX + 74.25;
 
       drawRunningHeader(doc, pageNumber, totalPages, offsetX, isEvenPage);
@@ -2588,11 +2716,12 @@ export async function exportConsolidatedBookletPDF({
   bialsData = [],
   churchTotals = {},
   mode = 'imposed',
+  bindingType = 'saddle_stitch',
   columns = [],
   logoBase64 = null,
   prefaceText = ''
 }) {
-  return await exportPressReadyBookletPDF({ year, bialsData, churchTotals, mode, columns, logoBase64, prefaceText });
+  return await exportPressReadyBookletPDF({ year, bialsData, churchTotals, mode, bindingType, columns, logoBase64, prefaceText });
 }
 
 /**

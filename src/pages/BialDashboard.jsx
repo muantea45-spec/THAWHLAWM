@@ -564,11 +564,11 @@ export default function BialDashboard({ user, showToast }) {
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                className="lg:hidden p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-xs shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
                 title="Open Navigation Menu"
+                aria-label="Open Navigation Menu"
               >
-                <Menu className="w-3.5 h-3.5" />
-                <span>Menu</span>
+                <Menu className="w-4 h-4" />
               </button>
 
               <div className="flex items-center gap-2">

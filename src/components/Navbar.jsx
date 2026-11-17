@@ -1,14 +1,11 @@
 import React, { useState } from 'react';
-import { Church, ShieldCheck, UserCheck, KeyRound, LogOut, Menu, Type, Check } from 'lucide-react';
+import { Church, ShieldCheck, UserCheck, KeyRound, LogOut, Menu } from 'lucide-react';
 import churchLogo from '../assets/church_logo.jpg';
 import { api } from '../utils/api';
 import Modal from './common/Modal';
-import { useFontSize } from '../context/FontSizeContext';
 
 export default function Navbar({ user, onLogout, showToast, onOpenMobileMenu }) {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [showFontMenu, setShowFontMenu] = useState(false);
-  const { fontSize, setFontSize, currentPreset, presets } = useFontSize();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,89 +60,8 @@ export default function Navbar({ user, onLogout, showToast, onOpenMobileMenu }) 
           </p>
         </div>
 
-        {/* Right: Font Size Selector Menu */}
-        <div className="relative shrink-0 flex items-center justify-end">
-          <button
-            type="button"
-            onClick={() => setShowFontMenu(!showFontMenu)}
-            className="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-slate-900 border border-slate-200 transition-all cursor-pointer shadow-2xs flex items-center gap-1"
-            title={`Font Size: ${currentPreset.label} (${currentPreset.scale})`}
-            aria-label="Change Font Size"
-          >
-            <Type className="w-4 h-4 text-indigo-600 shrink-0" />
-            <span className="font-bold text-[10px] hidden sm:inline text-indigo-900 font-mono">
-              {currentPreset.shortLabel}
-            </span>
-          </button>
-
-          {/* Font Size Dropdown Popover */}
-          {showFontMenu && (
-            <>
-              <div
-                className="fixed inset-0 z-40"
-                onClick={() => setShowFontMenu(false)}
-              />
-              <div className="absolute right-0 top-full mt-2 w-56 sm:w-64 bg-white rounded-2xl border border-slate-200/90 shadow-xl z-50 p-2.5 space-y-2 animate-in fade-in zoom-in-95 duration-150">
-                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100 px-1">
-                  <div className="flex items-center gap-1.5 text-xs font-heading font-black text-slate-800 uppercase tracking-wide">
-                    <Type className="w-4 h-4 text-indigo-600" />
-                    <span>Font Size</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded font-bold border border-indigo-100">
-                    {currentPreset.scale}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  {presets.map((preset) => {
-                    const isSelected = fontSize === preset.id;
-                    const isDefault = preset.id === 'normal';
-                    return (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => {
-                          setFontSize(preset.id);
-                          setShowFontMenu(false);
-                          if (showToast) {
-                            showToast(`Font size set to ${preset.label}`, 'success');
-                          }
-                        }}
-                        className={`w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all cursor-pointer text-left ${
-                          isSelected
-                            ? 'bg-indigo-600 text-white font-bold shadow-xs'
-                            : 'hover:bg-slate-50 text-slate-700 font-medium'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className={`w-6 text-center font-black font-mono text-xs ${isSelected ? 'text-white' : 'text-indigo-600'}`}>
-                            {preset.shortLabel}
-                          </span>
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className={isSelected ? 'font-black' : 'font-semibold'}>
-                                {preset.label}
-                              </span>
-                              {isDefault && (
-                                <span className={`text-[9px] px-1 py-0.2 rounded font-extrabold ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                  Default
-                                </span>
-                              )}
-                            </div>
-                            <span className={`text-[10px] block ${isSelected ? 'text-indigo-100' : 'text-slate-400'}`}>
-                              {preset.desc}
-                            </span>
-                          </div>
-                        </div>
-                        {isSelected && <Check className="w-4 h-4 text-white shrink-0" />}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
+        {/* Right Balance Spacer for True Center Alignment */}
+        <div className="w-10 sm:w-12 shrink-0"></div>
       </nav>
 
       {/* Change Password Modal using Compound Modal */}

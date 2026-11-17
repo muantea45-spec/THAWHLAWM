@@ -2145,7 +2145,6 @@ export async function exportPressReadyBookletPDF({
     doc.setTextColor(0, 0, 0);
 
     if (isEvenPage) {
-      doc.text('Pathian Ram Tithe Stewardship', marginL, 205);
       doc.text(`Phek ${pageNumber} of ${totalPages}`, marginR, 205, { align: 'right' });
     } else {
       doc.text(`Phek ${pageNumber} of ${totalPages}`, marginL, 205);
@@ -2332,10 +2331,6 @@ export async function exportPressReadyBookletPDF({
     doc.text(`${churchTotalHH} (${churchReturnedHH} Ret)`, colHH, tocY + 3.7);
     doc.text(`${overallReturnRate}%`, colRet, tocY + 3.7);
     doc.text(`₹${finalGrandTotal.toLocaleString('en-IN')}`, marginR - 2, tocY + 3.7, { align: 'right' });
-
-    doc.setFont('helvetica', 'italic');
-    doc.setFontSize(6.8);
-    doc.text('“Phek dawtah hian Bial tin chanchin kimchang a inziak chhunzawm e.”', cx, 196, { align: 'center' });
 
     drawRunningFooter(doc, pageNumber, totalPages, offsetX, isEvenPage);
   });
@@ -3238,7 +3233,7 @@ export async function exportCleanPDF({ options = {}, data = {} }) {
       doc.setFontSize(7.5);
       doc.setTextColor(...mutedTextColor);
       const footerY = pageHeight - 8;
-      doc.text('Bethlehem Kohhran • Pathian Ram Tithe Stewardship', margin, footerY);
+      doc.text('Bethlehem Kohhran', margin, footerY);
       doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin, footerY, { align: 'right' });
     }
   }

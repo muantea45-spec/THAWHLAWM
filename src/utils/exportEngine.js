@@ -6,6 +6,7 @@ import { pdf } from '@react-pdf/renderer';
 import React from 'react';
 import OfficialReportPDFDocument from '../components/OfficialReportPDFDocument';
 import DigitalReceiptPDFDocument from '../components/DigitalReceiptPDFDocument';
+import './pdfFonts';
 import { DEFAULT_TITHE_COLUMNS } from './constants';
 
 const MONTH_NAMES = [

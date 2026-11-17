@@ -1,5 +1,6 @@
 import React from 'react';
 import { Document, Page, Text, View, Image, StyleSheet } from '@react-pdf/renderer';
+import '../utils/pdfFonts';
 
 function formatINR(val) {
   if (!val && val !== 0) return '0';
@@ -24,7 +25,7 @@ const styles = StyleSheet.create({
   page: {
     backgroundColor: '#ffffff',
     padding: 12,
-    fontFamily: 'Helvetica',
+    fontFamily: 'Roboto',
   },
   receiptCard: {
     backgroundColor: '#ffffff',
@@ -61,7 +62,8 @@ const styles = StyleSheet.create({
   },
   churchTitle: {
     fontSize: 12,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 'bold',
     color: '#0f172a',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -69,7 +71,8 @@ const styles = StyleSheet.create({
   },
   receiptSubtitle: {
     fontSize: 8.5,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 'bold',
     color: '#475569',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -78,6 +81,7 @@ const styles = StyleSheet.create({
   },
   headerMeta: {
     fontSize: 8,
+    fontFamily: 'Roboto',
     color: '#64748b',
     marginTop: 2,
     textAlign: 'center',
@@ -98,13 +102,15 @@ const styles = StyleSheet.create({
   },
   detailLabel: {
     fontSize: 8,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 'bold',
     color: '#64748b',
     textTransform: 'uppercase',
   },
   detailValue: {
     fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 'bold',
     color: '#0f172a',
   },
   breakdownList: {
@@ -122,11 +128,13 @@ const styles = StyleSheet.create({
   },
   categoryLabel: {
     fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 'bold',
   },
   categoryAmount: {
     fontSize: 9.5,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 'bold',
     color: '#0f172a',
   },
   grandTotalBar: {
@@ -141,20 +149,23 @@ const styles = StyleSheet.create({
   },
   grandTotalLabel: {
     fontSize: 9,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 'bold',
     color: '#a7f3d0',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   grandTotalAmount: {
     fontSize: 12,
-    fontFamily: 'Helvetica-Bold',
+    fontFamily: 'Roboto',
+    fontWeight: 'bold',
     color: '#ffffff',
   },
   footerText: {
     textAlign: 'center',
     fontSize: 8,
-    fontFamily: 'Helvetica-Oblique',
+    fontFamily: 'Roboto',
+    fontStyle: 'italic',
     color: '#64748b',
     borderTopWidth: 1,
     borderTopColor: '#f1f5f9',
